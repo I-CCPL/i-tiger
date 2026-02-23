@@ -1,0 +1,31 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "fortran.fortls.directories": [
+      "./src/"
+    ],
+    "fortran.linter.extraArgs": [
+      // ... option for linting
+      "-no-preprocess-only",
+      "-warn all",
+      "-diag-enable=all",
+      "-no-save-temps",
+      "-nokeep",
+      "-syntax-only",
+      // ... qe options
+      "-nomodule", // no .mod file
+      "-fpp",
+      "-allow",
+      "nofpp_comments",
+      "-D__DFTI", // Descrete Fourier Transformation Interface
+      "-D__MPI", // MPI
+    ],
+    "fortran.linter.includePaths": [
+      "${workspaceFolder}/build/"
+    ]
+  }
+}
