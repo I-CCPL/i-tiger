@@ -1,7 +1,5 @@
 include settings.mk
 
--include $(DEP_FILE)
-
 .PHONY: all clean depend print-vars
 
 all: $(TARGET)
@@ -39,3 +37,5 @@ print-vars:
 	@echo "OBJ=$(OBJ)"
 	@echo "TARGET=$(TARGET)"
 	@echo "DEP_FILE=$(DEP_FILE)"
+
+-include $(DEP_FILE)

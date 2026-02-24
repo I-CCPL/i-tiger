@@ -1,0 +1,9 @@
+# temporary files
+*.i90
+*.swp
+
+# binary files
+*.o
+*.a
+*.mod
+*.x

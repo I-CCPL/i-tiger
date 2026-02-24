@@ -6,7 +6,7 @@
   ],
   "settings": {
     "fortran.fortls.directories": [
-      "./src/"
+      "./src/**"
     ],
     "fortran.linter.extraArgs": [
       // ... option for linting

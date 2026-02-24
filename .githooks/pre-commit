@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+# check current path
+curpath=$(dirname "$(readlink -f "$0")")
+if [ "$(basename "$curpath")" != "hooks" ]; then
+  echo "Error: This script must be in .git/hooks directory"
+  exit 1
+fi
+
+# check COMMIT_EDITMSG file
+COMMIT_MSG_FILE="$curpath/../COMMIT_EDITMSG"
+if [ ! -f "$COMMIT_MSG_FILE" ]; then
+  echo "Error: COMMIT_EDITMSG file not found. Please make a commit to create the file."
+  exit 1
+fi
+
+# check version number in commit message
+VERSION=$(grep -oE 'v[0-9]+(\.[0-9]+)*' $COMMIT_MSG_FILE)
+if [ ! -n "$VERSION" ]; then
+  echo "Error: No version number found in commit message. Please include a version number in the format vX.Y.Z (e.g., v1.0.0)."
+  exit 1
+fi
+
+# check env.f90 file
+env_file="$curpath/../../src/parallel/env.f90"
+if [ ! -f "$env_file" ]; then
+  echo "Error: env.f90 file not found at $env_file"
+  exit 1
+fi
+
+# update version number in env.f90
+sed -i "s/itg_version = 'v[0-9]\+\(\.[0-9]\+\)*'/itg_version = '$VERSION'/" $env_file
+git add $env_file
