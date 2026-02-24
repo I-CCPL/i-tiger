@@ -8,7 +8,6 @@ MODULE mp_global
 CONTAINS
   SUBROUTINE mp_start()
 #ifdef __MPI
-    USE io_global, ONLY: stdout
     mp_comm = MPI_COMM_WORLD
     mp_root = 0
     CALL MPI_INIT(ierr)
@@ -33,7 +32,7 @@ CONTAINS
   END SUBROUTINE mp_end
   !
   SUBROUTINE mp_abort(code, msg)
-    USE io_global, ONLY: stdout
+    USE io_param, ONLY: stdout
     INTEGER, INTENT(IN) :: code
     CHARACTER(len=*), INTENT(IN), OPTIONAL::msg
     IF (code == 0) RETURN

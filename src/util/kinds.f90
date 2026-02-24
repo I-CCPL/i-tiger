@@ -3,8 +3,8 @@ MODULE kinds
   IMPLICIT NONE
   INTEGER, PARAMETER::DP = SELECTED_REAL_KIND(15, 307)
 CONTAINS
-  SUBROUTINE print_kinds_info(stdout)
-    INTEGER, INTENT(IN) :: stdout
+  SUBROUTINE print_kinds_info()
+    USE io_param, ONLY: stdout
     WRITE (stdout, '(A)') 'Data Kinds Information:'
 
     WRITE (stdout, 3001) 'REAL: ', 'DP'

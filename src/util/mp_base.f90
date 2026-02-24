@@ -7,7 +7,8 @@ MODULE mp_base
   PUBLIC::mp_bcast, mp_sum
   !
   INTERFACE mp_bcast
-    MODULE PROCEDURE mp_bcast_logical, mp_bcast_int, mp_bcast_real, mp_bcast_cmplx
+    MODULE PROCEDURE mp_bcast_logical, mp_bcast_int, mp_bcast_real, &
+      mp_bcast_cmplx, mp_bcast_char
   END INTERFACE mp_bcast
   !
   INTERFACE mp_sum
@@ -53,6 +54,15 @@ CONTAINS
     CALL mp_ops_bcast_cmplx(msg, msg_size)
 #endif
   END SUBROUTINE mp_bcast_cmplx
+  !
+  SUBROUTINE mp_bcast_char(msg)
+    USE mp_global, ONLY: mp_abort, mp_comm, mp_root, ierr, MPI_CHARACTER
+    CHARACTER(LEN=*), INTENT(INOUT) :: msg
+#ifdef __MPI
+    CALL MPI_BCAST(msg, LEN(msg), MPI_CHARACTER, mp_root, mp_comm, ierr)
+    CALL mp_abort(ierr, 'MPI bcast character failed.')
+#endif
+  END SUBROUTINE mp_bcast_char
 
   ! ================================================== !
 

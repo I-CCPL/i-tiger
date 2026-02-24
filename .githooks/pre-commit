@@ -22,7 +22,7 @@ if [ ! -n "$VERSION" ]; then
 fi
 
 # check env.f90 file
-env_file="$curpath/../../src/parallel/env.f90"
+env_file="$curpath/../../src/util/env.f90"
 if [ ! -f "$env_file" ]; then
   echo "Error: env.f90 file not found at $env_file"
   exit 1
