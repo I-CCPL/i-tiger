@@ -1,11 +1,11 @@
 MODULE env
   USE io_global, ONLY: stdout
   IMPLICIT NONE
-  CHARACTER(LEN=10)::itg_version = 'v0.0.0.4'
+  CHARACTER(LEN=10)::itg_version = 'v0.0.0.5'
 CONTAINS
   SUBROUTINE env_start()
     USE mp_global, ONLY: mp_start, mp_rank, mp_root, mp_size, mp_barrier
-    USE io_global, ONLY: ionode, stdout
+    USE io_global, ONLY: ionode, stdout, write_bold_line
     CHARACTER(len=10)::cdate, ctime
     !
     CALL mp_start()
@@ -18,10 +18,10 @@ CONTAINS
     WRITE (stdout, '(A)') 'Starting i-TIGER on '//TRIM(cdate)//' '//TRIM(ctime)
     WRITE (stdout, '(2X,A,I0,A)') 'Running on ', mp_size, ' processors.'
     WRITE (stdout, *)
-    WRITE (stdout, *) '=================================================='
+    CALL write_bold_line()
     WRITE (stdout, '(2X,A)') 'Incheon Tight-binding Induced Generalized Electronic Response'
     WRITE (stdout, '(2X,A,A)') 'i-TIGER ', itg_version
-    WRITE (stdout, *) '=================================================='
+    CALL write_bold_line()
     WRITE (stdout, *)
     CALL mp_barrier()
   END SUBROUTINE env_start
@@ -31,7 +31,8 @@ CONTAINS
     CHARACTER(len=10)::cdate, ctime
     CALL mp_end()
     CALL current_date_time(cdate, ctime)
-    WRITE (stdout, '(A)') 'Ending i-TIGER on '//TRIM(cdate)//' '//TRIM(ctime)
+    WRITE (stdout, *)
+    WRITE (stdout, '(A)') 'Finished i-TIGER on '//TRIM(cdate)//' '//TRIM(ctime)
     FLUSH (stdout)
   END SUBROUTINE env_end
   !

@@ -1,5 +1,5 @@
 MODULE io_global
-  USE io_param, ONLY: stdin, stdout, ionode
+  USE io_param, ONLY: stdin, stdout, ionode, debug
   IMPLICIT NONE
   CHARACTER(LEN=256)::prefix
 CONTAINS
@@ -28,4 +28,11 @@ CONTAINS
       CALL errore(1, 'check_file', ' File not found: '//TRIM(fname))
     END IF
   END SUBROUTINE check_file
+  !
+  SUBROUTINE write_sep_line()
+    WRITE (stdout, '(A)') REPEAT('-', 50)
+  END SUBROUTINE write_sep_line
+  SUBROUTINE write_bold_line()
+    WRITE (stdout, '(A)') REPEAT('=', 50)
+  END SUBROUTINE write_bold_line
 END MODULE io_global
