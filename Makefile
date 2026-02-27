@@ -21,7 +21,7 @@ $(DEP_FILE): $(SRC) | $(BUILD_DIR)
 	@set -e; \
 	if command -v makedepf90 >/dev/null 2>&1; then \
 	  echo "Generating $@ with makedepf90."; \
-	  makedepf90 $(SRC) -nosrc -b='$(BUILD_DIR)/' > $@; \
+	  makedepf90 $(D__FLAGS) $(SRC) -nosrc -b='$(BUILD_DIR)/' > $@; \
 	else \
 	  echo "# makedepf90 not found; dependency generation skipped"; \
 	fi

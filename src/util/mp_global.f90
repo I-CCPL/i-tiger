@@ -33,12 +33,22 @@ CONTAINS
   !
   SUBROUTINE mp_abort(code, msg)
     USE io_param, ONLY: stdout
+#ifdef __INTEL_COMPILER
+    USE ifcore, ONLY: tracebackqq
+#endif
     INTEGER, INTENT(IN) :: code
     CHARACTER(len=*), INTENT(IN), OPTIONAL::msg
     IF (code == 0) RETURN
+    WRITE (stdout, *)
     IF (PRESENT(msg)) THEN
-      WRITE (stdout, '(4X, A)') TRIM(msg)
+      WRITE (stdout, '("Error: ",A)') TRIM(msg)
+      WRITE (stdout, *)
     END IF
+#ifdef __INTEL_COMPILER
+    CALL tracebackqq(user_exit_code=1)
+#elif defined __GFORTRAN
+    CALL BACKTRACE()
+#endif
 #ifdef __MPI
     CALL MPI_ABORT(mp_comm, code, ierr)
 #endif

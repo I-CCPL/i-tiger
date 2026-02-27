@@ -25,7 +25,8 @@
       "-D__MPI", // MPI
     ],
     "fortran.linter.includePaths": [
-      "${workspaceFolder}/build/"
+      "${workspaceFolder}/build/",
+      "/opt/intel/oneapi/mkl/2022.1.0/include/"
     ]
   }
 }

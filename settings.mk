@@ -10,17 +10,17 @@ LDLIBS ?= $(BLAS_LIBS)
 
 MOD_FLAG ?= -I
 MODFLAGS ?= $(MOD_FLAG)$(BUILD_DIR) $(MOD_FLAG)$(BLAS_FLAGS)
-D__FLAGS := -D__MPI
+D__FLAGS := -D__MPI -D__DFTI
 
 BLAS_FLAGS ?= /opt/intel/oneapi/mkl/2022.1.0/include/
 BLAS_LIBS ?= -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 
 MPIF90 ?= mpiifort
-FFLAGS_COMMON = -assume byterecl -traceback \
+FFLAGS_COMMON = -assume byterecl -g -traceback \
 	-no-wrap-margin -nomodule -fpp -allow nofpp_comments \
 	$(MODFLAGS) $(D__FLAGS) -module $(BUILD_DIR)
 FFLAGS_OPT ?= -O2 $(FFLAGS_COMMON)
-FFLAGS_DEBUG ?= -O0 -g -check all -fpe0 $(FFLAGS_COMMON)
+FFLAGS_DEBUG ?= -O0 -check all -fpe0 $(FFLAGS_COMMON)
 
 BUILD ?= release
 ifeq ($(BUILD),debug)

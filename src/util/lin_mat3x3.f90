@@ -1,4 +1,4 @@
-MODULE mat3x3_util
+MODULE lin_mat3x3
   USE kinds, ONLY: DP
   IMPLICIT NONE
   PRIVATE
@@ -29,4 +29,4 @@ CONTAINS
       END DO
     END DO
   END FUNCTION inv3x3
-END MODULE mat3x3_util
+END MODULE lin_mat3x3

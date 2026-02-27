@@ -1,0 +1,4 @@
+MODULE system
+  IMPLICIT NONE
+  INTEGER::Nw
+END MODULE system
