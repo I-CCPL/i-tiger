@@ -191,13 +191,13 @@ CONTAINS
     CALL mp_bcast(self%nbnd)
     CALL mp_bcast(real_lattice)
     CALL mp_bcast(recip_lattice)
-    CALL mp_bcast(recip_lattice_inv)
     CALL mp_bcast(self%nkpt)
     CALL mp_bcast(self%k_grid)
     CALL mp_bcast(self%nnb)
     CALL mp_bcast(Nw)
 
     IF (.NOT. ionode) THEN
+      CALL cell_setup()
       ALLOCATE (self%k_cart(3, self%nkpt))
       ALLOCATE (self%k_red(3, self%nkpt))
       ALLOCATE (self%v_matrix(self%nbnd, Nw, self%nkpt))
@@ -396,6 +396,7 @@ CONTAINS
     !< Build Hamiltonian in q-space
     USE io_global, ONLY: write_sep_line
     USE lin_eig_H, ONLY: write_band
+    USE mp_base, ONLY: mp_bcast
     USE system, ONLY: Nw
     CLASS(w90data_type), INTENT(INOUT) :: self
     INTEGER::ikpt, iw, jw, ibnd
@@ -403,10 +404,10 @@ CONTAINS
     REAL(DP)::herm_abs_max, h_abs_max, herm_rel
     CHARACTER(LEN=256)::msg
     !
+    WRITE (stdout, '(2X, A)') 'Building H(q) in Wannier gauge...'
+    ALLOCATE (self%Hq(Nw, Nw, self%nkpt))
+    !
     IF (ionode) THEN
-      WRITE (stdout, '(2X, A)') 'Building H(q) in Wannier gauge...'
-      !
-      ALLOCATE (self%Hq(Nw, Nw, self%nkpt))
       self%Hq = CMPLX(0.0_DP, 0.0_DP, DP)
 
       DO ikpt = 1, self%nkpt
@@ -436,5 +437,6 @@ CONTAINS
       END IF
       CALL write_sep_line()
     END IF
+    CALL mp_bcast(self%Hq)
   END SUBROUTINE build_w90_Hq
 END MODULE wannier90

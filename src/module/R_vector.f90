@@ -158,6 +158,7 @@ CONTAINS
 
   SUBROUTINE Rvec_fft_q2R(self, w90data, X_q, X_R)
     USE kinds, ONLY: DP
+    USE io_global, ONLY: ionode
     USE constants, ONLY: tpi
     USE system, ONLY: Nw
     USE wannier90, ONLY: w90data_type

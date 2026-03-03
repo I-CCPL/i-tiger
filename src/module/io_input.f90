@@ -84,6 +84,7 @@ CONTAINS
     USE kinds, ONLY: DP
     USE char_mod, ONLY: match
     USE io_global, ONLY: stdout
+    USE mp_base, ONLY: mp_bcast
     USE kpoints, ONLY: kpts
     CHARACTER(LEN=256), INTENT(INOUT)::line
     LOGICAL::tend
@@ -100,19 +101,29 @@ CONTAINS
       CALL read_line(line, tend)
       IF (tend) GOTO 10
       READ (line, *) nk1, nk2, nk3, sk1, sk2, sk3
+      CALL mp_bcast(nk1)
+      CALL mp_bcast(nk2)
+      CALL mp_bcast(nk3)
+      CALL mp_bcast(sk1)
+      CALL mp_bcast(sk2)
+      CALL mp_bcast(sk3)
       CALL kpts%build_mesh(nk1, nk2, nk3, sk1, sk2, sk3)
       !
     ELSE IF (match('CRYSTAL_B', line)) THEN
       CALL read_line(line, tend)
       IF (tend) GOTO 10
       READ (line, *, END=10) npath
-      ALLOCATE (skp(3, npath), nkpps(npath))
 
+      CALL mp_bcast(npath)
+      ALLOCATE (skp(3, npath), nkpps(npath))
       DO i = 1, npath
         CALL read_line(line, tend)
         IF (tend) GOTO 10
         READ (line, *, END=10) skp(:, i), nkpps(i)
       END DO
+
+      CALL mp_bcast(skp)
+      CALL mp_bcast(nkpps)
       CALL kpts%build_path(npath, skp, nkpps)
     END IF
 
