@@ -5,8 +5,34 @@ MODULE lin_eig_H
   INTERFACE eig_H
     MODULE PROCEDURE eig_cH
   END INTERFACE eig_H
-  PUBLIC :: eig_H
+  PUBLIC :: eig_H, write_band
 CONTAINS
+  SUBROUTINE write_band(Hk, nkpt, eigval, eigvec)
+    USE io_global, ONLY: get_free_unit
+    USE system, ONLY: Nw
+    COMPLEX(DP), INTENT(IN)::Hk(Nw, Nw, nkpt)
+    INTEGER, INTENT(IN)::nkpt
+    REAL(DP), INTENT(OUT)::eigval(Nw, nkpt)
+    COMPLEX(DP), INTENT(OUT)::eigvec(Nw, Nw, nkpt)
+    INTEGER::ikpt, iw, ibnd, io_unit
+    !
+    DO ikpt = 1, nkpt
+      CALL eig_H(Nw, Hk(:, :, ikpt), &
+                 eigval(:, ikpt), eigvec(:, :, ikpt))
+    END DO
+
+    io_unit = get_free_unit()
+    OPEN (unit=io_unit, file='itg.eigval')
+
+    WRITE (io_unit, '("#", A)') 'ibnd, ikpt, eigval'
+    DO iw = 1, Nw
+      DO ikpt = 1, nkpt
+        WRITE (io_unit, '(I6, I6, ES13.4E3)') iw, ikpt, eigval(iw, ikpt)
+      END DO
+    END DO
+    CLOSE (io_unit)
+  END SUBROUTINE write_band
+  !
   SUBROUTINE eig_cH(ld_cH, cH, eigval, eigvec)
     USE mp_base, ONLY: mp_bcast
     !< Calculate eigenvalues and eigenvectors of Complex H in Wannier gauge at each k.

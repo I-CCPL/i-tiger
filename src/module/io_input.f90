@@ -6,7 +6,7 @@ MODULE io_input
 CONTAINS
   SUBROUTINE read_input()
     USE io_global, ONLY: stdout, prefix, write_sep_line
-    USE w90, ONLY: w90data, read_w90
+    USE wannier90, ONLY: w90data, read_w90
     !
     CALL read_control()
     w90data%prefix = TRIM(prefix)
@@ -30,7 +30,7 @@ CONTAINS
     END IF
   CONTAINS
     SUBROUTINE read_debug()
-      USE w90, ONLY: chk_w90, Hq_band
+      USE wannier90, ONLY: chk_w90, Hq_band
       NAMELIST /debug/ chk_w90, Hq_band
       WRITE (stdout, '(2X, A)') 'Reading &DEBUG Namelist...'
       READ (stdin, nml=debug)

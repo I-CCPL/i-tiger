@@ -1,7 +1,6 @@
-MODULE w90
+MODULE wannier90
   USE kinds, ONLY: DP
   USE io_global, ONLY: ionode, stdout, get_free_unit
-  USE lin_mat3x3, ONLY: inv3x3
   IMPLICIT NONE
   PRIVATE
   PUBLIC::read_w90, w90data_type, w90data
@@ -42,19 +41,11 @@ MODULE w90
     COMPLEX(DP), ALLOCATABLE :: Hq(:, :, :)
     !< Hamiltonian in Wannier gauge (Nw, Nw, nkpt)
 
-    INTEGER::N_unique_shift
-    !< Number of unique Wannier center shifts
-    REAL(DP), ALLOCATABLE :: shift_cart(:, :)
-    !< Unique list of Wannier center shifts in Cartesian coordinates (3, Nunique_shift)
-    INTEGER, ALLOCATABLE:: shift_map_inv(:, :)
-    !< Map from Wannier function pair (iw, jw) to shift index
   CONTAINS
     PROCEDURE::read_eig => read_w90_eig
     PROCEDURE::read_chk => read_w90_chk
     PROCEDURE::clear => clear_w90_data
     PROCEDURE::build_Hq => build_w90_Hq
-    PROCEDURE::write_band => write_w90_band
-    PROCEDURE::build_shift => build_shift_vecs
   END TYPE w90data_type
   TYPE(w90data_type)::w90data
 
@@ -93,7 +84,7 @@ CONTAINS
     USE io_global, ONLY: check_file
     USE mp_base, ONLY: mp_bcast
     USE system, ONLY: Nw
-    USE cell, ONLY: real_lattice, recip_lattice, recip_lattice_inv, &
+    USE cell, ONLY: cell_setup, real_lattice, recip_lattice, recip_lattice_inv, &
                     red2cart, cart2red
     CLASS(w90data_type), INTENT(INOUT) :: self
     TYPE(chk_dum_type), INTENT(OUT) :: chk_dum
@@ -128,10 +119,10 @@ CONTAINS
       WRITE (stdout, '(2X, A, 3F12.6)') '               ', real_lattice(:, 2)
       WRITE (stdout, '(2X, A, 3F12.6)') '               ', real_lattice(:, 3)
       READ (io_unit) recip_lattice
-      recip_lattice_inv = inv3x3(recip_lattice)
       WRITE (stdout, '(2X, A, 3F12.6)') '- recip_lattice:', recip_lattice(:, 1)
       WRITE (stdout, '(2X, A, 3F12.6)') '                ', recip_lattice(:, 2)
       WRITE (stdout, '(2X, A, 3F12.6)') '                ', recip_lattice(:, 3)
+      CALL cell_setup()
 
       READ (io_unit) self%nkpt
       WRITE (stdout, '(2X, A, I0)') '- nkpt: ', self%nkpt
@@ -139,8 +130,8 @@ CONTAINS
       WRITE (stdout, '(2X, A, 3(1X,I0))') '- k_grid: ', self%k_grid
       ALLOCATE (self%k_cart(3, self%nkpt))
       ALLOCATE (self%k_red(3, self%nkpt))
-      READ (io_unit) self%k_cart
-      CALL cart2red(self%k_cart, self%k_red, self%nkpt)
+      READ (io_unit) self%k_red
+      CALL red2cart(self%k_red, self%k_cart, self%nkpt)
       READ (io_unit) self%nnb
       WRITE (stdout, '(2X, A, I0)') '- nnb: ', self%nnb
       READ (io_unit) Nw
@@ -404,6 +395,7 @@ CONTAINS
   SUBROUTINE build_w90_Hq(self)
     !< Build Hamiltonian in q-space
     USE io_global, ONLY: write_sep_line
+    USE lin_eig_H, ONLY: write_band
     USE system, ONLY: Nw
     CLASS(w90data_type), INTENT(INOUT) :: self
     INTEGER::ikpt, iw, jw, ibnd
@@ -438,69 +430,11 @@ CONTAINS
         WRITE (msg, '(A,1X,ES12.4E3)') 'H(q) hermiticity check failed. relative=', herm_rel
         CALL errore(1, 'build_w90_Hq', TRIM(msg))
       END IF
-      IF (Hq_band) CALL self%write_band()
+      IF (Hq_band) THEN
+        ALLOCATE (self%eigvec(Nw, Nw, self%nkpt))
+        CALL write_band(self%Hq, self%nkpt, self%eigval, self%eigvec)
+      END IF
       CALL write_sep_line()
     END IF
   END SUBROUTINE build_w90_Hq
-
-  SUBROUTINE write_w90_band(self)
-    USE lin_eig_H, ONLY: eig_H
-    USE system, ONLY: Nw
-    CLASS(w90data_type), INTENT(INOUT) :: self
-    INTEGER::ikpt, iw, ibnd, io_unit
-    !
-    WRITE (stdout, '(2X, A)') 'Diagonalizing H(q) to build bands...'
-
-    IF (.NOT. ALLOCATED(self%Hq)) THEN
-      CALL errore(1, 'write_w90_band', 'H(q) is not built. Call build_w90_Hq first.')
-    END IF
-
-    IF (.NOT. ALLOCATED(self%eigvec)) THEN
-      ALLOCATE (self%eigvec(Nw, Nw, self%nkpt))
-    END IF
-
-    DO ikpt = 1, self%nkpt
-      CALL eig_H(Nw, self%Hq(:, :, ikpt), &
-                 self%eigval(:, ikpt), self%eigvec(:, :, ikpt))
-    END DO
-
-    io_unit = get_free_unit()
-    OPEN (unit=io_unit, file=TRIM(self%prefix)//'.eigval')
-
-    WRITE (io_unit, '("#", A)') 'ibnd, ikpt, eigval'
-    DO iw = 1, Nw
-      DO ikpt = 1, self%nkpt
-        WRITE (io_unit, '(I6, I6, ES13.4E3)') iw, ikpt, self%eigval(iw, ikpt)
-      END DO
-    END DO
-    CLOSE (io_unit)
-  END SUBROUTINE write_w90_band
-
-  SUBROUTINE build_shift_vecs(self)
-    !< Build Wannier center shift in reduced coordinates
-    USE system, ONLY: Nw
-    USE cell, ONLY: red2cart
-    USE unique, ONLY: unique_vec3_inv
-    CLASS(w90data_type), INTENT(INOUT) :: self
-    REAL(DP)::all_shift(3, Nw*Nw)
-    INTEGER::shift_map_inv(Nw*Nw)
-    INTEGER::iw, jw
-    !
-    IF (ALLOCATED(self%shift_cart)) RETURN
-    !
-    DO iw = 1, Nw
-      DO jw = 1, Nw
-        all_shift(:, iw + (jw - 1)*Nw) = self%wannier_center_cart(:, iw) - self%wannier_center_cart(:, jw)
-      END DO
-    END DO
-    !
-    CALL unique_vec3_inv(all_shift, 1D-8, self%shift_cart, self%N_unique_shift, shift_map_inv)
-
-    ALLOCATE (self%shift_map_inv(Nw, Nw))
-    DO iw = 1, Nw
-      DO jw = 1, Nw
-        self%shift_map_inv(iw, jw) = shift_map_inv(iw + (jw - 1)*Nw)
-      END DO
-    END DO
-  END SUBROUTINE build_shift_vecs
-END MODULE w90
+END MODULE wannier90
