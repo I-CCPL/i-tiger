@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# Avoid recursive hooks
+if [ -n "$GIT_VERSION_UPDATING" ];then
+  exit 0
+fi
+export GIT_VERSION_UPDATING=1
+
 # check current path
 curpath=$(dirname "$(readlink -f "$0")")
 if [ "$(basename "$curpath")" != "hooks" ]; then
@@ -16,7 +22,7 @@ fi
 
 # check version number in commit message
 VERSION=$(grep -oE 'v[0-9]+(\.[0-9]+)*' $COMMIT_MSG_FILE)
-if [ ! -n "$VERSION" ]; then
+if [ -z "$VERSION" ]; then
   echo "Error: No version number found in commit message. Please include a version number in the format vX.Y.Z (e.g., v1.0.0)."
   exit 1
 fi
@@ -28,6 +34,15 @@ if [ ! -f "$env_file" ]; then
   exit 1
 fi
 
-# update version number in env.f90
-sed -i "s/itg_version = 'v[0-9]\+\(\.[0-9]\+\)*'/itg_version = '$VERSION'/" $env_file
-git add $env_file
+V2=$(grep -oE 'v[0-9]+(\.[0-9]+)*' $env_file)
+if [ -z "$V2" ];then
+  echo "Error: No version number found in $env_file"
+  exit1
+elif [ "$VERSION" != "$V2" ];then
+  # update version number in env.f90
+  sed -i "s/itg_version = 'v[0-9]\+\(\.[0-9]\+\)*'/itg_version = '$VERSION'/" $env_file
+  git add $env_file
+  echo "Info: commit failed by git hook. Please commit again."
+  echo "(Update version to $VERSION in $env_file)"
+  exit 1
+fi

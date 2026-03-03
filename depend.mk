@@ -2,7 +2,7 @@
 ./build/R_vector.o : ./build/kpoints.o ./build/wannier90.o ./build/constants.o ./build/unique.o ./build/cell.o ./build/system.o ./build/kinds.o 
 ./build/cell.o : ./build/lin_mat3x3.o ./build/kinds.o 
 ./build/grid.o : ./build/kinds.o 
-./build/io_input.o : ./build/wannier90.o ./build/io_global.o 
+./build/io_input.o : ./build/kpoints.o ./build/kinds.o ./build/mp_base.o ./build/wannier90.o ./build/io_global.o ./build/char.o 
 ./build/kpoints.o : ./build/cell.o ./build/kinds.o 
 ./build/wannier90.o : ./build/lin_eig_H.o ./build/dump_vec_io.o ./build/cell.o ./build/system.o ./build/mp_base.o ./build/io_global.o ./build/kinds.o 
 ./build/check_Hermicity.o : ./build/kinds.o 

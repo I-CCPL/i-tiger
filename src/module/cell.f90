@@ -1,6 +1,8 @@
 MODULE cell
   USE kinds, ONLY: DP
   IMPLICIT NONE
+  LOGICAL, PRIVATE::bInit = .FALSE.
+  !< flag for initialized.
   REAL(DP) :: real_lattice(3, 3)
   !< Real lattice
   REAL(DP) :: real_lattice_inv(3, 3)
@@ -21,6 +23,7 @@ MODULE cell
 CONTAINS
   SUBROUTINE cell_setup()
     USE lin_mat3x3, ONLY: inv3x3
+    bInit = .TRUE.
     real_lattice_inv = inv3x3(real_lattice)
     recip_lattice_inv = inv3x3(recip_lattice)
   END SUBROUTINE cell_setup
@@ -29,6 +32,7 @@ CONTAINS
     !< Convert reduced coordinates to cartesian coordinates
     REAL(DP), INTENT(IN) :: A_red(3)
     REAL(DP), INTENT(OUT) :: A_cart(3)
+    IF (.NOT. bInit) CALL errore(1, 'red2cart', 'call before init')
     A_cart = MATMUL(real_lattice, A_red)
   END SUBROUTINE red2cart_1D
   SUBROUTINE red2cart_2D(A_red, A_cart, ndim)
@@ -46,6 +50,7 @@ CONTAINS
     !< Convert cartesian coordinates to reduced coordinates
     REAL(DP), INTENT(IN) :: A_cart(3)
     REAL(DP), INTENT(OUT) :: A_red(3)
+    IF (.NOT. bInit) CALL errore(1, 'cart2red', 'call before init')
     A_red = MATMUL(real_lattice_inv, A_cart)
   END SUBROUTINE cart2red_1D
   SUBROUTINE cart2red_2D(A_cart, A_red, ndim)

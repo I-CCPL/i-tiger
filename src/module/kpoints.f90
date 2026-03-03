@@ -1,7 +1,9 @@
 MODULE kpoints
   USE kinds, ONLY: DP
   IMPLICIT NONE
-  TYPE::kpoint_type
+  PRIVATE
+
+  TYPE, PUBLIC::kpoint_type
     INTEGER::nkpt
     !< Number of k-points in this node
     INTEGER::nktot
@@ -16,6 +18,8 @@ MODULE kpoints
     PROCEDURE::build_path => build_kpath
     PROCEDURE::build_mesh => build_kmesh
   END TYPE kpoint_type
+
+  TYPE(kpoint_type), PUBLIC::kpts
 CONTAINS
   SUBROUTINE build_kpath(self, npath, skp, nkpps)
     USE cell, ONLY: red2cart
@@ -49,28 +53,39 @@ CONTAINS
     self%wk = 1.0_DP/REAL(nkpt, DP)
   END SUBROUTINE build_kpath
   !
-  SUBROUTINE build_kmesh(self, nk1, nk2, nk3)
+  SUBROUTINE build_kmesh(self, nk1, nk2, nk3, sk1, sk2, sk3)
     USE cell, ONLY: red2cart
     CLASS(kpoint_type), INTENT(INOUT)::self
     INTEGER, INTENT(IN)::nk1, nk2, nk3
+    !< number of k-points align axis 1,2,3
+    INTEGER, INTENT(IN)::sk1, sk2, sk3
+    !< shift of k-points align axis 1,2,3 (0 or 1)
     REAL(DP)::kx, ky, kz
     INTEGER::ik1, ik2, ik3, ikpt
     INTEGER::nktot
+    IF (nk1 <= 0 .OR. nk2 <= 0 .OR. nk3 <= 0) THEN
+      CALL errore(1, 'build_kmesh', 'nk must be positive')
+    ELSE IF (sk1 < 0 .OR. sk1 > 1 &
+             .OR. sk2 < 0 .OR. sk2 > 1 &
+             .OR. sk3 < 0 .OR. sk3 > 1) THEN
+      CALL errore(1, 'build_kmesh', 'sk must be 0 or 1')
+    END IF
 
     nktot = nk1*nk2*nk3
     ALLOCATE (self%k_cart(3, nktot))
     ALLOCATE (self%k_red(3, nktot))
     ikpt = 0
     DO ik1 = 1, nk1
-      kx = REAL(ik1 - 1, DP)/REAL(nk1 - 1, DP)
-      IF (2*ik1 > nk1 + 1) kx = kx - 1.0_DP
+      kx = (DBLE(ik1 - 1) + DBLE(sk1)/2)/nk1
+      kx = kx - NINT(kx)
       DO ik2 = 1, nk2
-        ky = REAL(ik2 - 1, DP)/REAL(nk2 - 1, DP)
-        IF (2*ik2 > nk2 + 1) ky = ky - 1.0_DP
+        ky = (DBLE(ik2 - 1) + DBLE(sk2)/2)/nk2
+        ky = ky - NINT(ky)
         DO ik3 = 1, nk3
+          kz = (DBLE(ik3 - 1) + DBLE(sk3)/2)/nk3
+          kz = kz - NINT(kz)
+
           ikpt = ikpt + 1
-          kz = REAL(ik3 - 1, DP)/REAL(nk3 - 1, DP)
-          IF (2*ik3 > nk3 + 1) kz = kz - 1.0_DP
           self%k_red(:, ikpt) = (/kx, ky, kz/)
         END DO
       END DO
