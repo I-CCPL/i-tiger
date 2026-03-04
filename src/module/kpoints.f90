@@ -22,7 +22,7 @@ MODULE kpoints
   TYPE(kpoint_type), PUBLIC::kpts
 CONTAINS
   SUBROUTINE build_kpath(self, npath, skp, nkpps)
-    USE cell, ONLY: red2cart
+    USE system, ONLY: red2cart_recip
     CLASS(kpoint_type), INTENT(INOUT)::self
     INTEGER, INTENT(IN)::npath
     REAL(DP), INTENT(IN)::skp(3, npath)
@@ -47,14 +47,14 @@ CONTAINS
       END DO
     END DO
     self%k_red(:, ikpt) = skp(:, npath)
-    CALL red2cart(self%k_red, self%k_cart, nkpt)
+    CALL red2cart_recip(self%k_red, self%k_cart, nkpt)
     self%nkpt = nkpt
     self%nktot = nkpt
     self%wk = 1.0_DP/REAL(nkpt, DP)
   END SUBROUTINE build_kpath
   !
   SUBROUTINE build_kmesh(self, nk1, nk2, nk3, sk1, sk2, sk3)
-    USE cell, ONLY: red2cart
+    USE system, ONLY: red2cart_recip
     CLASS(kpoint_type), INTENT(INOUT)::self
     INTEGER, INTENT(IN)::nk1, nk2, nk3
     !< number of k-points align axis 1,2,3
@@ -90,7 +90,7 @@ CONTAINS
         END DO
       END DO
     END DO
-    CALL red2cart(self%k_red, self%k_cart, nktot)
+    CALL red2cart_recip(self%k_red, self%k_cart, nktot)
     self%nkpt = nktot
     self%nktot = nktot
     self%wk = 1.0_DP/REAL(nktot, DP)

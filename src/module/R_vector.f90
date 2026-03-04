@@ -50,7 +50,6 @@ CONTAINS
   SUBROUTINE build_shift_vecs(self, wannier_center_cart)
     !< Build Wannier center shift (r_m-r_n) in cartesian coordinates
     USE system, ONLY: Nw
-    USE cell, ONLY: red2cart, cart2red
     USE unique, ONLY: unique_vec3_inv
     CLASS(R_vec_type), INTENT(INOUT) :: self
     REAL(DP), INTENT(IN) :: wannier_center_cart(3, Nw)
@@ -81,8 +80,7 @@ CONTAINS
     USE kinds, ONLY: eq_real
     USE constants, ONLY: vec_0
     USE wannier90, ONLY: w90data_type
-    USE system, ONLY: Nw
-    USE cell, ONLY: red2cart
+    USE system, ONLY: Nw, red2cart_real
     CLASS(R_vec_type), INTENT(INOUT)::self
     TYPE(w90data_type), INTENT(INOUT)::w90data
     INTEGER::iuw, iRvec
@@ -110,7 +108,7 @@ CONTAINS
       Tvec_red(:, icell) = (/cell_x*w90data%k_grid(1), &
                              cell_y*w90data%k_grid(2), &
                              cell_z*w90data%k_grid(3)/)
-      CALL red2cart(Tvec_red(:, icell), Tvec_cart(:, icell))
+      CALL red2cart_real(Tvec_red(:, icell), Tvec_cart(:, icell))
     END DO
 
     ! Find T such that minimize |R0+T+r_n-r_m| for given (R0, n, m)
@@ -125,7 +123,7 @@ CONTAINS
       ! Build R0 vector
       CALL grid_idx2xyz(self%R0_grid, irpt, rpt_x, rpt_y, rpt_z, vec_0)
       self%R0_red(:, irpt) = (/REAL(rpt_x, DP), REAL(rpt_y, DP), REAL(rpt_z, DP)/)
-      CALL red2cart(self%R0_red(:, irpt), self%R0_cart(:, irpt))
+      CALL red2cart_real(self%R0_red(:, irpt), self%R0_cart(:, irpt))
 
       DO iuw = 1, self%nu_shift
         dr_nmR0(:) = self%R0_cart(:, irpt) + self%shift_cart(:, iuw)

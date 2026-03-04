@@ -83,9 +83,8 @@ CONTAINS
     !< Ref. wannier90/src/wannier90_readwrite.F90
     USE io_global, ONLY: check_file
     USE mp_base, ONLY: mp_bcast
-    USE system, ONLY: Nw
-    USE cell, ONLY: cell_setup, real_lattice, recip_lattice, recip_lattice_inv, &
-                    red2cart, cart2red
+    USE system, ONLY: Nw, cell_setup, real_lattice, recip_lattice, &
+                      red2cart_recip
     CLASS(w90data_type), INTENT(INOUT) :: self
     TYPE(chk_dum_type), INTENT(OUT) :: chk_dum
     !
@@ -131,7 +130,7 @@ CONTAINS
       ALLOCATE (self%k_cart(3, self%nkpt))
       ALLOCATE (self%k_red(3, self%nkpt))
       READ (io_unit) self%k_red
-      CALL red2cart(self%k_red, self%k_cart, self%nkpt)
+      CALL red2cart_recip(self%k_red, self%k_cart, self%nkpt)
       READ (io_unit) self%nnb
       WRITE (stdout, '(2X, A, I0)') '- nnb: ', self%nnb
       READ (io_unit) Nw
@@ -251,8 +250,7 @@ CONTAINS
 
   SUBROUTINE write_chk_dump(self, chk_dum)
     USE dump_vec_io, ONLY: dump_r, dump_c, dump_i, dump_l
-    USE system, ONLY: Nw
-    USE cell, ONLY: real_lattice, recip_lattice, recip_lattice_inv
+    USE system, ONLY: Nw, real_lattice, recip_lattice
     CLASS(w90data_type), INTENT(IN) :: self
     TYPE(chk_dum_type), INTENT(IN) :: chk_dum
     INTEGER :: io_unit, ios, excl_sum
@@ -287,7 +285,6 @@ CONTAINS
     WRITE (io_unit, '(A,1X,ES24.16E3)') 'omega_invariant=', chk_dum%omega_invariant
     WRITE (io_unit, '(A,9(1X,ES24.16E3))') 'real_lattice=', real_lattice
     WRITE (io_unit, '(A,9(1X,ES24.16E3))') 'recip_lattice=', recip_lattice
-    WRITE (io_unit, '(A,9(1X,ES24.16E3))') 'recip_lattice_inv=', recip_lattice_inv
     WRITE (io_unit, '(A,I0)') 'excl_bands_sum=', excl_sum
     WRITE (io_unit, '(A,1X,I0)') 'dims_excl_bands=', SIZE(chk_dum%excl_bands)
     WRITE (io_unit, '(A,2(1X,I0))') 'dims_k_cart=', 3, self%nkpt
@@ -365,7 +362,6 @@ CONTAINS
   END SUBROUTINE write_chk_dump
 
   SUBROUTINE clear_w90_data(self)
-    USE cell, ONLY: real_lattice, recip_lattice, recip_lattice_inv
     CLASS(w90data_type), INTENT(INOUT) :: self
     self%nbnd = 0
     self%nkpt = 0
