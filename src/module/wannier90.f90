@@ -1,6 +1,7 @@
 MODULE wannier90
   USE kinds, ONLY: DP
   USE io_global, ONLY: ionode, stdout, get_free_unit
+  USE kpoints, ONLY: kpoint_type
   IMPLICIT NONE
   PRIVATE
   PUBLIC::read_w90, w90data_type, w90data
@@ -14,18 +15,12 @@ MODULE wannier90
     !< Number of bands. \
     !< nbnd==Nw for non-disentangled case \
     !< nbnd>=Nw for disentangled case.
-    INTEGER :: nkpt
-    !< Number of k-points
     INTEGER :: nnb
     !< Number of nearest neighbor k-points
     INTEGER :: k_grid(3)
     !< Number of k-points along each reciprocal lattice vector \
     !< (Monkhorst-Pack grid)
-    REAL(DP), ALLOCATABLE :: k_cart(:, :)
-    !< k-points in Cartesian coordinates (3, nkpt)
-    REAL(DP), ALLOCATABLE :: k_red(:, :)
-    !< k-points in reduced coordinates (3, nkpt)
-
+    TYPE(kpoint_type)::kpts
     REAL(DP), ALLOCATABLE :: wannier_center_cart(:, :)
     !< Wannier center in Cartesian coordinates (3, Nw)
     REAL(DP), ALLOCATABLE :: wannier_spread(:)
@@ -123,14 +118,14 @@ CONTAINS
       WRITE (stdout, '(2X, A, 3F12.6)') '                ', recip_lattice(:, 3)
       CALL cell_setup()
 
-      READ (io_unit) self%nkpt
-      WRITE (stdout, '(2X, A, I0)') '- nkpt: ', self%nkpt
+      READ (io_unit) self%kpts%nkpt
+      WRITE (stdout, '(2X, A, I0)') '- nkpt: ', self%kpts%nkpt
       READ (io_unit) self%k_grid
       WRITE (stdout, '(2X, A, 3(1X,I0))') '- k_grid: ', self%k_grid
-      ALLOCATE (self%k_cart(3, self%nkpt))
-      ALLOCATE (self%k_red(3, self%nkpt))
-      READ (io_unit) self%k_red
-      CALL red2cart_recip(self%k_red, self%k_cart, self%nkpt)
+      ALLOCATE (self%kpts%k_cart(3, self%kpts%nkpt))
+      ALLOCATE (self%kpts%k_red(3, self%kpts%nkpt))
+      READ (io_unit) self%kpts%k_red
+      CALL red2cart_recip(self%kpts%k_red, self%kpts%k_cart, self%kpts%nkpt)
       READ (io_unit) self%nnb
       WRITE (stdout, '(2X, A, I0)') '- nnb: ', self%nnb
       READ (io_unit) Nw
@@ -143,9 +138,9 @@ CONTAINS
       IF (chk_dum%have_disentangled) THEN
         READ (io_unit) chk_dum%omega_invariant
         WRITE (stdout, '(2X, A, F12.6)') '- omega_invariant: ', chk_dum%omega_invariant
-        ALLOCATE (chk_dum%lwindow(self%nbnd, self%nkpt))
-        ALLOCATE (chk_dum%ndimwin(self%nkpt))
-        ALLOCATE (chk_dum%u_matrix_opt(self%nbnd, Nw, self%nkpt))
+        ALLOCATE (chk_dum%lwindow(self%nbnd, self%kpts%nkpt))
+        ALLOCATE (chk_dum%ndimwin(self%kpts%nkpt))
+        ALLOCATE (chk_dum%u_matrix_opt(self%nbnd, Nw, self%kpts%nkpt))
         READ (io_unit) chk_dum%lwindow
         READ (io_unit) chk_dum%ndimwin
         READ (io_unit) chk_dum%u_matrix_opt
@@ -156,14 +151,14 @@ CONTAINS
         ALLOCATE (chk_dum%u_matrix_opt(0, 0, 0))
       END IF
 
-      ALLOCATE (chk_dum%u_matrix(Nw, Nw, self%nkpt))
-      ALLOCATE (chk_dum%m_matrix(Nw, Nw, self%nnb, self%nkpt))
+      ALLOCATE (chk_dum%u_matrix(Nw, Nw, self%kpts%nkpt))
+      ALLOCATE (chk_dum%m_matrix(Nw, Nw, self%nnb, self%kpts%nkpt))
       READ (io_unit) chk_dum%u_matrix
       READ (io_unit) chk_dum%m_matrix
 
       IF (chk_dum%have_disentangled) THEN
-        ALLOCATE (self%v_matrix(self%nbnd, Nw, self%nkpt))
-        DO ikpt = 1, self%nkpt
+        ALLOCATE (self%v_matrix(self%nbnd, Nw, self%kpts%nkpt))
+        DO ikpt = 1, self%kpts%nkpt
           ndw = chk_dum%ndimwin(ikpt)
           self%v_matrix(1:ndw, :, ikpt) = MATMUL(chk_dum%u_matrix_opt(1:ndw, :, ikpt), chk_dum%u_matrix(:, :, ikpt))
         END DO
@@ -173,8 +168,8 @@ CONTAINS
           CALL errore(1, 'read_w90_chk', 'Nw must equal nbnd for non-disentangled case')
         END IF
         !
-        ALLOCATE (self%v_matrix(Nw, Nw, self%nkpt))
-        DO ikpt = 1, self%nkpt
+        ALLOCATE (self%v_matrix(Nw, Nw, self%kpts%nkpt))
+        DO ikpt = 1, self%kpts%nkpt
           self%v_matrix(:, :, ikpt) = chk_dum%u_matrix(:, :, ikpt)
         END DO
       END IF
@@ -190,22 +185,22 @@ CONTAINS
     CALL mp_bcast(self%nbnd)
     CALL mp_bcast(real_lattice)
     CALL mp_bcast(recip_lattice)
-    CALL mp_bcast(self%nkpt)
-    CALL mp_bcast(self%k_grid)
+    CALL mp_bcast(self%kpts%nkpt)
+    self%kpts%nktot = self%kpts%nkpt
     CALL mp_bcast(self%nnb)
     CALL mp_bcast(Nw)
 
     IF (.NOT. ionode) THEN
       CALL cell_setup()
-      ALLOCATE (self%k_cart(3, self%nkpt))
-      ALLOCATE (self%k_red(3, self%nkpt))
-      ALLOCATE (self%v_matrix(self%nbnd, Nw, self%nkpt))
+      ALLOCATE (self%kpts%k_cart(3, self%kpts%nkpt))
+      ALLOCATE (self%kpts%k_red(3, self%kpts%nkpt))
+      ALLOCATE (self%v_matrix(self%nbnd, Nw, self%kpts%nkpt))
       ALLOCATE (self%wannier_center_cart(3, Nw))
       ALLOCATE (self%wannier_spread(Nw))
     END IF
 
-    CALL mp_bcast(self%k_cart)
-    CALL mp_bcast(self%k_red)
+    CALL mp_bcast(self%kpts%k_cart)
+    CALL mp_bcast(self%kpts%k_red)
     CALL mp_bcast(self%v_matrix)
     CALL mp_bcast(self%wannier_center_cart)
     CALL mp_bcast(self%wannier_spread)
@@ -225,9 +220,9 @@ CONTAINS
       io_unit = get_free_unit()
       OPEN (unit=io_unit, file=TRIM(self%prefix)//'.eig', form='formatted', action='read', iostat=ios)
       CALL errore(ios, 'read_w90_eig', 'Failed to open '//TRIM(self%prefix)//'.eig')
-      ALLOCATE (self%eigval(self%nbnd, self%nkpt))
+      ALLOCATE (self%eigval(self%nbnd, self%kpts%nkpt))
 
-      DO ikpt = 1, self%nkpt
+      DO ikpt = 1, self%kpts%nkpt
         DO ibnd = 1, self%nbnd
           READ (io_unit, *, iostat=ios) jbnd, jkpt, self%eigval(ibnd, ikpt)
           IF (ios /= 0) THEN
@@ -243,9 +238,9 @@ CONTAINS
       END DO
       CLOSE (io_unit)
     ELSE
-      ALLOCATE (self%eigval(self%nbnd, self%nkpt))
+      ALLOCATE (self%eigval(self%nbnd, self%kpts%nkpt))
     END IF
-    IF (self%nbnd > 0 .AND. self%nkpt > 0) CALL mp_bcast(self%eigval)
+    IF (self%nbnd > 0 .AND. self%kpts%nkpt > 0) CALL mp_bcast(self%eigval)
   END SUBROUTINE read_w90_eig
 
   SUBROUTINE write_chk_dump(self, chk_dum)
@@ -277,7 +272,7 @@ CONTAINS
     WRITE (io_unit, '(A)') 'checkpoint='//TRIM(chk_dum%checkpoint)
     WRITE (io_unit, '(A,I0)') 'nbnd=', self%nbnd
     WRITE (io_unit, '(A,I0)') 'nbnd_excl=', chk_dum%nbnd_excl
-    WRITE (io_unit, '(A,I0)') 'nkpt=', self%nkpt
+    WRITE (io_unit, '(A,I0)') 'nkpt=', self%kpts%nkpt
     WRITE (io_unit, '(A,I0)') 'nnb=', self%nnb
     WRITE (io_unit, '(A,I0)') 'Nw=', Nw
     WRITE (io_unit, '(A,3(1X,I0))') 'k_grid=', self%k_grid
@@ -287,9 +282,9 @@ CONTAINS
     WRITE (io_unit, '(A,9(1X,ES24.16E3))') 'recip_lattice=', recip_lattice
     WRITE (io_unit, '(A,I0)') 'excl_bands_sum=', excl_sum
     WRITE (io_unit, '(A,1X,I0)') 'dims_excl_bands=', SIZE(chk_dum%excl_bands)
-    WRITE (io_unit, '(A,2(1X,I0))') 'dims_k_cart=', 3, self%nkpt
-    WRITE (io_unit, '(A,2(1X,I0))') 'dims_k_red=', 3, self%nkpt
-    WRITE (io_unit, '(A,2(1X,I0))') 'dims_eigval=', self%nbnd, self%nkpt
+    WRITE (io_unit, '(A,2(1X,I0))') 'dims_k_cart=', 3, self%kpts%nkpt
+    WRITE (io_unit, '(A,2(1X,I0))') 'dims_k_red=', 3, self%kpts%nkpt
+    WRITE (io_unit, '(A,2(1X,I0))') 'dims_eigval=', self%nbnd, self%kpts%nkpt
     IF (chk_dum%have_disentangled) THEN
       WRITE (io_unit, '(A,2(1X,I0))') 'dims_lwindow=', SIZE(chk_dum%lwindow, 1), SIZE(chk_dum%lwindow, 2)
       WRITE (io_unit, '(A,1X,I0)') 'dims_ndimwin=', SIZE(chk_dum%ndimwin)
@@ -310,13 +305,13 @@ CONTAINS
     CALL dump_i(TRIM(fbase)//'.excl_bands', iv)
     DEALLOCATE (iv)
 
-    ALLOCATE (rv(SIZE(self%k_cart)))
-    rv = RESHAPE(self%k_cart, [SIZE(self%k_cart)])
+    ALLOCATE (rv(SIZE(self%kpts%k_cart)))
+    rv = RESHAPE(self%kpts%k_cart, [SIZE(self%kpts%k_cart)])
     CALL dump_r(TRIM(fbase)//'.k_cart', rv)
     DEALLOCATE (rv)
 
-    ALLOCATE (rv(SIZE(self%k_red)))
-    rv = RESHAPE(self%k_red, [SIZE(self%k_red)])
+    ALLOCATE (rv(SIZE(self%kpts%k_red)))
+    rv = RESHAPE(self%kpts%k_red, [SIZE(self%kpts%k_red)])
     CALL dump_r(TRIM(fbase)//'.k_red', rv)
     DEALLOCATE (rv)
 
@@ -364,13 +359,12 @@ CONTAINS
   SUBROUTINE clear_w90_data(self)
     CLASS(w90data_type), INTENT(INOUT) :: self
     self%nbnd = 0
-    self%nkpt = 0
-    self%k_grid = 0
+    self%kpts%nkpt = 0
     self%nnb = 0
 
     IF (ALLOCATED(self%eigval)) DEALLOCATE (self%eigval)
-    IF (ALLOCATED(self%k_cart)) DEALLOCATE (self%k_cart)
-    IF (ALLOCATED(self%k_red)) DEALLOCATE (self%k_red)
+    IF (ALLOCATED(self%kpts%k_cart)) DEALLOCATE (self%kpts%k_cart)
+    IF (ALLOCATED(self%kpts%k_red)) DEALLOCATE (self%kpts%k_red)
     IF (ALLOCATED(self%v_matrix)) DEALLOCATE (self%v_matrix)
     IF (ALLOCATED(self%wannier_center_cart)) DEALLOCATE (self%wannier_center_cart)
     IF (ALLOCATED(self%wannier_spread)) DEALLOCATE (self%wannier_spread)
@@ -401,12 +395,12 @@ CONTAINS
     CHARACTER(LEN=256)::msg
     !
     WRITE (stdout, '(2X, A)') 'Building H(q) in Wannier gauge...'
-    ALLOCATE (self%Hq(Nw, Nw, self%nkpt))
+    ALLOCATE (self%Hq(Nw, Nw, self%kpts%nkpt))
     !
     IF (ionode) THEN
       self%Hq = CMPLX(0.0_DP, 0.0_DP, DP)
 
-      DO ikpt = 1, self%nkpt
+      DO ikpt = 1, self%kpts%nkpt
         DO iw = 1, Nw
           DO jw = 1, Nw
             hval = CMPLX(0.0_DP, 0.0_DP, DP)
@@ -419,7 +413,7 @@ CONTAINS
         END DO
       END DO
       !
-      CALL check_hermiticity(Nw, self%nkpt, self%Hq, herm_abs_max, h_abs_max, herm_rel)
+      CALL check_hermiticity(Nw, self%kpts%nkpt, self%Hq, herm_abs_max, h_abs_max, herm_rel)
       WRITE (stdout, '(2X, A, 1X, ES12.4E3)') 'H(q) hermiticity |H-H^+|_max:', herm_abs_max
       WRITE (stdout, '(2X, A, 1X, ES12.4E3)') 'H(q) max element magnitude  :', h_abs_max
       WRITE (stdout, '(2X, A, 1X, ES12.4E3)') 'H(q) hermiticity relative   :', herm_rel
@@ -428,8 +422,8 @@ CONTAINS
         CALL errore(1, 'build_w90_Hq', TRIM(msg))
       END IF
       IF (Hq_band) THEN
-        ALLOCATE (self%eigvec(Nw, Nw, self%nkpt))
-        CALL write_band(self%Hq, self%nkpt, self%eigval, self%eigvec)
+        ALLOCATE (self%eigvec(Nw, Nw, self%kpts%nkpt))
+        CALL write_band(self%kpts, self%Hq, self%eigval, self%eigvec)
       END IF
       CALL write_sep_line()
     END IF

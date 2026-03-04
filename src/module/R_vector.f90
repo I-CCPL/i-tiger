@@ -94,7 +94,7 @@ CONTAINS
     INTEGER::cell_range(3)
     REAL(DP)::dr_nmR0(3) !< R0 + r_m - r_n
 
-    self%nrpt = w90data%nkpt
+    self%nrpt = w90data%kpts%nkpt
 
     CALL self%build_shift(w90data%wannier_center_cart)
 
@@ -162,20 +162,20 @@ CONTAINS
     USE wannier90, ONLY: w90data_type
     CLASS(R_vec_type), INTENT(INOUT)::self
     TYPE(w90data_type), INTENT(IN)::w90data
-    COMPLEX(DP), INTENT(IN)::X_q(Nw, Nw, w90data%nkpt)
+    COMPLEX(DP), INTENT(IN)::X_q(Nw, Nw, w90data%kpts%nkpt)
     COMPLEX(DP), ALLOCATABLE, INTENT(OUT)::X_R(:, :, :)
     INTEGER::iw, jw, iuw, irpt, ikpt
     REAL(DP)::wk, phase
     COMPLEX(DP)::exp_phase
 
     IF (.NOT. ALLOCATED(X_R)) ALLOCATE (X_R(Nw, Nw, self%nrpt))
-    wk = 1/REAL(w90data%nkpt, DP)
+    wk = 1/REAL(w90data%kpts%nkpt, DP)
     DO iw = 1, Nw
       DO jw = 1, Nw
         DO irpt = 1, self%nrpt
           X_R(iw, jw, irpt) = 0.0D0
-          DO ikpt = 1, w90data%nkpt
-            phase = -tpi*DOT_PRODUCT(w90data%k_red(:, ikpt), self%R0_red(:, irpt))
+          DO ikpt = 1, w90data%kpts%nkpt
+            phase = -tpi*DOT_PRODUCT(w90data%kpts%k_red(:, ikpt), self%R0_red(:, irpt))
             exp_phase = CMPLX(COS(phase), SIN(phase))
             X_R(iw, jw, irpt) = X_R(iw, jw, irpt) + wk*exp_phase*X_q(iw, jw, ikpt)
           END DO

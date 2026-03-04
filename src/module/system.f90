@@ -5,11 +5,11 @@ MODULE system
   LOGICAL, PRIVATE::bInit = .FALSE.
   !< flag for initialized.
   REAL(DP) :: real_lattice(3, 3)
-  !< Real lattice
+  !< Real lattice (a)
   REAL(DP) :: real_lattice_inv(3, 3)
   !< Inverse of real lattice
   REAL(DP) :: recip_lattice(3, 3)
-  !< Reciprocal lattice
+  !< Reciprocal lattice (a*b=2pi)
   REAL(DP) :: recip_lattice_inv(3, 3)
   !< Inverse reciprocal lattice
   !

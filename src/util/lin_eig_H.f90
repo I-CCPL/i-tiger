@@ -7,16 +7,23 @@ MODULE lin_eig_H
   END INTERFACE eig_H
   PUBLIC :: eig_H, write_band
 CONTAINS
-  SUBROUTINE write_band(Hk, nkpt, eigval, eigvec)
+  SUBROUTINE write_band(kpts, Hk, eigval, eigvec)
     USE io_global, ONLY: get_free_unit
     USE system, ONLY: Nw
-    COMPLEX(DP), INTENT(IN)::Hk(Nw, Nw, nkpt)
-    INTEGER, INTENT(IN)::nkpt
-    REAL(DP), INTENT(OUT)::eigval(Nw, nkpt)
-    COMPLEX(DP), INTENT(OUT)::eigvec(Nw, Nw, nkpt)
+    USE kpoints, ONLY: kpoint_type
+    TYPE(kpoint_type), INTENT(IN)::kpts
+    COMPLEX(DP), INTENT(IN)::Hk(Nw, Nw, kpts%nkpt)
+    REAL(DP), INTENT(OUT)::eigval(Nw, kpts%nkpt)
+    COMPLEX(DP), INTENT(OUT)::eigvec(Nw, Nw, kpts%nkpt)
     INTEGER::ikpt, iw, ibnd, io_unit
+    REAL(DP)::k_pos(kpts%nkpt)
     !
-    DO ikpt = 1, nkpt
+    k_pos(1) = 0.0_DP
+    DO ikpt = 2, kpts%nkpt
+      k_pos(ikpt) = k_pos(ikpt - 1) + SQRT(SUM((kpts%k_cart(:, ikpt) - kpts%k_cart(:, ikpt - 1))**2))
+    END DO
+    !
+    DO ikpt = 1, kpts%nkpt
       CALL eig_H(Nw, Hk(:, :, ikpt), &
                  eigval(:, ikpt), eigvec(:, :, ikpt))
     END DO
@@ -24,11 +31,12 @@ CONTAINS
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file='itg.eigval')
 
-    WRITE (io_unit, '("#", A)') 'ibnd, ikpt, eigval'
+    WRITE (io_unit, '("#", A)') 'k_pos, eigval'
     DO iw = 1, Nw
-      DO ikpt = 1, nkpt
-        WRITE (io_unit, '(I6, I6, ES13.4E3)') iw, ikpt, eigval(iw, ikpt)
+      DO ikpt = 1, kpts%nkpt
+        WRITE (io_unit, '(F12.4, ES13.4E3)') k_pos(ikpt), eigval(iw, ikpt)
       END DO
+      WRITE (io_unit, *) ! blank line
     END DO
     CLOSE (io_unit)
   END SUBROUTINE write_band

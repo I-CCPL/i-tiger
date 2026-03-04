@@ -26,7 +26,7 @@ PROGRAM main
   ! TODO: write_band from input
   ALLOCATE (eigval(Nw, kpts%nkpt))
   ALLOCATE (eigvec(Nw, Nw, kpts%nkpt))
-  CALL write_band(H_k, kpts%nkpt, eigval, eigvec)
+  CALL write_band(kpts, H_k, eigval, eigvec)
   !
   CALL w90data%clear()
   CALL R_vec%clear()

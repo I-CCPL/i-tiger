@@ -4,7 +4,7 @@
 ./build/io_input.o : ./build/kpoints.o ./build/kinds.o ./build/mp_base.o ./build/wannier90.o ./build/io_global.o ./build/char.o 
 ./build/kpoints.o : ./build/system.o ./build/kinds.o 
 ./build/system.o : ./build/lin_mat3x3.o ./build/kinds.o 
-./build/wannier90.o : ./build/lin_eig_H.o ./build/dump_vec_io.o ./build/system.o ./build/mp_base.o ./build/io_global.o ./build/kinds.o 
+./build/wannier90.o : ./build/lin_eig_H.o ./build/dump_vec_io.o ./build/system.o ./build/mp_base.o ./build/kpoints.o ./build/io_global.o ./build/kinds.o 
 ./build/check_Hermicity.o : ./build/kinds.o 
 ./build/constants.o : ./build/kinds.o 
 ./build/dump_vec_io.o : ./build/io_global.o ./build/kinds.o 
@@ -12,7 +12,7 @@
 ./build/errore.o : ./build/io_global.o ./build/mp_global.o 
 ./build/io_global.o : ./build/mp_base.o ./build/io_param.o 
 ./build/kinds.o : ./build/io_param.o 
-./build/lin_eig_H.o : ./build/mp_base.o ./build/system.o ./build/io_global.o ./build/kinds.o 
+./build/lin_eig_H.o : ./build/mp_base.o ./build/kpoints.o ./build/system.o ./build/io_global.o ./build/kinds.o 
 ./build/lin_mat3x3.o : ./build/kinds.o 
 ./build/mp_base.o : ./build/mp_global.o ./build/kinds.o 
 ./build/mp_global.o : ./build/io_param.o 
