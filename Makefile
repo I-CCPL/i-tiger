@@ -21,7 +21,9 @@ $(DEP_FILE): $(SRC) | $(BUILD_DIR)
 	@set -e; \
 	if command -v makedepf90 >/dev/null 2>&1; then \
 	  echo "Generating $@ with makedepf90."; \
-	  makedepf90 $(D__FLAGS) $(SRC) -nosrc -b='$(BUILD_DIR)/' > $@; \
+	  makedepf90 $(D__FLAGS) $(SRC) -nosrc -b='$(BUILD_DIR)/' > $@ 2> $(TMP_FILE); \
+		sed -E "/^makedepf90: WARNING: Several modules named '(SUBROUTINE|FUNCTION)'/{N;d;}" $(TMP_FILE) >&2; \
+		rm $(TMP_FILE); \
 	else \
 	  echo "# makedepf90 not found; dependency generation skipped"; \
 	fi

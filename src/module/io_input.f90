@@ -7,7 +7,7 @@ CONTAINS
   SUBROUTINE read_input()
     USE char_mod, ONLY: captital
     USE io_global, ONLY: stdout, prefix, write_sep_line
-    USE wannier90, ONLY: w90data, read_w90
+    USE wannier90, ONLY: w90data
     CHARACTER(LEN=256)::line
     CHARACTER(LEN=80)::card
     LOGICAL::tend
@@ -16,7 +16,7 @@ CONTAINS
     !... Read Namelists
     CALL read_control()
     w90data%prefix = TRIM(prefix)
-    CALL read_w90()
+    CALL w90data%read_files()
 
     !... Read Cards
     DO

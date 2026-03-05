@@ -3,7 +3,10 @@
 *.swp
 
 # binary files
+build/
+bin/
 *.o
 *.a
 *.mod
+*.smod
 *.x

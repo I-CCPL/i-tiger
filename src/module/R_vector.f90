@@ -51,7 +51,7 @@ CONTAINS
     !< Build Wannier center shift (r_m-r_n) in cartesian coordinates
     USE io_global, ONLY: stdout
     USE system, ONLY: Nw
-    USE unique, ONLY: unique_vec3_inv
+    USE algo_unique, ONLY: unique_vec3_inv
     CLASS(R_vec_type), INTENT(INOUT) :: self
     REAL(DP), INTENT(IN) :: wannier_center_cart(3, Nw)
     REAL(DP)::all_shift(3, Nw*Nw)

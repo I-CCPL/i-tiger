@@ -3,6 +3,7 @@ SRC_DIR ?= src
 BUILD_DIR ?= ./build
 BIN_DIR ?= ./bin
 TARGET ?= $(BIN_DIR)/i-tiger.x
+TMP_FILE ?= /tmp/makedepf90_$(USER)
 
 LD ?= mpiifort
 LDFLAGS ?= 

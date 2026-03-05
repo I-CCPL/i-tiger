@@ -32,7 +32,7 @@ CONTAINS
     WRITE (io_unit, '("#", A)') 'k_pos, eigval'
     DO iw = 1, Nw
       DO ikpt = 1, kpts%nkpt
-        WRITE (io_unit, '(F12.4, ES13.4E3)') k_pos(ikpt), eigval(iw, ikpt)
+        WRITE (io_unit, '(2F10.4)') k_pos(ikpt), eigval(iw, ikpt)
       END DO
       WRITE (io_unit, *) ! blank line
     END DO

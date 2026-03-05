@@ -1,4 +1,4 @@
-MODULE unique
+MODULE algo_unique
   USE kinds, ONLY: DP
   IMPLICIT NONE
 CONTAINS
@@ -174,4 +174,4 @@ CONTAINS
     IF (left < j) CALL qsort_vec_perm(v, left, j, perm)
     IF (i < right) CALL qsort_vec_perm(v, i, right, perm)
   END SUBROUTINE qsort_vec_perm
-END MODULE unique
+END MODULE algo_unique

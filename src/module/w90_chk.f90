@@ -1,0 +1,171 @@
+SUBMODULE(wannier90) w90_chk
+CONTAINS
+  MODULE SUBROUTINE read_w90_chk(self, chk_dum)
+    !< Ref. wannier90/src/wannier90_readwrite.F90
+    USE kinds, ONLY: DP
+    USE io_global, ONLY: check_file
+    USE mp_base, ONLY: mp_bcast
+    USE system, ONLY: Nw, cell_setup, real_lattice, recip_lattice, &
+                      red2cart_recip
+    USE wannier90, ONLY: w90data_type, chk_dum_type
+    CLASS(w90data_type), INTENT(INOUT) :: self
+    TYPE(chk_dum_type), INTENT(OUT) :: chk_dum
+    !
+    INTEGER::io_unit, ios, ikpt
+    INTEGER::ndw
+    !
+    WRITE (stdout, '(2X, A)') 'Reading .chk file...'
+    CALL check_file(TRIM(self%prefix)//'.chk')
+    IF (ionode) THEN
+      io_unit = get_free_unit()
+      OPEN (unit=io_unit, file=TRIM(self%prefix)//'.chk', form='unformatted', action='read', iostat=ios)
+      CALL errore(ios, 'read_w90_chk', 'Failed to open '//TRIM(self%prefix)//'.chk')
+
+      READ (io_unit) chk_dum%header
+      WRITE (stdout, '(2X, A)') '- header: '//TRIM(chk_dum%header)
+      READ (io_unit) self%nbnd
+      WRITE (stdout, '(2X, A, I0)') '- nbnd: ', self%nbnd
+      READ (io_unit) chk_dum%nbnd_excl
+      WRITE (stdout, '(2X, A, I0)') '- nbnd_excl: ', chk_dum%nbnd_excl
+      IF (chk_dum%nbnd_excl > 0) THEN
+        ALLOCATE (chk_dum%excl_bands(chk_dum%nbnd_excl))
+        READ (io_unit) chk_dum%excl_bands
+      ELSE
+        ALLOCATE (chk_dum%excl_bands(0))
+        ! .chk always writes the excluded-band record; consume empty record to keep alignment.
+        READ (io_unit)
+      END IF
+
+      READ (io_unit) real_lattice
+      WRITE (stdout, '(2X, A, 3F12.6)') '- real_lattice:', real_lattice(:, 1)
+      WRITE (stdout, '(2X, A, 3F12.6)') '               ', real_lattice(:, 2)
+      WRITE (stdout, '(2X, A, 3F12.6)') '               ', real_lattice(:, 3)
+      READ (io_unit) recip_lattice
+      WRITE (stdout, '(2X, A, 3F12.6)') '- recip_lattice:', recip_lattice(:, 1)
+      WRITE (stdout, '(2X, A, 3F12.6)') '                ', recip_lattice(:, 2)
+      WRITE (stdout, '(2X, A, 3F12.6)') '                ', recip_lattice(:, 3)
+      CALL cell_setup()
+
+      READ (io_unit) self%kpts%nkpt
+      WRITE (stdout, '(2X, A, I0)') '- nkpt: ', self%kpts%nkpt
+      READ (io_unit) self%k_grid
+      WRITE (stdout, '(2X, A, 3(1X,I0))') '- k_grid: ', self%k_grid
+      ALLOCATE (self%kpts%k_cart(3, self%kpts%nkpt))
+      ALLOCATE (self%kpts%k_red(3, self%kpts%nkpt))
+      READ (io_unit) self%kpts%k_red
+      CALL red2cart_recip(self%kpts%k_red, self%kpts%k_cart, self%kpts%nkpt)
+      READ (io_unit) self%nnb
+      WRITE (stdout, '(2X, A, I0)') '- nnb: ', self%nnb
+      READ (io_unit) Nw
+      WRITE (stdout, '(2X, A, I0)') '- Nw: ', Nw
+
+      READ (io_unit) chk_dum%checkpoint
+      WRITE (stdout, '(2X, A)') '- checkpoint: '//TRIM(chk_dum%checkpoint)
+      READ (io_unit) chk_dum%have_disentangled
+      WRITE (stdout, '(2X, A, L1)') '- have_disentangled: ', chk_dum%have_disentangled
+      IF (chk_dum%have_disentangled) THEN
+        READ (io_unit) chk_dum%omega_invariant
+        WRITE (stdout, '(2X, A, F12.6)') '- omega_invariant: ', chk_dum%omega_invariant
+        ALLOCATE (chk_dum%lwindow(self%nbnd, self%kpts%nkpt))
+        ALLOCATE (chk_dum%ndimwin(self%kpts%nkpt))
+        ALLOCATE (chk_dum%u_matrix_opt(self%nbnd, Nw, self%kpts%nkpt))
+        READ (io_unit) chk_dum%lwindow
+        READ (io_unit) chk_dum%ndimwin
+        READ (io_unit) chk_dum%u_matrix_opt
+      ELSE
+        chk_dum%omega_invariant = 0.0_DP
+        ALLOCATE (chk_dum%lwindow(0, 0))
+        ALLOCATE (chk_dum%ndimwin(0))
+        ALLOCATE (chk_dum%u_matrix_opt(0, 0, 0))
+      END IF
+
+      ALLOCATE (chk_dum%u_matrix(Nw, Nw, self%kpts%nkpt))
+      ALLOCATE (chk_dum%m_matrix(Nw, Nw, self%nnb, self%kpts%nkpt))
+      READ (io_unit) chk_dum%u_matrix
+      READ (io_unit) chk_dum%m_matrix
+
+      IF (chk_dum%have_disentangled) THEN
+        ALLOCATE (self%v_matrix(self%nbnd, Nw, self%kpts%nkpt))
+        DO ikpt = 1, self%kpts%nkpt
+          ndw = chk_dum%ndimwin(ikpt)
+          self%v_matrix(1:ndw, :, ikpt) = MATMUL(chk_dum%u_matrix_opt(1:ndw, :, ikpt), chk_dum%u_matrix(:, :, ikpt))
+        END DO
+      ELSE
+        ! TODO: Check it is consistent with the non-disentangled case.
+        IF (Nw /= self%nbnd) THEN
+          CALL errore(1, 'read_w90_chk', 'Nw must equal nbnd for non-disentangled case')
+        END IF
+        !
+        ALLOCATE (self%v_matrix(Nw, Nw, self%kpts%nkpt))
+        DO ikpt = 1, self%kpts%nkpt
+          self%v_matrix(:, :, ikpt) = chk_dum%u_matrix(:, :, ikpt)
+        END DO
+      END IF
+
+      ALLOCATE (self%wannier_center_cart(3, Nw))
+      ALLOCATE (self%wannier_spread(Nw))
+      READ (io_unit) self%wannier_center_cart
+      READ (io_unit) self%wannier_spread
+
+      CLOSE (io_unit)
+    END IF
+
+    CALL mp_bcast(self%nbnd)
+    CALL mp_bcast(real_lattice)
+    CALL mp_bcast(recip_lattice)
+    CALL mp_bcast(self%kpts%nkpt)
+    self%kpts%nktot = self%kpts%nkpt
+    CALL mp_bcast(self%nnb)
+    CALL mp_bcast(Nw)
+
+    IF (.NOT. ionode) THEN
+      CALL cell_setup()
+      ALLOCATE (self%kpts%k_cart(3, self%kpts%nkpt))
+      ALLOCATE (self%kpts%k_red(3, self%kpts%nkpt))
+      ALLOCATE (self%v_matrix(self%nbnd, Nw, self%kpts%nkpt))
+      ALLOCATE (self%wannier_center_cart(3, Nw))
+      ALLOCATE (self%wannier_spread(Nw))
+    END IF
+
+    CALL mp_bcast(self%kpts%k_cart)
+    CALL mp_bcast(self%kpts%k_red)
+    CALL mp_bcast(self%v_matrix)
+    CALL mp_bcast(self%wannier_center_cart)
+    CALL mp_bcast(self%wannier_spread)
+  END SUBROUTINE read_w90_chk
+  ! ==================================================
+  MODULE SUBROUTINE build_w90_Hq(self)
+    !< Build Hamiltonian in q-space
+    USE io_global, ONLY: write_sep_line
+    USE lin_eig_H, ONLY: write_band
+    USE mp_base, ONLY: mp_bcast
+    USE system, ONLY: Nw
+    CLASS(w90data_type), INTENT(INOUT) :: self
+    INTEGER::ikpt, iw, jw, ibnd
+    COMPLEX(DP)::hval
+    REAL(DP)::herm_abs_max, h_abs_max, herm_rel
+    !
+    WRITE (stdout, '(2X, A)') 'Building H(q) in Wannier gauge...'
+    ALLOCATE (self%Hq(Nw, Nw, self%kpts%nkpt))
+    !
+    IF (ionode) THEN
+      DO ikpt = 1, self%kpts%nkpt
+        DO iw = 1, Nw
+          DO jw = 1, Nw
+            self%Hq(iw, jw, ikpt) &
+              = wannier_gauge_diag(self%nbnd, self%eigval(:, ikpt), &
+                                   self%v_matrix(:, iw, ikpt), self%v_matrix(:, jw, ikpt))
+          END DO
+        END DO
+      END DO
+    END IF
+    CALL mp_bcast(self%Hq)
+    !
+    CALL check_hermiticity(self%kpts%nkpt, self%Hq, 1.0D-10)
+    IF (ionode .AND. Hq_band) THEN
+      ALLOCATE (self%eigvec(Nw, Nw, self%kpts%nkpt))
+      CALL write_band(self%kpts, self%Hq, self%eigval, self%eigvec)
+    END IF
+    CALL write_sep_line()
+  END SUBROUTINE build_w90_Hq
+END SUBMODULE w90_chk
