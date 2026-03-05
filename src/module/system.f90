@@ -32,7 +32,7 @@ MODULE system
   PRIVATE::cart2red_recip_1D, cart2red_recip_2D
 CONTAINS
   SUBROUTINE cell_setup()
-    USE lin_mat3x3, ONLY: inv3x3
+    USE lin_mat, ONLY: inv3x3
     bInit = .TRUE.
     real_lattice_inv = inv3x3(real_lattice)
     recip_lattice_inv = inv3x3(recip_lattice)

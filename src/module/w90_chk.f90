@@ -115,6 +115,7 @@ CONTAINS
     CALL mp_bcast(recip_lattice)
     CALL mp_bcast(self%kpts%nkpt)
     self%kpts%nktot = self%kpts%nkpt
+    CALL mp_bcast(self%k_grid)
     CALL mp_bcast(self%nnb)
     CALL mp_bcast(Nw)
 

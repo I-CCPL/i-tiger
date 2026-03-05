@@ -37,6 +37,7 @@ MODULE wannier90
   ! w90data
   ! ==================================================
   TYPE::w90data_type
+    !... General data
     CHARACTER(LEN=256) :: prefix
 
     INTEGER::nbnd
@@ -54,6 +55,7 @@ MODULE wannier90
     REAL(DP), ALLOCATABLE :: wannier_spread(:)
     !< (Nw)
 
+    !... chk data
     COMPLEX(DP), ALLOCATABLE :: v_matrix(:, :, :)
     !< (nbnd, Nw, nkpt) for disentangled case
     REAL(DP), ALLOCATABLE::eigval(:, :)
@@ -71,6 +73,8 @@ MODULE wannier90
     !< (3, nnb, nkpt)
     COMPLEX(DP), ALLOCATABLE :: overlap(:, :, :, :)
     !< (nbnd, nbnd, nnb, nkpt)
+    INTEGER, ALLOCATABLE::bvec_index(:, :)
+    !< index map from (nnb, nkpt) to (nnb)
     REAL(DP), ALLOCATABLE::wb(:)
     !< weight of b vector (nnb)
     COMPLEX(DP), ALLOCATABLE :: Aq(:, :, :, :)
