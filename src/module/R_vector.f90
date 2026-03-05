@@ -49,6 +49,7 @@ CONTAINS
   !
   SUBROUTINE build_shift_vecs(self, wannier_center_cart)
     !< Build Wannier center shift (r_m-r_n) in cartesian coordinates
+    USE io_global, ONLY: stdout
     USE system, ONLY: Nw
     USE unique, ONLY: unique_vec3_inv
     CLASS(R_vec_type), INTENT(INOUT) :: self
@@ -58,6 +59,7 @@ CONTAINS
     INTEGER::iw, jw
     !
     IF (ALLOCATED(self%shift_cart)) RETURN
+    WRITE (stdout, '(2X, A)') 'Building Wannier center shift vectors...'
     !
     DO jw = 1, Nw
       DO iw = 1, Nw
@@ -67,6 +69,7 @@ CONTAINS
 
     ! reduce shifts to unique ones
     CALL unique_vec3_inv(all_shift, 1D-8, self%shift_cart, self%nu_shift, shift_map_inv)
+    WRITE (stdout, '(2X, A, I0)') '- Number of unique shifts: ', self%nu_shift
 
     ALLOCATE (self%shift_map_inv(Nw, Nw))
     DO iw = 1, Nw
@@ -79,6 +82,7 @@ CONTAINS
   SUBROUTINE build_Rvecs(self, w90data)
     USE kinds, ONLY: eq_real
     USE constants, ONLY: vec_0
+    USE io_global, ONLY: stdout, write_sep_line
     USE wannier90, ONLY: w90data_type
     USE system, ONLY: Nw, red2cart_real
     CLASS(R_vec_type), INTENT(INOUT)::self
@@ -98,9 +102,12 @@ CONTAINS
 
     CALL self%build_shift(w90data%wannier_center_cart)
 
+    WRITE (stdout, '(2X, A)') 'Building R vectors for Fourier transform...'
     ! Build T vectors
     cell_range(:) = 2*cell_expand(:) + 1
     self%ncell = PRODUCT(cell_range)
+    WRITE (stdout, '(2X, A)') '- Building T vectors for periodic images...'
+    WRITE (stdout, '(2X, A, I0)') '- Number of considered T vectors: ', self%ncell
     ALLOCATE (Tvec_red(3, self%ncell))
     ALLOCATE (Tvec_cart(3, self%ncell))
     DO icell = 1, self%ncell
@@ -111,6 +118,7 @@ CONTAINS
       CALL red2cart_real(Tvec_red(:, icell), Tvec_cart(:, icell))
     END DO
 
+    WRITE (stdout, '(2X, A)') '- Building R vectors for each shift and R0...'
     ! Find T such that minimize |R0+T+r_n-r_m| for given (R0, n, m)
     ALLOCATE (self%R0_red(3, self%nrpt))
     ALLOCATE (self%R0_cart(3, self%nrpt))
@@ -152,11 +160,12 @@ CONTAINS
         self%nRvec(iuw, irpt) = iRvec
       END DO
     END DO
+    CALL write_sep_line()
   END SUBROUTINE build_Rvecs
 
   SUBROUTINE Rvec_fft_q2R(self, w90data, X_q, X_R)
     USE kinds, ONLY: DP
-    USE io_global, ONLY: ionode
+    USE io_global, ONLY: stdout
     USE constants, ONLY: tpi
     USE system, ONLY: Nw
     USE wannier90, ONLY: w90data_type
@@ -168,6 +177,7 @@ CONTAINS
     REAL(DP)::wk, phase
     COMPLEX(DP)::exp_phase
 
+    WRITE (stdout, '(2X, A)') '- Performing Fourier transform from q to R space...'
     IF (.NOT. ALLOCATED(X_R)) ALLOCATE (X_R(Nw, Nw, self%nrpt))
     wk = 1/REAL(w90data%kpts%nkpt, DP)
     DO iw = 1, Nw
@@ -187,6 +197,7 @@ CONTAINS
   SUBROUTINE Rvec_fft_R2k(self, k_list, X_R, X_k)
     USE kinds, ONLY: DP
     USE constants, ONLY: tpi
+    USE io_global, ONLY: stdout
     USE system, ONLY: Nw
     USE kpoints, ONLY: kpoint_type
     CLASS(R_vec_type), INTENT(INOUT)::self
@@ -197,6 +208,7 @@ CONTAINS
     REAL(DP)::phase, degen
     COMPLEX(DP)::exp_phase
 
+    WRITE (stdout, '(2X, A)') '- Performing Fourier transform from R to k space...'
     DO iw = 1, Nw
       DO jw = 1, Nw
         iuw = self%shift_map_inv(iw, jw)

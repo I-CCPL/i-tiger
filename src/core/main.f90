@@ -16,6 +16,7 @@ PROGRAM main
   CALL env_start()
   CALL read_input()
   CALL w90data%build_Hq()
+  CALL w90data%build_Aq()
   !
   CALL R_vec%build_R(w90data)
   CALL R_vec%fft_q2R(w90data, w90data%Hq, H_R)

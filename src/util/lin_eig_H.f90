@@ -3,12 +3,12 @@ MODULE lin_eig_H
   IMPLICIT NONE
   PRIVATE
   INTERFACE eig_H
-    MODULE PROCEDURE eig_cH
+    MODULE PROCEDURE eig_cHk, eig_cH
   END INTERFACE eig_H
   PUBLIC :: eig_H, write_band
 CONTAINS
   SUBROUTINE write_band(kpts, Hk, eigval, eigvec)
-    USE io_global, ONLY: get_free_unit
+    USE io_global, ONLY: stdout, get_free_unit
     USE system, ONLY: Nw
     USE kpoints, ONLY: kpoint_type
     TYPE(kpoint_type), INTENT(IN)::kpts
@@ -22,15 +22,13 @@ CONTAINS
     DO ikpt = 2, kpts%nkpt
       k_pos(ikpt) = k_pos(ikpt - 1) + SQRT(SUM((kpts%k_cart(:, ikpt) - kpts%k_cart(:, ikpt - 1))**2))
     END DO
-    !
-    DO ikpt = 1, kpts%nkpt
-      CALL eig_H(Nw, Hk(:, :, ikpt), &
-                 eigval(:, ikpt), eigvec(:, :, ikpt))
-    END DO
+
+    CALL eig_H(Nw, kpts%nkpt, Hk, eigval, eigvec)
 
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file='itg.eigval')
 
+    WRITE (stdout, '(2X, A)') '- Writing band structure data to "itg.eigval"...'
     WRITE (io_unit, '("#", A)') 'k_pos, eigval'
     DO iw = 1, Nw
       DO ikpt = 1, kpts%nkpt
@@ -41,9 +39,24 @@ CONTAINS
     CLOSE (io_unit)
   END SUBROUTINE write_band
   !
-  SUBROUTINE eig_cH(ld_cH, cH, eigval, eigvec)
-    USE mp_base, ONLY: mp_bcast
+  SUBROUTINE eig_cHk(ld_cH, nkpt, cHk, eigval, eigvec)
     !< Calculate eigenvalues and eigenvectors of Complex H in Wannier gauge at each k.
+    USE io_global, ONLY: stdout
+    INTEGER, INTENT(IN) :: ld_cH, nkpt
+    COMPLEX(DP), INTENT(IN) :: cHk(ld_cH, ld_cH, nkpt)
+    REAL(DP), INTENT(OUT) :: eigval(ld_cH, nkpt)
+    COMPLEX(DP), INTENT(OUT) :: eigvec(ld_cH, ld_cH, nkpt)
+    INTEGER::ikpt
+    !
+    WRITE (stdout, '(2X, A)') '- Diagonalizing matrix at each k...'
+    DO ikpt = 1, nkpt
+      CALL eig_cH(ld_cH, cHk(:, :, ikpt), eigval(:, ikpt), eigvec(:, :, ikpt))
+    END DO
+  END SUBROUTINE eig_cHk
+  !
+  SUBROUTINE eig_cH(ld_cH, cH, eigval, eigvec)
+    !< Calculate eigenvalues and eigenvectors of Complex H in Wannier gauge at given k.
+    USE mp_base, ONLY: mp_bcast
     INTEGER, INTENT(IN) :: ld_cH
     COMPLEX(DP), INTENT(IN) :: cH(ld_cH, ld_cH)
     REAL(DP), INTENT(OUT) :: eigval(ld_cH)

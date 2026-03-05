@@ -7,6 +7,7 @@ MODULE wannier90
   PUBLIC::read_w90, w90data_type, w90data
   LOGICAL, PUBLIC::chk_w90 = .FALSE.
   LOGICAL, PUBLIC::Hq_band = .FALSE.
+  LOGICAL, PUBLIC::lreq_mmn = .FALSE.
   !
   TYPE::w90data_type
     CHARACTER(LEN=256) :: prefix
@@ -36,11 +37,25 @@ MODULE wannier90
     COMPLEX(DP), ALLOCATABLE :: Hq(:, :, :)
     !< Hamiltonian in Wannier gauge (Nw, Nw, nkpt)
 
+    !... mmn data
+    INTEGER, ALLOCATABLE :: neighbour_k(:, :)
+    !< (nnb, nkpt)
+    INTEGER, ALLOCATABLE :: neighbour_g(:, :, :)
+    !< (3, nnb, nkpt)
+    COMPLEX(DP), ALLOCATABLE :: overlap(:, :, :, :)
+    !< (nbnd, nbnd, nnb, nkpt)
+    REAL(DP), ALLOCATABLE::wb(:)
+    !< weight of b vector (nnb)
+    COMPLEX(DP), ALLOCATABLE :: Aq(:, :, :, :)
+    !< (3, Nw, Nw, nkpt)
+
   CONTAINS
     PROCEDURE::read_eig => read_w90_eig
     PROCEDURE::read_chk => read_w90_chk
+    PROCEDURE::read_mmn => read_w90_mmn
     PROCEDURE::clear => clear_w90_data
     PROCEDURE::build_Hq => build_w90_Hq
+    PROCEDURE::build_Aq => build_w90_Aq
   END TYPE w90data_type
   TYPE(w90data_type)::w90data
 
@@ -66,6 +81,11 @@ CONTAINS
     CALL w90data%clear()
     CALL w90data%read_chk(chk_dum)
     CALL w90data%read_eig()
+
+    lreq_mmn = .TRUE.
+    IF (lreq_mmn) THEN
+      CALL w90data%read_mmn()
+    END IF
 
     IF (ionode .AND. chk_w90) THEN
       CALL write_chk_dump(w90data, chk_dum)
@@ -243,6 +263,62 @@ CONTAINS
     IF (self%nbnd > 0 .AND. self%kpts%nkpt > 0) CALL mp_bcast(self%eigval)
   END SUBROUTINE read_w90_eig
 
+  SUBROUTINE read_w90_mmn(self)
+    USE mp_base, ONLY: mp_bcast
+    USE io_global, ONLY: check_file
+    CLASS(w90data_type), INTENT(INOUT) :: self
+    INTEGER::io_unit, ios
+    CHARACTER(LEN=512)::header
+    INTEGER::nbnd, nkpt, nnb
+    INTEGER::block_size, ikpt, inb, ibnd, jbnd
+    INTEGER::k_from, k_to, g1, g2, g3
+    REAL(DP)::re, im
+    !
+    WRITE (stdout, '(2X, A)') 'Reading .mmn file...'
+    CALL check_file(TRIM(self%prefix)//'.mmn')
+    IF (ionode) THEN
+      io_unit = get_free_unit()
+      OPEN (unit=io_unit, file=TRIM(self%prefix)//'.mmn', form='formatted', action='read', iostat=ios)
+      CALL errore(ios, 'read_w90_mmn', 'Failed to open '//TRIM(self%prefix)//'.mmn')
+
+      READ (io_unit, '(A)') header
+      READ (io_unit, *) nbnd, nkpt, nnb
+      IF (nbnd /= self%nbnd) THEN
+        CALL errore(1, 'read_w90_mmn', 'Inconsistent number of bands in .mmn file')
+      ELSE IF (nkpt /= self%kpts%nkpt) THEN
+        CALL errore(1, 'read_w90_mmn', 'Inconsistent number of k-points in .mmn file')
+      ELSE IF (nnb /= self%nnb) THEN
+        CALL errore(1, 'read_w90_mmn', 'Inconsistent number of nearest neighbors in .mmn file')
+      END IF
+    END IF
+
+    ALLOCATE (self%neighbour_k(self%nnb, self%kpts%nkpt))
+    ALLOCATE (self%neighbour_g(3, self%nnb, self%kpts%nkpt))
+    ALLOCATE (self%overlap(self%nbnd, self%nbnd, self%nnb, self%kpts%nkpt))
+    IF (ionode) THEN
+      DO ikpt = 1, nkpt
+        DO inb = 1, nnb
+          READ (io_unit, *) k_from, k_to, g1, g2, g3
+          IF (k_from /= ikpt) THEN
+            CALL errore(1, 'read_w90_mmn', 'Unexpected k-point index in .mmn file.')
+          END IF
+          self%neighbour_k(inb, ikpt) = k_to
+          self%neighbour_g(:, inb, ikpt) = (/g1, g2, g3/)
+
+          DO jbnd = 1, nbnd
+            DO ibnd = 1, nbnd
+              READ (io_unit, *) re, im
+              self%overlap(ibnd, jbnd, inb, ikpt) = CMPLX(re, im, DP)
+            END DO
+          END DO
+        END DO
+      END DO
+    END IF
+    CALL mp_bcast(self%neighbour_k)
+    CALL mp_bcast(self%neighbour_g)
+    CALL mp_bcast(self%overlap)
+  END SUBROUTINE read_w90_mmn
+
   SUBROUTINE write_chk_dump(self, chk_dum)
     USE dump_vec_io, ONLY: dump_r, dump_c, dump_i, dump_l
     USE system, ONLY: Nw, real_lattice, recip_lattice
@@ -382,6 +458,33 @@ CONTAINS
     IF (ALLOCATED(chk_dum%m_matrix)) DEALLOCATE (chk_dum%m_matrix)
   END SUBROUTINE clear_chk_dum
 
+  FUNCTION wannier_gauge_diag(nbnd, mat_H, v1, v2) RESULT(retval)
+    INTEGER, INTENT(IN)::nbnd
+    REAL(DP), INTENT(IN) :: mat_H(nbnd)
+    COMPLEX(DP), INTENT(IN) :: v1(nbnd), v2(nbnd)
+    COMPLEX(DP):: retval
+    INTEGER::ibnd
+    retval = CMPLX(0.0_DP, 0.0_DP, DP)
+    DO ibnd = 1, nbnd
+      retval = retval + CONJG(v1(ibnd))*mat_H(ibnd)*v2(ibnd)
+    END DO
+  END FUNCTION wannier_gauge_diag
+
+  FUNCTION wannier_gauge(nbnd, mat_H, v1, v2) RESULT(retval)
+    INTEGER, INTENT(IN) :: nbnd
+    COMPLEX(DP), INTENT(IN) :: mat_H(nbnd, nbnd)
+    COMPLEX(DP), INTENT(IN) :: v1(nbnd), v2(nbnd)
+    COMPLEX(DP) :: retval
+    INTEGER :: ibnd, jbnd
+
+    retval = CMPLX(0.0_DP, 0.0_DP, DP)
+    DO ibnd = 1, nbnd
+      DO jbnd = 1, nbnd
+        retval = retval + CONJG(v1(ibnd))*mat_H(ibnd, jbnd)*v2(jbnd)
+      END DO
+    END DO
+  END FUNCTION wannier_gauge
+
   SUBROUTINE build_w90_Hq(self)
     !< Build Hamiltonian in q-space
     USE io_global, ONLY: write_sep_line
@@ -392,41 +495,60 @@ CONTAINS
     INTEGER::ikpt, iw, jw, ibnd
     COMPLEX(DP)::hval
     REAL(DP)::herm_abs_max, h_abs_max, herm_rel
-    CHARACTER(LEN=256)::msg
     !
     WRITE (stdout, '(2X, A)') 'Building H(q) in Wannier gauge...'
     ALLOCATE (self%Hq(Nw, Nw, self%kpts%nkpt))
     !
     IF (ionode) THEN
-      self%Hq = CMPLX(0.0_DP, 0.0_DP, DP)
-
       DO ikpt = 1, self%kpts%nkpt
         DO iw = 1, Nw
           DO jw = 1, Nw
-            hval = CMPLX(0.0_DP, 0.0_DP, DP)
-            DO ibnd = 1, self%nbnd
-              hval = hval + CONJG(self%v_matrix(ibnd, iw, ikpt))*self%eigval(ibnd, ikpt)* &
-                     self%v_matrix(ibnd, jw, ikpt)
-            END DO
-            self%Hq(iw, jw, ikpt) = hval
+            self%Hq(iw, jw, ikpt) &
+              = wannier_gauge_diag(self%nbnd, self%eigval(:, ikpt), &
+                                   self%v_matrix(:, iw, ikpt), self%v_matrix(:, jw, ikpt))
           END DO
         END DO
       END DO
-      !
-      CALL check_hermiticity(Nw, self%kpts%nkpt, self%Hq, herm_abs_max, h_abs_max, herm_rel)
-      WRITE (stdout, '(2X, A, 1X, ES12.4E3)') 'H(q) hermiticity |H-H^+|_max:', herm_abs_max
-      WRITE (stdout, '(2X, A, 1X, ES12.4E3)') 'H(q) max element magnitude  :', h_abs_max
-      WRITE (stdout, '(2X, A, 1X, ES12.4E3)') 'H(q) hermiticity relative   :', herm_rel
-      IF (herm_rel > 1.0D-10) THEN
-        WRITE (msg, '(A,1X,ES12.4E3)') 'H(q) hermiticity check failed. relative=', herm_rel
-        CALL errore(1, 'build_w90_Hq', TRIM(msg))
-      END IF
-      IF (Hq_band) THEN
-        ALLOCATE (self%eigvec(Nw, Nw, self%kpts%nkpt))
-        CALL write_band(self%kpts, self%Hq, self%eigval, self%eigvec)
-      END IF
-      CALL write_sep_line()
     END IF
     CALL mp_bcast(self%Hq)
+    !
+    CALL check_hermiticity(self%kpts%nkpt, self%Hq, 1.0D-10)
+    IF (ionode .AND. Hq_band) THEN
+      ALLOCATE (self%eigvec(Nw, Nw, self%kpts%nkpt))
+      CALL write_band(self%kpts, self%Hq, self%eigval, self%eigvec)
+    END IF
+    CALL write_sep_line()
   END SUBROUTINE build_w90_Hq
+
+  SUBROUTINE build_w90_Aq(self)
+    !< Build A(q) in Wannier gauge
+    USE constants, ONLY: zi
+    USE system, ONLY: Nw, red2cart_recip
+    CLASS(w90data_type), INTENT(INOUT) :: self
+    INTEGER::ikpt, inb, iknb, ibnd, jbnd, iw, jw
+    REAL(DP)::b_red(3), b_cart(3)
+    COMPLEX(DP)::M_W, A_qb(3)
+    !< overlap matrix in Wannier gauge
+    !
+    WRITE (stdout, '(2X, A)') 'Building A(q)...'
+    CALL errore(1, 'build_w90_Aq', 'Not implemented yet')
+    ALLOCATE (self%Aq(3, Nw, Nw, self%kpts%nkpt))
+    self%Aq = CMPLX(0.0_DP, 0.0_DP, DP)
+    DO inb = 1, self%nnb
+      DO ikpt = 1, self%kpts%nkpt
+        iknb = self%neighbour_k(inb, ikpt)
+        b_red(:) = REAL(self%neighbour_g(:, inb, ikpt), DP) + self%kpts%k_red(:, iknb) - self%kpts%k_red(:, ikpt)
+        CALL red2cart_recip(b_red, b_cart)
+        DO iw = 1, Nw
+          DO jw = 1, Nw
+            M_W = wannier_gauge(self%nbnd, self%overlap(:, :, inb, ikpt), &
+                                self%v_matrix(:, iw, ikpt), self%v_matrix(:, jw, iknb))
+
+            A_qb(:) = zi*self%wb(inb)*M_W*b_cart(:)
+            self%Aq(:, iw, jw, ikpt) = self%Aq(:, iw, jw, ikpt) + A_qb(:)
+          END DO
+        END DO
+      END DO
+    END DO
+  END SUBROUTINE build_w90_Aq
 END MODULE wannier90
