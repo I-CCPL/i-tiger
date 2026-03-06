@@ -165,7 +165,7 @@ CONTAINS
     CALL check_hermiticity(self%kpts%nkpt, self%Hq, 1.0D-10)
     IF (ionode .AND. Hq_band) THEN
       ALLOCATE (self%eigvec(Nw, Nw, self%kpts%nkpt))
-      CALL write_band(self%kpts, self%Hq, self%eigval, self%eigvec)
+      CALL write_band(self%Hq, self%eigval, self%eigvec)
     END IF
     CALL write_sep_line()
   END SUBROUTINE build_w90_Hq

@@ -7,23 +7,23 @@ MODULE lin_eig_H
   END INTERFACE eig_H
   PUBLIC :: eig_H, write_band
 CONTAINS
-  SUBROUTINE write_band(kpts, Hk, eigval, eigvec)
+  SUBROUTINE write_band(Hk, eigval, eigvec)
     USE io_global, ONLY: stdout, get_free_unit
     USE system, ONLY: Nw
-    USE kpoints, ONLY: kpoint_type
-    TYPE(kpoint_type), INTENT(IN)::kpts
-    COMPLEX(DP), INTENT(IN)::Hk(Nw, Nw, kpts%nkpt)
-    REAL(DP), INTENT(OUT)::eigval(Nw, kpts%nkpt)
-    COMPLEX(DP), INTENT(OUT)::eigvec(Nw, Nw, kpts%nkpt)
-    INTEGER::ikpt, iw, ibnd, io_unit
-    REAL(DP)::k_pos(kpts%nkpt)
+    USE kpoints, ONLY: t_kpt, t_iks
+    COMPLEX(DP), INTENT(IN)::Hk(Nw, Nw, t_kpt%nkpt)
+    REAL(DP), INTENT(OUT)::eigval(Nw, t_kpt%nkpt)
+    COMPLEX(DP), INTENT(OUT)::eigvec(Nw, Nw, t_kpt%nkpt)
+    INTEGER::iw, ibnd, io_unit
+    REAL(DP)::k_pos(t_kpt%nkpt)
     !
     k_pos(1) = 0.0_DP
-    DO ikpt = 2, kpts%nkpt
-      k_pos(ikpt) = k_pos(ikpt - 1) + SQRT(SUM((kpts%k_cart(:, ikpt) - kpts%k_cart(:, ikpt - 1))**2))
+    DO t_iks = 2, t_kpt%nkpt
+      k_pos(t_iks) = k_pos(t_iks - 1) &
+                     + SQRT(SUM((t_kpt%k_cart(:, t_iks) - t_kpt%k_cart(:, t_iks - 1))**2))
     END DO
 
-    CALL eig_H(Nw, kpts%nkpt, Hk, eigval, eigvec)
+    CALL eig_H(Nw, t_kpt%nkpt, Hk, eigval, eigvec)
 
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file='itg.eigval')
@@ -31,8 +31,8 @@ CONTAINS
     WRITE (stdout, '(2X, A)') '- Writing band structure data to "itg.eigval"...'
     WRITE (io_unit, '("#", A)') 'k_pos, eigval'
     DO iw = 1, Nw
-      DO ikpt = 1, kpts%nkpt
-        WRITE (io_unit, '(2F10.4)') k_pos(ikpt), eigval(iw, ikpt)
+      DO t_iks = 1, t_kpt%nkpt
+        WRITE (io_unit, '(2F10.4)') k_pos(t_iks), eigval(iw, t_iks)
       END DO
       WRITE (io_unit, *) ! blank line
     END DO

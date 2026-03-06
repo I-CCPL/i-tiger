@@ -194,17 +194,16 @@ CONTAINS
     END DO
   END SUBROUTINE Rvec_fft_q2R
 
-  SUBROUTINE Rvec_fft_R2k(self, k_list, X_R, X_k)
+  SUBROUTINE Rvec_fft_R2k(self, X_R, X_k)
     USE kinds, ONLY: DP
     USE constants, ONLY: tpi
     USE io_global, ONLY: stdout
     USE system, ONLY: Nw
-    USE kpoints, ONLY: kpoint_type
+    USE kpoints, ONLY: t_kpt, t_iks
     CLASS(R_vec_type), INTENT(INOUT)::self
-    TYPE(kpoint_type), INTENT(IN)::k_list
     COMPLEX(DP), INTENT(IN)::X_R(Nw, Nw, self%nrpt)
-    COMPLEX(DP), INTENT(OUT)::X_k(Nw, Nw, k_list%nkpt)
-    INTEGER::iw, jw, iuw, ikpt, irpt, irtpt
+    COMPLEX(DP), INTENT(OUT)::X_k(Nw, Nw, t_kpt%nkpt)
+    INTEGER::iw, jw, iuw, irpt, irtpt
     REAL(DP)::phase, degen
     COMPLEX(DP)::exp_phase
 
@@ -212,14 +211,14 @@ CONTAINS
     DO iw = 1, Nw
       DO jw = 1, Nw
         iuw = self%shift_map_inv(iw, jw)
-        DO ikpt = 1, k_list%nkpt
-          X_k(iw, jw, ikpt) = 0.0D0
+        DO t_iks = 1, t_kpt%nkpt
+          X_k(iw, jw, t_iks) = 0.0D0
           DO irpt = 1, self%nrpt
             degen = 1/REAL(self%nRvec(iuw, irpt), DP)
             DO irtpt = 1, self%nRvec(iuw, irpt)
-              phase = tpi*DOT_PRODUCT(k_list%k_red(:, ikpt), self%R_red(:, irtpt, iuw, irpt))
+              phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), self%R_red(:, irtpt, iuw, irpt))
               exp_phase = CMPLX(COS(phase), SIN(phase))
-              X_k(iw, jw, ikpt) = X_k(iw, jw, ikpt) + degen*exp_phase*X_R(iw, jw, irpt)
+              X_k(iw, jw, t_iks) = X_k(iw, jw, t_iks) + degen*exp_phase*X_R(iw, jw, irpt)
             END DO
           END DO
         END DO

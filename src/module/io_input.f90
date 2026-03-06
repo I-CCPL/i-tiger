@@ -85,7 +85,7 @@ CONTAINS
     USE char_mod, ONLY: match
     USE io_global, ONLY: stdout
     USE mp_base, ONLY: mp_bcast
-    USE kpoints, ONLY: kpts
+    USE kpoints, ONLY: t_kpt
     CHARACTER(LEN=256), INTENT(INOUT)::line
     LOGICAL::tend
     INTEGER::i
@@ -107,7 +107,7 @@ CONTAINS
       CALL mp_bcast(sk1)
       CALL mp_bcast(sk2)
       CALL mp_bcast(sk3)
-      CALL kpts%build_mesh(nk1, nk2, nk3, sk1, sk2, sk3)
+      CALL t_kpt%build_mesh(nk1, nk2, nk3, sk1, sk2, sk3)
       !
     ELSE IF (match('CRYSTAL_B', line)) THEN
       CALL read_line(line, tend)
@@ -124,7 +124,7 @@ CONTAINS
 
       CALL mp_bcast(skp)
       CALL mp_bcast(nkpps)
-      CALL kpts%build_path(npath, skp, nkpps)
+      CALL t_kpt%build_path(npath, skp, nkpps)
     END IF
 
     RETURN

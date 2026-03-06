@@ -75,6 +75,8 @@ MODULE wannier90
     !< (nbnd, nbnd, nnb, nkpt)
     INTEGER, ALLOCATABLE::bvec_index(:, :)
     !< index map from (nnb, nkpt) to (nnb)
+    REAL(DP), ALLOCATABLE :: bvec_red(:, :)
+    !< b vectors in reduced coordinates (3, nnb)
     REAL(DP), ALLOCATABLE::wb(:)
     !< weight of b vector (nnb)
     COMPLEX(DP), ALLOCATABLE :: Aq(:, :, :, :)
@@ -83,9 +85,11 @@ MODULE wannier90
     PROCEDURE::clear => clear_w90_data
     PROCEDURE::read_files => read_w90_files
     PROCEDURE::read_chk => read_w90_chk
-    PROCEDURE::read_eig => read_w90_eig
-    PROCEDURE::read_mmn => read_w90_mmn
     PROCEDURE::build_Hq => build_w90_Hq
+    PROCEDURE::read_eig => read_w90_eig
+
+    PROCEDURE::read_mmn => read_w90_mmn
+    PROCEDURE::build_bvec => build_w90_bvec
     PROCEDURE::build_Aq => build_w90_Aq
   END TYPE w90data_type
   TYPE(w90data_type)::w90data
@@ -98,23 +102,27 @@ MODULE wannier90
     MODULE SUBROUTINE read_w90_files(self)
       CLASS(w90data_type), INTENT(INOUT) :: self
     END SUBROUTINE read_w90_files
-
+    ! ----------------------------------------
     MODULE SUBROUTINE read_w90_chk(self, chk_dum)
       CLASS(w90data_type), INTENT(INOUT)::self
       TYPE(chk_dum_type), INTENT(OUT)::chk_dum
     END SUBROUTINE read_w90_chk
 
+    MODULE SUBROUTINE build_w90_Hq(self)
+      CLASS(w90data_type), INTENT(INOUT) :: self
+    END SUBROUTINE build_w90_Hq
+
     MODULE SUBROUTINE read_w90_eig(self)
       CLASS(w90data_type), INTENT(INOUT) :: self
     END SUBROUTINE read_w90_eig
-
+    ! ----------------------------------------
     MODULE SUBROUTINE read_w90_mmn(self)
       CLASS(w90data_type), INTENT(INOUT) :: self
     END SUBROUTINE read_w90_mmn
 
-    MODULE SUBROUTINE build_w90_Hq(self)
-      CLASS(w90data_type), INTENT(INOUT) :: self
-    END SUBROUTINE build_w90_Hq
+    MODULE SUBROUTINE build_w90_bvec(self)
+      CLASS(w90data_type), INTENT(inout) :: self
+    END SUBROUTINE build_w90_bvec
 
     MODULE SUBROUTINE build_w90_Aq(self)
       CLASS(w90data_type), INTENT(INOUT) :: self

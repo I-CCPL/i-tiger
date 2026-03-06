@@ -4,7 +4,7 @@ PROGRAM main
   USE io_input, ONLY: read_input
   USE lin_eig_H, ONLY: write_band
   USE system, ONLY: Nw
-  USE kpoints, ONLY: kpts
+  USE kpoints, ONLY: t_kpt
   USE wannier90, ONLY: w90data
   USE R_vector, ONLY: R_vec_type
   IMPLICIT NONE
@@ -16,18 +16,19 @@ PROGRAM main
   CALL env_start()
   CALL read_input()
   CALL w90data%build_Hq()
-  CALL w90data%build_Aq()
+  CALL w90data%build_bvec()
+  ! CALL w90data%build_Aq()
   !
   CALL R_vec%build_R(w90data)
   CALL R_vec%fft_q2R(w90data, w90data%Hq, H_R)
-  !
-  ALLOCATE (H_k(Nw, Nw, kpts%nkpt))
-  CALL R_vec%fft_R2k(kpts, H_R, H_k)
+  ! TODO: k parallelization
+  ALLOCATE (H_k(Nw, Nw, t_kpt%nkpt))
+  CALL R_vec%fft_R2k(H_R, H_k)
   !
   ! TODO: write_band from input
-  ALLOCATE (eigval(Nw, kpts%nkpt))
-  ALLOCATE (eigvec(Nw, Nw, kpts%nkpt))
-  CALL write_band(kpts, H_k, eigval, eigvec)
+  ALLOCATE (eigval(Nw, t_kpt%nkpt))
+  ALLOCATE (eigvec(Nw, Nw, t_kpt%nkpt))
+  CALL write_band(H_k, eigval, eigvec)
   !
   CALL w90data%clear()
   CALL R_vec%clear()

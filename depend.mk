@@ -9,7 +9,7 @@
 ./build/system.o : ./build/lin_mat.o ./build/kinds.o 
 ./build/w90_chk.o : ./build/lin_eig_H.o ./build/wannier90.o ./build/system.o ./build/mp_base.o ./build/io_global.o ./build/kinds.o 
 ./build/w90_eig.o : ./build/mp_base.o ./build/io_global.o 
-./build/w90_mmn.o : ./build/system.o ./build/constants.o ./build/io_global.o ./build/mp_base.o 
+./build/w90_mmn.o : ./build/constants.o ./build/system.o ./build/algo_unique.o ./build/kinds.o ./build/io_global.o ./build/mp_base.o 
 ./build/wannier90.o : ./build/kpoints.o ./build/io_global.o ./build/kinds.o 
 ./build/algo_unique.o : ./build/kinds.o 
 ./build/constants.o : ./build/kinds.o 

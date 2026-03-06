@@ -174,4 +174,25 @@ CONTAINS
     IF (left < j) CALL qsort_vec_perm(v, left, j, perm)
     IF (i < right) CALL qsort_vec_perm(v, i, right, perm)
   END SUBROUTINE qsort_vec_perm
+
+  !==================================================
+
+  !> sort array and return the sorted indices
+  SUBROUTINE qsort_indices(arr, sorted_indices)
+    REAL(DP), INTENT(IN) :: arr(:)
+    INTEGER, INTENT(OUT) :: sorted_indices(:)
+    INTEGER :: n, i
+    INTEGER, ALLOCATABLE :: perm(:)
+
+    n = SIZE(arr)
+    ALLOCATE (perm(n))
+    DO i = 1, n
+      perm(i) = i
+    END DO
+
+    CALL qsort_vec_perm(RESHAPE(arr, [1, n]), 1, n, perm)
+
+    sorted_indices = perm
+  END SUBROUTINE qsort_indices
+
 END MODULE algo_unique

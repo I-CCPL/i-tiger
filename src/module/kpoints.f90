@@ -19,7 +19,10 @@ MODULE kpoints
     PROCEDURE::build_mesh => build_kmesh
   END TYPE kpoint_type
 
-  TYPE(kpoint_type), PUBLIC::kpts
+  TYPE(kpoint_type), PUBLIC::t_kpt
+  !< Interpolated k-point list.
+  INTEGER, PUBLIC::t_iks
+  !< Interpolated k-point index. ikpt for coarse, iks for dense.
 CONTAINS
   SUBROUTINE build_kpath(self, npath, skp, nkpps)
     USE system, ONLY: red2cart_recip
