@@ -79,8 +79,8 @@ MODULE wannier90
     !< b vectors in reduced coordinates (3, nnb)
     REAL(DP), ALLOCATABLE::wb(:)
     !< weight of b vector (nnb)
-    COMPLEX(DP), ALLOCATABLE :: Aq(:, :, :, :)
-    !< (3, Nw, Nw, nkpt)
+    COMPLEX(DP), ALLOCATABLE :: Aq(:, :, :, :, :)
+    !< (3, Nw, Nw, nkpt, nnb)
   CONTAINS
     PROCEDURE::clear => clear_w90_data
     PROCEDURE::read_files => read_w90_files

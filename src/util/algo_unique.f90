@@ -176,23 +176,54 @@ CONTAINS
   END SUBROUTINE qsort_vec_perm
 
   !==================================================
-
-  !> sort array and return the sorted indices
-  SUBROUTINE qsort_indices(arr, sorted_indices)
-    REAL(DP), INTENT(IN) :: arr(:)
-    INTEGER, INTENT(OUT) :: sorted_indices(:)
-    INTEGER :: n, i
-    INTEGER, ALLOCATABLE :: perm(:)
-
+  SUBROUTINE qsort_perm(arr, perm)
+    REAL(DP), INTENT(IN)::arr(:)
+    INTEGER, INTENT(OUT)::perm(:)
+    INTEGER::i, n
     n = SIZE(arr)
-    ALLOCATE (perm(n))
+    IF (SIZE(perm) /= n) THEN
+      CALL errore(1, 'Error: size of perm must match size of arr')
+    END IF
+
     DO i = 1, n
       perm(i) = i
     END DO
+    CALL qsort_perm_body(arr, 1, n, perm)
+  CONTAINS
+    !> sort array and return the sorted indices
+    RECURSIVE SUBROUTINE qsort_perm_body(arr, left, right, perm)
+      REAL(DP), INTENT(IN) :: arr(:)
+      INTEGER, INTENT(IN) :: left, right
+      INTEGER, INTENT(OUT) :: perm(:)
+      INTEGER::i, j, piv_idx, tmp
+      REAL(DP):: pivot
 
-    CALL qsort_vec_perm(RESHAPE(arr, [1, n]), 1, n, perm)
+      IF (left >= right) RETURN
 
-    sorted_indices = perm
-  END SUBROUTINE qsort_indices
+      piv_idx = perm((left + right)/2)
+      pivot = arr(piv_idx)
+      i = left
+      j = right
+
+      DO
+        DO WHILE (arr(perm(i)) < pivot)
+          i = i + 1
+        END DO
+        DO WHILE (pivot < arr(perm(j)))
+          j = j - 1
+        END DO
+
+        IF (i <= j) THEN
+          tmp = perm(i); perm(i) = perm(j); perm(j) = tmp
+          i = i + 1
+          j = j - 1
+        END IF
+        IF (i > j) EXIT
+      END DO
+
+      IF (left < j) CALL qsort_perm_body(arr, left, j, perm)
+      IF (i < right) CALL qsort_perm_body(arr, i, right, perm)
+    END SUBROUTINE qsort_perm_body
+  END SUBROUTINE qsort_perm
 
 END MODULE algo_unique

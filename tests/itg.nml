@@ -1,0 +1,13 @@
+&CONTROL
+  prefix='wannier90'
+  debug = .true.
+/
+&debug
+!  Hq_band = .true.
+/
+
+K_POINTS crystal_b
+3
+ 0.0 0.0 -0.5 30
+ 0.0 0.0  0.0 30
+ 0.0 0.0  0.5 50

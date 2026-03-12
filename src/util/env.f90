@@ -1,11 +1,12 @@
 MODULE env
   USE io_global, ONLY: stdout
   IMPLICIT NONE
-  CHARACTER(LEN=10)::itg_version = 'v0.0.0.15'
+  CHARACTER(LEN=10)::itg_version = 'v0.0.0.16'
 CONTAINS
-  SUBROUTINE env_start()
+  SUBROUTINE env_start(date, time)
     USE mp_global, ONLY: mp_start, mp_rank, mp_root, mp_size, mp_barrier
     USE io_global, ONLY: ionode, stdout, write_bold_line
+    CHARACTER(LEN=*), INTENT(IN)::date, time
     CHARACTER(len=10)::cdate, ctime
     !
     CALL mp_start()
@@ -16,7 +17,8 @@ CONTAINS
     !
     CALL current_date_time(cdate, ctime)
     WRITE (stdout, '(A)') 'Starting i-TIGER on '//TRIM(cdate)//' '//TRIM(ctime)
-    WRITE (stdout, '(2X,A,I0,A)') 'Running on ', mp_size, ' processors.'
+    WRITE (stdout, '(2X, 4A)') "= Compiled on ", date, ' ', time
+    WRITE (stdout, '(2X,A,I0,A)') '= Running on ', mp_size, ' processors.'
     WRITE (stdout, *)
     CALL write_bold_line()
     WRITE (stdout, '(2X,A)') 'Incheon Tight-binding Induced Generalized Electronic Response'

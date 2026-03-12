@@ -115,6 +115,7 @@ CONTAINS
     CALL mp_bcast(recip_lattice)
     CALL mp_bcast(self%kpts%nkpt)
     self%kpts%nktot = self%kpts%nkpt
+    self%kpts%wk = 1.0_DP/REAL(self%kpts%nkpt, DP)
     CALL mp_bcast(self%k_grid)
     CALL mp_bcast(self%nnb)
     CALL mp_bcast(Nw)
@@ -138,34 +139,44 @@ CONTAINS
   MODULE SUBROUTINE build_w90_Hq(self)
     !< Build Hamiltonian in q-space
     USE io_global, ONLY: write_sep_line
-    USE lin_eig_H, ONLY: write_band
+    USE lin_eig_H, ONLY: eig_H, write_band
     USE mp_base, ONLY: mp_bcast
     USE system, ONLY: Nw
     CLASS(w90data_type), INTENT(INOUT) :: self
     INTEGER::ikpt, iw, jw, ibnd
     COMPLEX(DP)::hval
     REAL(DP)::herm_abs_max, h_abs_max, herm_rel
+    COMPLEX(DP), ALLOCATABLE::Hq(:, :, :)
     !
     WRITE (stdout, '(2X, A)') 'Building H(q) in Wannier gauge...'
+    ALLOCATE (Hq(Nw, Nw, self%kpts%nkpt))
     ALLOCATE (self%Hq(Nw, Nw, self%kpts%nkpt))
     !
     IF (ionode) THEN
       DO ikpt = 1, self%kpts%nkpt
-        DO iw = 1, Nw
-          DO jw = 1, Nw
-            self%Hq(iw, jw, ikpt) &
+        DO jw = 1, Nw
+          DO iw = 1, Nw
+            Hq(iw, jw, ikpt) &
               = wannier_gauge_diag(self%nbnd, self%eigval(:, ikpt), &
                                    self%v_matrix(:, iw, ikpt), self%v_matrix(:, jw, ikpt))
+          END DO
+        END DO
+        !
+        !... Force Hemiticity
+        DO jw = 1, Nw
+          DO iw = 1, Nw
+            self%Hq(iw, jw, ikpt) = (Hq(iw, jw, ikpt) + CONJG(Hq(jw, iw, ikpt)))/2
           END DO
         END DO
       END DO
     END IF
     CALL mp_bcast(self%Hq)
     !
-    CALL check_hermiticity(self%kpts%nkpt, self%Hq, 1.0D-10)
+    CALL check_hermiticity(self%kpts%nkpt, Hq, 1.0D-10)
     IF (ionode .AND. Hq_band) THEN
       ALLOCATE (self%eigvec(Nw, Nw, self%kpts%nkpt))
-      CALL write_band(self%Hq, self%eigval, self%eigvec)
+      CALL eig_H(Nw, self%kpts%nkpt, self%Hq(:, :, :), self%eigval, self%eigvec)
+      CALL write_band(self%Hq, self%eigval)
     END IF
     CALL write_sep_line()
   END SUBROUTINE build_w90_Hq

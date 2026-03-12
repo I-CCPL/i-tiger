@@ -49,7 +49,6 @@ CONTAINS
     REAL(DP), INTENT(IN), OPTIONAL:: tol
     LOGICAL :: retval
     REAL(DP) :: tolerance
-    INTEGER :: i
     IF (PRESENT(tol)) THEN
       tolerance = tol
     ELSE

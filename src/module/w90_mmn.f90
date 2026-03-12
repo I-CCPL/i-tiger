@@ -58,9 +58,9 @@ CONTAINS
 
   MODULE SUBROUTINE build_w90_bvec(self)
     !< Build b vectors, the index map from (nnb, nkpt) to (nnb) and weight factor w_b
-    USE kinds, ONLY: eq_real
+    USE kinds, ONLY: eq_real, eq_vec_real
     USE io_global, ONLY: write_sep_line
-    USE algo_unique, ONLY: qsort_indices
+    USE algo_unique, ONLY: qsort_perm
     USE system, ONLY: red2cart_recip
     CLASS(w90data_type), INTENT(inout) :: self
     INTEGER::ikpt, inb, jnb, iknb
@@ -91,7 +91,7 @@ CONTAINS
       bvec_length(inb) = SQRT(SUM(bvec_cart(:)**2))
     END DO
     ! Sort by vector length
-    CALL qsort_indices(bvec_length, bvec_sort_index)
+    CALL qsort_perm(bvec_length, bvec_sort_index)
     ALLOCATE (self%bvec_red(3, self%nnb))
     DO inb = 1, self%nnb
       self%bvec_red(:, inb) = bvec_red(:, bvec_sort_index(inb))
@@ -100,13 +100,14 @@ CONTAINS
     !... Build the index map from (nnb, nkpt) to (nnb)
     WRITE (stdout, '(2X,A)') '- Building index map...'
     ALLOCATE (self%bvec_index(self%nnb, self%kpts%nkpt))
+    self%bvec_index = 0
     DO ikpt = 1, self%kpts%nkpt
       DO inb = 1, self%nnb
         iknb = self%neighbour_k(inb, ikpt)
         bvec_red(:, 1) = REAL(self%neighbour_g(:, inb, ikpt), DP) &
                          + self%kpts%k_red(:, iknb) - self%kpts%k_red(:, ikpt)
         DO jnb = 1, self%nnb
-          IF (ALL(bvec_red(:, 1) == self%bvec_red(:, jnb))) THEN
+          IF (eq_vec_real(bvec_red(:, 1), self%bvec_red(:, jnb), 1.0D-12)) THEN
             self%bvec_index(inb, ikpt) = jnb
             EXIT
           END IF
@@ -195,32 +196,34 @@ CONTAINS
     USE constants, ONLY: zi
     USE system, ONLY: Nw, red2cart_recip
     CLASS(w90data_type), INTENT(INOUT) :: self
-    INTEGER::ikpt, inb, jnb, iknb, ibnd, jbnd, iw, jw
+    INTEGER::ikpt, inb, jnb, iknb, ibnd, jbnd, iw, jw, ipol
     REAL(DP)::b_cart(3)
-    COMPLEX(DP)::M_W, A_qb(3)
+    COMPLEX(DP)::M_W, phase_factor, A_qb(3)
     !< overlap matrix in Wannier gauge
     !
     WRITE (stdout, '(2X, A)') 'Building A(q)...'
-    CALL errore(1, 'build_w90_Aq', 'Not implemented yet')
-    ALLOCATE (self%Aq(3, Nw, Nw, self%kpts%nkpt))
-    self%Aq = CMPLX(0.0_DP, 0.0_DP, DP)
+    ALLOCATE (self%Aq(3, Nw, Nw, self%kpts%nkpt, self%nnb))
+    ! WRITE (300, '(A)') '# ikpt, inb, iw, jw, A_qb'
     DO inb = 1, self%nnb
       DO ikpt = 1, self%kpts%nkpt
         iknb = self%neighbour_k(inb, ikpt)
         jnb = self%bvec_index(inb, ikpt)
         CALL red2cart_recip(self%bvec_red(:, jnb), b_cart)
-        DO iw = 1, Nw
-          DO jw = 1, Nw
+        DO jw = 1, Nw
+          phase_factor = EXP(zi*DOT_PRODUCT(b_cart, self%wannier_center_cart(:, jw)))
+          DO iw = 1, Nw
             M_W = wannier_gauge(self%nbnd, self%overlap(:, :, inb, ikpt), &
                                 self%v_matrix(:, iw, ikpt), self%v_matrix(:, jw, iknb))
-
-            A_qb(:) = zi*self%wb(inb)*M_W*b_cart(:)
-            self%Aq(:, iw, jw, ikpt) = self%Aq(:, iw, jw, ikpt) + A_qb(:)
-            WRITE (300, '(4I3,3(2X,SP,E11.4,E11.4,"j"))') inb, ikpt, iw, jw, A_qb(1), A_qb(2), A_qb(3)
+            ! WRITE (300, '(4I4, (SP,1X,2ES11.4,"j"))') ikpt, inb, iw, jw, M_W
+            A_qb(:) = zi*self%wb(jnb)*M_W*b_cart(:)
+            ! WRITE (300, '(4I3, 3(SP,2X,2ES11.4,"j"))') inb, ikpt, iw, jw, A_qb
+            self%Aq(:, iw, jw, ikpt, jnb) = phase_factor*A_qb(:)
+            ! WRITE (300, '(4I3, 3(SP,2X,2ES11.4,"j"))') inb, ikpt, iw, jw, self%Aq(:, iw, jw, ikpt, jnb)
           END DO
         END DO
       END DO
     END DO
+
   END SUBROUTINE build_w90_Aq
 
 END SUBMODULE w90_mmn

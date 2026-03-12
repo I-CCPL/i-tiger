@@ -1,6 +1,8 @@
 SUBROUTINE check_Hermiticity(nkpt, Ham, tol)
   USE kinds, ONLY: DP
+  USE io_global, ONLY: stdout
   USE system, ONLY: Nw
+  IMPLICIT NONE
   INTEGER, INTENT(IN)::nkpt
   COMPLEX(DP), INTENT(IN)::Ham(Nw, Nw, nkpt)
   REAL(DP), INTENT(IN)::tol
