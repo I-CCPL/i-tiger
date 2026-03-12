@@ -14,17 +14,18 @@ CONTAINS
     USE fft_base, ONLY: fft_R2k
     USE lin_eig_H, ONLY: eig_H
     USE debug_data, ONLY: write_matrix, write_diag_matrix
-    INTEGER::ikpt, iw, jw
+    USE kpoints, ONLY: t_iks
+    INTEGER::iw, jw
 
     ! TODO: k parallelization
     ALLOCATE (t_kpt%H_k(Nw, Nw, t_kpt%nkpt))
-    CALL fft_R2k(R_vec, H_R, t_kpt%H_k)
-
-    DO ikpt = 1, t_kpt%nkpt
+    DO t_iks = 1, t_kpt%nkpt
+      CALL fft_R2k(R_vec, H_R, t_kpt%H_k(:, :, t_iks))
       DO iw = 1, Nw
-        t_kpt%H_k(iw, iw, ikpt) = REAL(t_kpt%H_k(iw, iw, ikpt), DP)
+        t_kpt%H_k(iw, iw, t_iks) = REAL(t_kpt%H_k(iw, iw, t_iks), DP)
       END DO
     END DO
+
     ! CALL write_matrix('H_k_W.itg', t_kpt%H_k, t_kpt%nkpt, 1)
 
     ALLOCATE (t_kpt%eigval(Nw, t_kpt%nkpt))
@@ -38,7 +39,9 @@ CONTAINS
 
     ALLOCATE (A_k_W(3, Nw, Nw, t_kpt%nkpt))
     ALLOCATE (A_k_H(3, Nw, Nw, t_kpt%nkpt))
-    CALL fft_R2k(R_vec, A_R, A_k_W)
+    DO t_iks = 1, t_kpt%nkpt
+      CALL fft_R2k(R_vec, A_R, A_k_W(:, :, :, t_iks))
+    END DO
     ! CALL write_matrix('A_k_W.itg', A_k_W, t_kpt%nkpt, 1)
 
     CALL t_kpt%rotate(A_k_W, A_k_H)

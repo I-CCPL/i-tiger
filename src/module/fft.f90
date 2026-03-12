@@ -32,7 +32,7 @@ CONTAINS
     !< (ldX, Nw, Nw, Nkpt)
     INTEGER::ldX, ldY
     ldY = SIZE(X_R)/Nw/Nw/R_vec%nRpt
-    ldX = SIZE(X_k)/Nw/Nw/t_kpt%nkpt
+    ldX = SIZE(X_k)/Nw/Nw
     IF (ldX /= ldY) THEN
       CALL errore(1, "fft_R2k", "invalid size")
     END IF
@@ -80,26 +80,24 @@ SUBROUTINE fft_R2k_4d(R_vec, ldX, X_R, X_k)
   USE io_global, ONLY: stdout
   USE system, ONLY: Nw
   USE R_vector, ONLY: R_vec_type
-  USE kpoints, ONLY: t_kpt
+  USE kpoints, ONLY: t_kpt, t_iks
   IMPLICIT NONE
   TYPE(R_vec_type), INTENT(IN) :: R_vec
   INTEGER, INTENT(IN)::ldX
   COMPLEX(DP), INTENT(IN) :: X_R(ldX, Nw, Nw, R_vec%nRpt)
-  COMPLEX(DP), INTENT(OUT) :: X_k(ldX, Nw, Nw, t_kpt%nkpt)
-  INTEGER::iw, jw, irpt, ikpt
+  COMPLEX(DP), INTENT(OUT) :: X_k(ldX, Nw, Nw)
+  INTEGER::iw, jw, irpt
   REAL(DP)::phase
   COMPLEX(DP)::exp_phase
   !
   ! WRITE (stdout, '(2X, A)') '- Performing Fourier transform from R to k space...'
-  DO ikpt = 1, t_kpt%nkpt
-    X_k(:, :, :, ikpt) = zero
-    DO irpt = 1, R_vec%nRpt
-      phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, ikpt), R_vec%R_red(:, irpt))
-      exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
-      DO jw = 1, Nw
-        DO iw = 1, Nw
-          X_k(:, iw, jw, ikpt) = X_k(:, iw, jw, ikpt) + X_R(:, iw, jw, irpt)*exp_phase
-        END DO
+  X_k(:, :, :) = zero
+  DO irpt = 1, R_vec%nRpt
+    phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt))
+    exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
+    DO jw = 1, Nw
+      DO iw = 1, Nw
+        X_k(:, iw, jw) = X_k(:, iw, jw) + X_R(:, iw, jw, irpt)*exp_phase
       END DO
     END DO
   END DO

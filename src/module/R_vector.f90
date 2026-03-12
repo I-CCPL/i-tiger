@@ -31,11 +31,6 @@ MODULE R_vector
     PROCEDURE::clear => clear_Rvec
     PROCEDURE::build_shift => build_shift_vecs
     PROCEDURE::build_R => build_Rvecs
-    ! PROCEDURE::Rvec_fft3_q2R, RVec_fft4_q2R
-    ! PROCEDURE::Rvec_fft3_R2k, Rvec_fft4_R2k
-
-    ! GENERIC::fft_q2R => Rvec_fft3_q2R, Rvec_fft4_q2R
-    ! GENERIC::fft_R2k => Rvec_fft3_R2k, Rvec_fft4_R2k
   END TYPE R_vec_type
   PUBLIC::R_vec_type
   !
