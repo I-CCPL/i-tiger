@@ -1,0 +1,70 @@
+MODULE itg_k
+  USE kinds, ONLY: DP
+  USE system, ONLY: Nw
+  USE itg_R, ONLY: R_vec
+  USE kpoints, ONLY: t_kpt
+  IMPLICIT NONE
+  COMPLEX(DP), ALLOCATABLE::H_k_H(:, :, :)
+  COMPLEX(DP), ALLOCATABLE::A_k_W(:, :, :, :), A_k_H(:, :, :, :)
+  COMPLEX(DP), ALLOCATABLE::v_k(:, :, :, :)
+  REAL(DP), ALLOCATABLE::L_k(:, :, :)
+CONTAINS
+  SUBROUTINE make_k()
+    USE itg_R, ONLY: H_R, A_R
+    USE fft_base, ONLY: fft_R2k
+    USE lin_eig_H, ONLY: eig_H
+    USE debug_data, ONLY: write_matrix, write_diag_matrix
+    INTEGER::ikpt, iw, jw
+
+    ! TODO: k parallelization
+    ALLOCATE (t_kpt%H_k(Nw, Nw, t_kpt%nkpt))
+    CALL fft_R2k(R_vec, H_R, t_kpt%H_k)
+
+    DO ikpt = 1, t_kpt%nkpt
+      DO iw = 1, Nw
+        t_kpt%H_k(iw, iw, ikpt) = REAL(t_kpt%H_k(iw, iw, ikpt), DP)
+      END DO
+    END DO
+    ! CALL write_matrix('H_k_W.itg', t_kpt%H_k, t_kpt%nkpt, 1)
+
+    ALLOCATE (t_kpt%eigval(Nw, t_kpt%nkpt))
+    ALLOCATE (t_kpt%eigvec(Nw, Nw, t_kpt%nkpt))
+    CALL eig_H(Nw, t_kpt%nkpt, t_kpt%H_k(:, :, :), t_kpt%eigval, t_kpt%eigvec)
+    ! CALL write_matrix('eigvec.itg', t_kpt%eigvec, t_kpt%nkpt, 1)
+
+    ALLOCATE (H_k_H(Nw, Nw, t_kpt%nkpt))
+    CALL t_kpt%rotate(t_kpt%H_k, H_k_H)
+    ! CALL write_matrix('H_k_H.itg', H_k_H, t_kpt%nkpt, 1)
+
+    ALLOCATE (A_k_W(3, Nw, Nw, t_kpt%nkpt))
+    ALLOCATE (A_k_H(3, Nw, Nw, t_kpt%nkpt))
+    CALL fft_R2k(R_vec, A_R, A_k_W)
+    ! CALL write_matrix('A_k_W.itg', A_k_W, t_kpt%nkpt, 1)
+
+    CALL t_kpt%rotate(A_k_W, A_k_H)
+    ! CALL write_matrix('A_k_H.itg', A_k_H, t_kpt%nkpt, 1)
+
+    ALLOCATE (v_k(3, Nw, Nw, t_kpt%nkpt))
+    CALL velocity(R_vec, H_R, A_k_H, v_k)
+
+    ALLOCATE (L_k(3, Nw, t_kpt%nkpt))
+    CALL OAM_mod_diag(t_kpt%eigval, v_k, L_k)
+    ! CALL write_diag_matrix('OAM_diag.itg', L_k, t_kpt%nkpt, 1)
+  END SUBROUTINE make_k
+  !
+  SUBROUTINE write_k_data()
+    USE io_input, ONLY: lBand
+    USE lin_eig_H, ONLY: write_band
+    IF (lBand) THEN
+      CALL write_band('itg.band.dat', t_kpt%eigval)
+    END IF
+  END SUBROUTINE write_k_data
+  !
+  SUBROUTINE clear_k_data()
+    IF (ALLOCATED(H_k_H)) DEALLOCATE (H_k_H)
+    IF (ALLOCATED(A_k_W)) DEALLOCATE (A_k_W)
+    IF (ALLOCATED(A_k_H)) DEALLOCATE (A_k_H)
+    IF (ALLOCATED(v_k)) DEALLOCATE (v_k)
+    IF (ALLOCATED(L_k)) DEALLOCATE (L_k)
+  END SUBROUTINE clear_k_data
+END MODULE itg_k

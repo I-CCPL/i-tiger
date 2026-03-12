@@ -172,11 +172,11 @@ CONTAINS
     END IF
     CALL mp_bcast(self%Hq)
     !
-    CALL check_hermiticity(self%kpts%nkpt, Hq, 1.0D-10)
+    CALL check_hermiticity(self%kpts%nkpt, 1, Hq, 1.0D-10)
     IF (ionode .AND. Hq_band) THEN
       ALLOCATE (self%eigvec(Nw, Nw, self%kpts%nkpt))
       CALL eig_H(Nw, self%kpts%nkpt, self%Hq(:, :, :), self%eigval, self%eigvec)
-      CALL write_band(self%Hq, self%eigval)
+      CALL write_band('itg.Hq.dat', self%eigval)
     END IF
     CALL write_sep_line()
   END SUBROUTINE build_w90_Hq

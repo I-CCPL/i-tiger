@@ -31,5 +31,6 @@ SUBROUTINE velocity(R_vec, H_R, A_k_H, v_k)
       END DO
     END DO
   END DO
+  CALL check_Hermiticity(t_kpt%nkpt, 3, v_k, 1.0E-10_DP)
   ! CALL write_matrix('v_k.itg', v_k, t_kpt%nkpt, 1)
 END SUBROUTINE velocity

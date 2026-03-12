@@ -1,25 +1,30 @@
-SUBROUTINE check_Hermiticity(nkpt, Ham, tol)
+SUBROUTINE check_Hermiticity(nkpt, ldX, Ham, tol)
   USE kinds, ONLY: DP
   USE io_global, ONLY: stdout
   USE system, ONLY: Nw
   IMPLICIT NONE
   INTEGER, INTENT(IN)::nkpt
-  COMPLEX(DP), INTENT(IN)::Ham(Nw, Nw, nkpt)
+  INTEGER, INTENT(IN)::ldX
+  COMPLEX(DP), INTENT(IN)::Ham(ldX, Nw, Nw, nkpt)
   REAL(DP), INTENT(IN)::tol
   REAL(DP)::herm_abs_max, h_abs_max, herm_rel
-  INTEGER::ikpt
-  COMPLEX(DP), ALLOCATABLE::antiherm(:, :)
+  INTEGER::ikpt, iw, jw
+  COMPLEX(DP), ALLOCATABLE::antiherm(:)
   REAL(DP), PARAMETER::eps = 1.0D-14
   CHARACTER(LEN=256)::msg
   !
   herm_abs_max = 0.0_DP
   h_abs_max = 0.0_DP
   !
-  ALLOCATE (antiherm(Nw, Nw))
+  ALLOCATE (antiherm(ldX))
   DO ikpt = 1, nkpt
-    antiherm = Ham(:, :, ikpt) - TRANSPOSE(CONJG(Ham(:, :, ikpt)))
-    herm_abs_max = MAX(herm_abs_max, MAXVAL(ABS(antiherm)))
-    h_abs_max = MAX(h_abs_max, MAXVAL(ABS(Ham(:, :, ikpt))))
+    DO jw = 1, Nw
+      DO iw = jw, Nw
+        antiherm(:) = Ham(:, iw, jw, ikpt) - CONJG(Ham(:, jw, iw, ikpt))
+        herm_abs_max = MAX(herm_abs_max, MAXVAL(ABS(antiherm)))
+        h_abs_max = MAX(h_abs_max, MAXVAL(ABS(Ham(:, iw, jw, ikpt))), MAXVAL(ABS(Ham(:, jw, iw, ikpt))))
+      END DO
+    END DO
   END DO
   DEALLOCATE (antiherm)
   !

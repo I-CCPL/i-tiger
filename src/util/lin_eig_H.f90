@@ -4,11 +4,11 @@ MODULE lin_eig_H
   PRIVATE
   PUBLIC :: eig_H, write_band
 CONTAINS
-  SUBROUTINE write_band(Hk, eigval)
+  SUBROUTINE write_band(fname, eigval)
     USE io_global, ONLY: stdout, get_free_unit
     USE system, ONLY: Nw
     USE kpoints, ONLY: t_kpt, t_iks
-    COMPLEX(DP), INTENT(IN)::Hk(Nw, Nw, t_kpt%nkpt)
+    CHARACTER(LEN=*), INTENT(IN) :: fname
     REAL(DP), INTENT(IN)::eigval(Nw, t_kpt%nkpt)
     INTEGER::iw, ibnd, io_unit
     REAL(DP)::k_pos(t_kpt%nkpt)
@@ -20,9 +20,9 @@ CONTAINS
     END DO
 
     io_unit = get_free_unit()
-    OPEN (unit=io_unit, file='itg.eigval')
+    OPEN (unit=io_unit, file=fname)
 
-    WRITE (stdout, '(2X, A)') '- Writing band structure data to "itg.eigval"...'
+    WRITE (stdout, '(2X, A)') '- Writing band structure data to "'//TRIM(fname)//'"...'
     WRITE (io_unit, '("#", A)') 'k_pos, eigval'
     DO iw = 1, Nw
       DO t_iks = 1, t_kpt%nkpt

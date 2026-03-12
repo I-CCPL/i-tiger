@@ -58,8 +58,7 @@ SUBROUTINE fft_q2R_4d(w90data, R_vec, ldX, X_q, X_R)
   REAL(DP)::phase
   COMPLEX(DP)::exp_phase
   !
-  WRITE (stdout, '(2X, A)') '- Performing Fourier transform from q to R space...'
-
+  ! WRITE (stdout, '(2X, A)') '- Performing Fourier transform from q to R space...'
   DO irpt = 1, R_vec%nRpt
     X_R(:, :, :, irpt) = zero
     DO ikpt = 1, w90data%kpts%nkpt
@@ -91,7 +90,7 @@ SUBROUTINE fft_R2k_4d(R_vec, ldX, X_R, X_k)
   REAL(DP)::phase
   COMPLEX(DP)::exp_phase
   !
-  WRITE (stdout, '(2X, A)') '- Performing Fourier transform from R to k space...'
+  ! WRITE (stdout, '(2X, A)') '- Performing Fourier transform from R to k space...'
   DO ikpt = 1, t_kpt%nkpt
     X_k(:, :, :, ikpt) = zero
     DO irpt = 1, R_vec%nRpt

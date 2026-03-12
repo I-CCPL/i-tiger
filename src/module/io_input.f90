@@ -1,7 +1,18 @@
 MODULE io_input
+  USE kinds, ONLY: DP
+  USE io_global, ONLY: stdin, stdout, ionode
+  USE mp_base, ONLY: mp_bcast
   IMPLICIT NONE
-  PRIVATE
-  PUBLIC::read_input
+  PRIVATE::read_control, read_itg, read_line, read_kpts
+  !
+  LOGICAL::lBand = .FALSE.
+  ! LOGICAL::lDOS = .FALSE.
+  ! LOGICAL::lPDOS = .FALSE.
+  ! INTEGER::dos_dE
+  ! INTEGER::dos_Emin
+  ! INTEGER::dos_Emax
+  LOGICAL::lOAM = .FALSE.
+  REAL(DP)::OAM_thr = 1D-8
   !
 CONTAINS
   SUBROUTINE read_input()
@@ -15,6 +26,7 @@ CONTAINS
     !
     !... Read Namelists
     CALL read_control()
+    CALL read_itg()
     w90data%prefix = TRIM(prefix)
     CALL w90data%read_files()
 
@@ -40,8 +52,7 @@ CONTAINS
   END SUBROUTINE read_input
   !
   SUBROUTINE read_control()
-    USE io_global, ONLY: ionode, stdin, stdout, &
-                         prefix, debug
+    USE io_global, ONLY: prefix, debug
     NAMELIST /control/ prefix, debug
     !
     WRITE (stdout, '(2X, A)') 'Reading &CONTROL Namelist...'
@@ -61,9 +72,21 @@ CONTAINS
     END SUBROUTINE read_debug
   END SUBROUTINE read_control
   !
+  SUBROUTINE read_itg()
+    NAMELIST /itg/ lBand, lOAM, OAM_thr
+    WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
+    IF (ionode) THEN
+      READ (stdin, nml=itg)
+      IF (lOAM) THEN
+        WRITE (stdout, '(2X, A, ES11.4)') '- OAM with threshold: ', OAM_thr
+      END IF
+    END IF
+    CALL mp_bcast(lBand)
+    CALL mp_bcast(lOAM)
+    CALL mp_bcast(OAM_thr)
+  END SUBROUTINE read_itg
+  !
   SUBROUTINE read_line(line, tend)
-    USE io_global, ONLY: ionode, stdin, stdout
-    USE mp_base, ONLY: mp_bcast
     CHARACTER(LEN=*), INTENT(OUT)::line
     LOGICAL, INTENT(OUT)::tend
     tend = .FALSE.
@@ -81,10 +104,7 @@ CONTAINS
   END SUBROUTINE read_line
   !
   SUBROUTINE read_kpts(line)
-    USE kinds, ONLY: DP
     USE char_mod, ONLY: match
-    USE io_global, ONLY: stdout
-    USE mp_base, ONLY: mp_bcast
     USE kpoints, ONLY: t_kpt
     CHARACTER(LEN=256), INTENT(INOUT)::line
     LOGICAL::tend

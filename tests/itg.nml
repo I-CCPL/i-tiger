@@ -5,6 +5,10 @@
 &debug
 !  Hq_band = .true.
 /
+&itg
+  lBand = .TRUE.
+  lOAM = .TRUE.
+/
 
 K_POINTS crystal_b
 3

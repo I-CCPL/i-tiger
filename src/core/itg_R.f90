@@ -1,0 +1,55 @@
+MODULE itg_R
+  USE kinds, ONLY: DP
+  USE system, ONLY: Nw
+  USE wannier90, ONLY: w90data
+  USE R_vector, ONLY: R_vec_type
+  IMPLICIT NONE
+  TYPE(R_vec_type)::R_vec
+
+  COMPLEX(DP), ALLOCATABLE::H_R(:, :, :)
+  COMPLEX(DP), ALLOCATABLE::A_R(:, :, :, :), A_R_b(:, :, :, :)
+CONTAINS
+  SUBROUTINE make_R()
+    USE kinds, ONLY: eq_vec_real
+    USE constants, ONLY: zero
+    USE fft_base, ONLY: fft_q2R
+    USE debug_data, ONLY: write_matrix, write_diag_matrix
+    INTEGER::inb, ikpt, irpt, jrpt, iw, jw
+    !
+    CALL R_vec%build_R(w90data)
+    !
+    ALLOCATE (H_R(Nw, Nw, R_vec%nRpt))
+    CALL fft_q2R(w90data, R_vec, w90data%Hq, H_R)
+    ! CALL write_matrix('H_R.itg', H_R, R_vec%nRpt, 1)
+
+    ALLOCATE (A_R(3, Nw, Nw, R_vec%nRpt))
+    ALLOCATE (A_R_b(3, Nw, Nw, R_vec%nRpt))
+    A_R = zero
+    DO inb = 1, w90data%nnb
+      CALL fft_q2R(w90data, R_vec, w90data%Aq(:, :, :, :, inb), A_R_b)
+      ikpt = 0
+      DO irpt = 1, R_vec%nRpt
+        DO jrpt = 1, R_vec%nRpt
+          IF (.NOT. eq_vec_real(R_Vec%R_red(:, irpt), &
+                                -R_vec%R_red(:, jrpt), 1.0D-12)) THEN
+            CYCLE
+          END IF
+          ikpt = ikpt + 1
+          DO jw = 1, Nw
+            DO iw = 1, Nw
+              A_R(:, iw, jw, irpt) = A_R(:, iw, jw, irpt) + (A_R_b(:, iw, jw, irpt) + CONJG(A_R_b(:, jw, iw, jrpt)))/2
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+    ! CALL write_matrix('A_R.itg', A_R, R_vec%nRpt, 1)
+  END SUBROUTINE make_R
+  !
+  SUBROUTINE clear_R_data()
+    CALL R_vec%clear()
+    IF (ALLOCATED(H_R)) DEALLOCATE (H_R)
+    IF (ALLOCATED(A_R)) DEALLOCATE (A_R)
+    IF (ALLOCATED(A_R_b)) DEALLOCATE (A_R_b)
+  END SUBROUTINE clear_R_data
+END MODULE itg_R

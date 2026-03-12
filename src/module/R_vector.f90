@@ -93,7 +93,7 @@ CONTAINS
     INTEGER::iuw, iw, jw
     INTEGER::ir0pt, irpt, jrpt, nRpt, r0pt_x, r0pt_y, r0pt_z
     INTEGER::icell, ncell, cell_x, cell_y, cell_z, ndegen
-    REAL(DP)::R_vec(3), R_dist
+    REAL(DP)::R_vector(3), R_dist
     REAL(DP), ALLOCATABLE::Tvec_red(:, :), Tvec_cart(:, :)
     REAL(DP), ALLOCATABLE::Rvec_cart(:, :), dist_min(:)
     REAL(DP), ALLOCATABLE::w_R(:, :, :)
@@ -108,6 +108,7 @@ CONTAINS
 
     CALL self%build_shift(w90data%wannier_center_cart)
 
+    CALL write_sep_line()
     WRITE (stdout, '(2X, A)') 'Building R vectors for Fourier transform...'
     ! Build T vectors
     cell_range(:) = 2*cell_expand(:) + 1
@@ -151,8 +152,8 @@ CONTAINS
         dist_min(iuw) = 1.0D10
         DO icell = 1, ncell
           irpt = ir0pt + (icell - 1)*self%nR0pt
-          R_vec = Rvec_cart(:, irpt) + self%shift_cart(:, iuw)
-          R_dist = SUM(R_vec**2)
+          R_vector = Rvec_cart(:, irpt) + self%shift_cart(:, iuw)
+          R_dist = SUM(R_vector**2)
           IF (R_dist < dist_min(iuw)) THEN
             dist_min(iuw) = R_dist
           END IF
@@ -166,8 +167,8 @@ CONTAINS
           iuw = self%shift_map_inv(iw, jw)
           DO icell = 1, ncell
             irpt = ir0pt + (icell - 1)*self%nR0pt
-            R_vec = Rvec_cart(:, irpt) + self%shift_cart(:, iuw)
-            R_dist = SUM(R_vec**2)
+            R_vector = Rvec_cart(:, irpt) + self%shift_cart(:, iuw)
+            R_dist = SUM(R_vector**2)
             IF (eq_real(R_dist, dist_min(iuw), 1D-12)) THEN
               ndegen = ndegen + 1
               w_R(iw, jw, irpt) = 1.0D0
