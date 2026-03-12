@@ -2,36 +2,8 @@ MODULE lin_eig_H
   USE kinds, ONLY: DP
   IMPLICIT NONE
   PRIVATE
-  PUBLIC :: eig_H, write_band
+  PUBLIC :: eig_H
 CONTAINS
-  SUBROUTINE write_band(fname, eigval)
-    USE io_global, ONLY: stdout, get_free_unit
-    USE system, ONLY: Nw
-    USE kpoints, ONLY: t_kpt, t_iks
-    CHARACTER(LEN=*), INTENT(IN) :: fname
-    REAL(DP), INTENT(IN)::eigval(Nw, t_kpt%nkpt)
-    INTEGER::iw, ibnd, io_unit
-    REAL(DP)::k_pos(t_kpt%nkpt)
-    !
-    k_pos(1) = 0.0_DP
-    DO t_iks = 2, t_kpt%nkpt
-      k_pos(t_iks) = k_pos(t_iks - 1) &
-                     + SQRT(SUM((t_kpt%k_cart(:, t_iks) - t_kpt%k_cart(:, t_iks - 1))**2))
-    END DO
-
-    io_unit = get_free_unit()
-    OPEN (unit=io_unit, file=fname)
-
-    WRITE (stdout, '(2X, A)') '- Writing band structure data to "'//TRIM(fname)//'"...'
-    WRITE (io_unit, '("#", A)') 'k_pos, eigval'
-    DO iw = 1, Nw
-      DO t_iks = 1, t_kpt%nkpt
-        WRITE (io_unit, '(2F10.4)') k_pos(t_iks), eigval(iw, t_iks)
-      END DO
-      WRITE (io_unit, *) ! blank line
-    END DO
-    CLOSE (io_unit)
-  END SUBROUTINE write_band
   !
   SUBROUTINE eig_H(ld_cH, nkpt, cHk, eigval, eigvec)
     !< Calculate eigenvalues and eigenvectors of Complex H in Wannier gauge at each k.

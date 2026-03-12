@@ -139,9 +139,10 @@ CONTAINS
   MODULE SUBROUTINE build_w90_Hq(self)
     !< Build Hamiltonian in q-space
     USE io_global, ONLY: write_sep_line
-    USE lin_eig_H, ONLY: eig_H, write_band
+    USE lin_eig_H, ONLY: eig_H
     USE mp_base, ONLY: mp_bcast
     USE system, ONLY: Nw
+    USE io_output, ONLY: write_band
     CLASS(w90data_type), INTENT(INOUT) :: self
     INTEGER::ikpt, iw, jw, ibnd
     COMPLEX(DP)::hval

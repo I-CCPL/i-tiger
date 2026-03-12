@@ -52,14 +52,20 @@ CONTAINS
 
     ALLOCATE (L_k(3, Nw, t_kpt%nkpt))
     CALL OAM_mod_diag(t_kpt%eigval, v_k, L_k)
-    ! CALL write_diag_matrix('OAM_diag.itg', L_k, t_kpt%nkpt, 1)
   END SUBROUTINE make_k
   !
   SUBROUTINE write_k_data()
-    USE io_input, ONLY: lBand
-    USE lin_eig_H, ONLY: write_band
+    USE io_global, ONLY: write_sep_line, stdout
+    USE io_input, ONLY: lBand, lOAM
+    USE io_output, ONLY: io_output_init, write_band, write_OAM
+    CALL write_sep_line()
+    WRITE (stdout, '(2X, A)') 'Write k data...'
+    CALL io_output_init()
     IF (lBand) THEN
       CALL write_band('itg.band.dat', t_kpt%eigval)
+    END IF
+    IF (lOAM) THEN
+      CALL write_OAM('itg.OAM.dat', L_k)
     END IF
   END SUBROUTINE write_k_data
   !
