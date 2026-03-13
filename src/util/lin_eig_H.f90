@@ -5,19 +5,15 @@ MODULE lin_eig_H
   PUBLIC :: eig_H
 CONTAINS
   !
-  SUBROUTINE eig_H(ld_cH, nkpt, cHk, eigval, eigvec)
+  SUBROUTINE eig_H(ld_cH, cHk, eigval, eigvec)
     !< Calculate eigenvalues and eigenvectors of Complex H in Wannier gauge at each k.
     USE io_global, ONLY: stdout
-    INTEGER, INTENT(IN) :: ld_cH, nkpt
-    COMPLEX(DP), INTENT(IN) :: cHk(ld_cH, ld_cH, nkpt)
-    REAL(DP), INTENT(OUT) :: eigval(ld_cH, nkpt)
-    COMPLEX(DP), INTENT(OUT) :: eigvec(ld_cH, ld_cH, nkpt)
-    INTEGER::ikpt
+    INTEGER, INTENT(IN) :: ld_cH
+    COMPLEX(DP), INTENT(IN) :: cHk(ld_cH, ld_cH)
+    REAL(DP), INTENT(OUT) :: eigval(ld_cH)
+    COMPLEX(DP), INTENT(OUT) :: eigvec(ld_cH, ld_cH)
     !
-    WRITE (stdout, '(2X, A)') '- Diagonalizing matrix at each k...'
-    DO ikpt = 1, nkpt
-      CALL eig_zheevd(ld_cH, cHk(:, :, ikpt), eigval(:, ikpt), eigvec(:, :, ikpt))
-    END DO
+    CALL eig_zheevd(ld_cH, cHk(:, :), eigval(:), eigvec(:, :))
   END SUBROUTINE eig_H
   !
   SUBROUTINE eig_zheev(ld_cH, cH, eigval, eigvec)

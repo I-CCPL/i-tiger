@@ -2,14 +2,14 @@ MODULE itg_k
   USE kinds, ONLY: DP
   USE system, ONLY: Nw
   USE itg_R, ONLY: R_vec
-  USE kpoints, ONLY: t_kpt
+  USE kpoints, ONLY: t_kpt, kpoint_type
   IMPLICIT NONE
   COMPLEX(DP), ALLOCATABLE::H_k_H(:, :, :)
   COMPLEX(DP), ALLOCATABLE::A_k_W(:, :, :, :), A_k_H(:, :, :, :)
   COMPLEX(DP), ALLOCATABLE::v_k(:, :, :, :)
   REAL(DP), ALLOCATABLE::L_k(:, :, :)
 CONTAINS
-  SUBROUTINE make_k()
+  SUBROUTINE make_k_data()
     USE itg_R, ONLY: H_R, A_R
     USE fft_base, ONLY: fft_R2k
     USE lin_eig_H, ONLY: eig_H
@@ -18,24 +18,18 @@ CONTAINS
     INTEGER::iw, jw
 
     ! TODO: k parallelization
-    ALLOCATE (t_kpt%H_k(Nw, Nw, t_kpt%nkpt))
-    DO t_iks = 1, t_kpt%nkpt
-      CALL fft_R2k(R_vec, H_R, t_kpt%H_k(:, :, t_iks))
-      DO iw = 1, Nw
-        t_kpt%H_k(iw, iw, t_iks) = REAL(t_kpt%H_k(iw, iw, t_iks), DP)
-      END DO
-    END DO
-
-    ! CALL write_matrix('H_k_W.itg', t_kpt%H_k, t_kpt%nkpt, 1)
-
+    ALLOCATE (t_kpt%H_k(Nw, Nw))
     ALLOCATE (t_kpt%eigval(Nw, t_kpt%nkpt))
     ALLOCATE (t_kpt%eigvec(Nw, Nw, t_kpt%nkpt))
-    CALL eig_H(Nw, t_kpt%nkpt, t_kpt%H_k(:, :, :), t_kpt%eigval, t_kpt%eigvec)
-    ! CALL write_matrix('eigvec.itg', t_kpt%eigvec, t_kpt%nkpt, 1)
+    DO t_iks = 1, t_kpt%nkpt
+      ! Eigenvalues and eigenvectors
+      CALL fft_R2k(R_vec, H_R, t_kpt%H_k(:, :))
+      DO iw = 1, Nw
+        t_kpt%H_k(iw, iw) = REAL(t_kpt%H_k(iw, iw), DP)
+      END DO
+      CALL eig_H(Nw, t_kpt%H_k, t_kpt%eigval(:, t_iks), t_kpt%eigvec(:, :, t_iks))
 
-    ALLOCATE (H_k_H(Nw, Nw, t_kpt%nkpt))
-    CALL t_kpt%rotate(t_kpt%H_k, H_k_H)
-    ! CALL write_matrix('H_k_H.itg', H_k_H, t_kpt%nkpt, 1)
+    END DO
 
     ALLOCATE (A_k_W(3, Nw, Nw, t_kpt%nkpt))
     ALLOCATE (A_k_H(3, Nw, Nw, t_kpt%nkpt))
@@ -52,7 +46,7 @@ CONTAINS
 
     ALLOCATE (L_k(3, Nw, t_kpt%nkpt))
     CALL OAM_mod_diag(t_kpt%eigval, v_k, L_k)
-  END SUBROUTINE make_k
+  END SUBROUTINE make_k_data
   !
   SUBROUTINE write_k_data()
     USE io_global, ONLY: write_sep_line, stdout

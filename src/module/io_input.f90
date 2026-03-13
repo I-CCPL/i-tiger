@@ -129,6 +129,10 @@ CONTAINS
       CALL mp_bcast(sk3)
       CALL t_kpt%build_mesh(nk1, nk2, nk3, sk1, sk2, sk3)
       !
+      WRITE (stdout, '(2X, A, (1X, 3I0))') '- K-Mesh: ', nk1, nk2, nk3
+      WRITE (stdout, '(2X, A, (1X, 3I0))') '- Shift:  ', sk1, sk2, sk3
+      WRITE (stdout, '(2X,A, 1X, I0)') '- Total k-points: ', t_kpt%nktot
+      !
     ELSE IF (match('CRYSTAL_B', line)) THEN
       CALL read_line(line, tend)
       IF (tend) GOTO 10
@@ -145,7 +149,13 @@ CONTAINS
       CALL mp_bcast(skp)
       CALL mp_bcast(nkpps)
       CALL t_kpt%build_path(npath, skp, nkpps)
+      !
+      WRITE (stdout, '(2X, A)') '- k-points along the path'
+      WRITE (stdout, '(2X, A, I0)') '- Total k-points: ', t_kpt%nktot
+      !
     END IF
+
+    ! CALL t_kpt%divide_k()
 
     RETURN
 10  CALL errore(1, 'read_kpts', 'end of file')

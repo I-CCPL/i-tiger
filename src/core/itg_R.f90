@@ -9,7 +9,7 @@ MODULE itg_R
   COMPLEX(DP), ALLOCATABLE::H_R(:, :, :)
   COMPLEX(DP), ALLOCATABLE::A_R(:, :, :, :), A_R_b(:, :, :, :)
 CONTAINS
-  SUBROUTINE make_R()
+  SUBROUTINE make_R_data()
     USE kinds, ONLY: eq_vec_real
     USE constants, ONLY: zero
     USE fft_base, ONLY: fft_q2R
@@ -44,7 +44,7 @@ CONTAINS
       END DO
     END DO
     ! CALL write_matrix('A_R.itg', A_R, R_vec%nRpt, 1)
-  END SUBROUTINE make_R
+  END SUBROUTINE make_R_data
   !
   SUBROUTINE clear_R_data()
     CALL R_vec%clear()

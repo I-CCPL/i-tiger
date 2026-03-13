@@ -1,7 +1,7 @@
 MODULE env
   USE io_global, ONLY: stdout
   IMPLICIT NONE
-  CHARACTER(LEN=10)::itg_version = 'v0.0.0.19'
+  CHARACTER(LEN=12)::itg_version = 'v0.0.0.20'
 CONTAINS
   SUBROUTINE env_start(date, time)
     USE mp_global, ONLY: mp_start, mp_rank, mp_root, mp_size, mp_barrier
@@ -22,7 +22,7 @@ CONTAINS
     WRITE (stdout, *)
     CALL write_bold_line()
     WRITE (stdout, '(2X,A)') 'Incheon Tight-binding Induced Generalized Electronic Response'
-    WRITE (stdout, '(2X,A,A)') 'i-TIGER ', itg_version
+    WRITE (stdout, '(2X,A,A)') 'i-TIGER ', TRIM(itg_version)
     CALL write_bold_line()
     WRITE (stdout, *)
     CALL mp_barrier()

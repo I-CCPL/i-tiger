@@ -34,6 +34,6 @@ CONTAINS
     ELSE
       ALLOCATE (self%eigval(self%nbnd, self%kpts%nkpt))
     END IF
-    IF (self%nbnd > 0 .AND. self%kpts%nkpt > 0) CALL mp_bcast(self%eigval)
+    CALL mp_bcast(self%eigval)
   END SUBROUTINE read_w90_eig
 END SUBMODULE

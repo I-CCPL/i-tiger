@@ -2,25 +2,26 @@ MODULE kpoints
   USE kinds, ONLY: DP
   IMPLICIT NONE
   PRIVATE
-
   TYPE, PUBLIC::kpoint_type
     INTEGER::nkpt
     !< Number of k-points in this node
     INTEGER::nktot
     !< Total number of k-points
     REAL(DP)::wk
-    !< Weight of the k-point (1/nkpt)
+    !< Weight of the k-point (1/nktot)
     REAL(DP), ALLOCATABLE:: k_cart(:, :)
-    !< k-points in Cartesian coordinates (3, nkpt)
+    !< k-points in Cartesian coordinates (3, nktot)
     REAL(DP), ALLOCATABLE:: k_red(:, :)
-    !< k-points in reduced coordinates (3, nkpt)
-    COMPLEX(DP), ALLOCATABLE::H_k(:, :, :)
-    !< Hamiltonian in k-space (Nw, Nw, nkpt)
+    !< k-points in reduced coordinates (3, nktot)
+    COMPLEX(DP), ALLOCATABLE::H_k(:, :)
+    !< Hamiltonian in k-space (Nw, Nw)
     REAL(DP), ALLOCATABLE::eigval(:, :)
-    !< Eigenvalues (Nw, nkpt)
+    !< Eigenvalues (Nw, nktot)
     COMPLEX(DP), ALLOCATABLE::eigvec(:, :, :)
-    !< Eigenvectors (Nw, Nw, nkpt)
+    !< Eigenvectors (Nw, Nw, nktot)
   CONTAINS
+    PROCEDURE::divide_k => divide_k_idx
+    PROCEDURE::global_k => global_k_idx
     PROCEDURE::build_path => build_kpath
     PROCEDURE::build_mesh => build_kmesh
     PROCEDURE::rotate => rotate_k
@@ -31,6 +32,32 @@ MODULE kpoints
   INTEGER, PUBLIC::t_iks
   !< Interpolated k-point index. ikpt for coarse, iks for dense.
 CONTAINS
+  SUBROUTINE divide_k_idx(self)
+    USE mp_global, ONLY: mp_rank, mp_size
+    CLASS(kpoint_type), INTENT(INOUT)::self
+    INTEGER::ik_start, ik_end
+    self%nkpt = self%nktot/mp_size
+    IF (mp_rank + 1 <= MOD(self%nktot, mp_size)) THEN
+      self%nkpt = self%nkpt + 1
+    END IF
+
+    ik_start = global_k_idx(self, 1)
+    ik_end = ik_start + self%nkpt - 1
+    self%k_cart(:, 1:self%nkpt) = self%k_cart(:, ik_start:ik_end)
+    self%k_red(:, 1:self%nkpt) = self%k_red(:, ik_start:ik_end)
+  END SUBROUTINE divide_k_idx
+
+  FUNCTION global_k_idx(self, k_local) RESULT(k_global)
+    USE mp_global, ONLY: mp_rank, mp_size
+    CLASS(kpoint_type), INTENT(IN)::self
+    INTEGER, INTENT(IN)::k_local
+    INTEGER :: k_global
+    INTEGER::q, r
+    q = self%nktot/mp_size
+    r = MOD(self%nktot, mp_size)
+    k_global = mp_rank*q + MIN(mp_rank, r) + k_local
+  END FUNCTION global_k_idx
+
   SUBROUTINE build_kpath(self, npath, skp, nkpps)
     USE system, ONLY: red2cart_recip
     CLASS(kpoint_type), INTENT(INOUT)::self
@@ -40,12 +67,12 @@ CONTAINS
     INTEGER, INTENT(IN)::nkpps(npath)
     !< Number of k-points for each path segment (npath)
     INTEGER::ikpt, ipath, ikpp, nkpp
-    INTEGER::nkpt
+    INTEGER::nktot
 
-    nkpt = SUM(nkpps(1:npath - 1)) + 1
+    nktot = SUM(nkpps(1:npath - 1)) + 1
     !< Total number of k-points along the path (including the last point)
-    ALLOCATE (self%k_cart(3, nkpt))
-    ALLOCATE (self%k_red(3, nkpt))
+    ALLOCATE (self%k_cart(3, nktot))
+    ALLOCATE (self%k_red(3, nktot))
 
     ikpt = 1
     DO ipath = 1, npath - 1
@@ -57,10 +84,10 @@ CONTAINS
       END DO
     END DO
     self%k_red(:, ikpt) = skp(:, npath)
-    CALL red2cart_recip(self%k_red, self%k_cart, nkpt)
-    self%nkpt = nkpt
-    self%nktot = nkpt
-    self%wk = 1.0_DP/REAL(nkpt, DP)
+    CALL red2cart_recip(self%k_red, self%k_cart, nktot)
+    self%nkpt = nktot
+    self%nktot = nktot
+    self%wk = 1.0_DP/REAL(nktot, DP)
   END SUBROUTINE build_kpath
   !
   SUBROUTINE build_kmesh(self, nk1, nk2, nk3, sk1, sk2, sk3)

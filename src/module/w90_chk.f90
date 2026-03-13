@@ -176,7 +176,9 @@ CONTAINS
     CALL check_hermiticity(self%kpts%nkpt, 1, Hq, 1.0D-10)
     IF (ionode .AND. Hq_band) THEN
       ALLOCATE (self%eigvec(Nw, Nw, self%kpts%nkpt))
-      CALL eig_H(Nw, self%kpts%nkpt, self%Hq(:, :, :), self%eigval, self%eigvec)
+      DO ikpt = 1, self%kpts%nkpt
+        CALL eig_H(Nw, Hq(:, :, ikpt), self%eigval(:, ikpt), self%eigvec(:, :, ikpt))
+      END DO
       CALL write_band('itg.Hq.dat', self%eigval)
     END IF
     CALL write_sep_line()
