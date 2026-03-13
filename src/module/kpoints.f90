@@ -17,7 +17,7 @@ MODULE kpoints
     !< Hamiltonian in k-space (Nw, Nw)
     REAL(DP), ALLOCATABLE::eigval(:, :)
     !< Eigenvalues (Nw, nktot)
-    COMPLEX(DP), ALLOCATABLE::eigvec(:, :, :)
+    COMPLEX(DP), ALLOCATABLE::eigvec(:, :)
     !< Eigenvectors (Nw, Nw, nktot)
   CONTAINS
     PROCEDURE::divide_k => divide_k_idx
@@ -133,12 +133,13 @@ CONTAINS
     self%wk = 1.0_DP/REAL(nktot, DP)
   END SUBROUTINE build_kmesh
 
-  SUBROUTINE rotate_k(self, mat_in, mat_out)
+  SUBROUTINE rotate_k(self, ikpt, mat_in, mat_out)
     USE system, ONLY: Nw
     CLASS(kpoint_type), INTENT(INOUT)::self
+    INTEGER, INTENT(IN)::ikpt
     COMPLEX(DP), INTENT(IN)::mat_in(..)
     COMPLEX(DP), INTENT(OUT)::mat_out(..)
-    INTEGER::ldX, ldY, ikpt
+    INTEGER::ldX, ldY
     IF (.NOT. ALLOCATED(self%eigvec)) THEN
       CALL errore(1, 'rotate_k', 'Eigenvectors are not allocated.')
     END IF
@@ -147,35 +148,33 @@ CONTAINS
     IF (ldX /= ldY) THEN
       CALL errore(1, 'rotate_k', 'Invalid size.')
     END IF
-    ldX = ldX/Nw/Nw/self%nkpt
+    ldX = ldX/Nw/Nw
 
-    CALL rotate_3d(self%nkpt, ldX, self%eigvec, mat_in, mat_out)
+    CALL rotate_3d(ldX, self%eigvec(:, :), mat_in, mat_out)
   END SUBROUTINE rotate_k
 END MODULE kpoints
 
-SUBROUTINE rotate_3d(nkpt, ldX, eigvec, mat_in, mat_out)
+SUBROUTINE rotate_3d(ldX, eigvec, mat_in, mat_out)
   USE kinds, ONLY: DP
   USE constants, ONLY: zero
   USE system, ONLY: Nw
   IMPLICIT NONE
-  INTEGER, INTENT(IN)::nkpt, ldX
-  COMPLEX(DP), INTENT(IN)::eigvec(Nw, Nw, nkpt)
-  COMPLEX(DP), INTENT(IN)::mat_in(ldX, Nw, Nw, nkpt)
-  COMPLEX(DP), INTENT(OUT)::mat_out(ldX, Nw, Nw, nkpt)
+  INTEGER, INTENT(IN)::ldX
+  COMPLEX(DP), INTENT(IN)::eigvec(Nw, Nw)
+  COMPLEX(DP), INTENT(IN)::mat_in(ldX, Nw, Nw)
+  COMPLEX(DP), INTENT(OUT)::mat_out(ldX, Nw, Nw)
   COMPLEX(DP)::U, UU_dag
-  INTEGER::idx, iw, jw, kw, lw, ikpt
+  INTEGER::idx, iw, jw, kw, lw
   mat_out = zero
-  DO ikpt = 1, nkpt
-    DO jw = 1, Nw
-      DO iw = 1, Nw
-        DO lw = 1, Nw
-          U = eigvec(lw, jw, ikpt)
-          DO kw = 1, Nw
-            UU_dag = U*CONJG(eigvec(kw, iw, ikpt))
-            DO idx = 1, ldX
-              mat_out(idx, iw, jw, ikpt) = mat_out(idx, iw, jw, ikpt) &
-                                           + UU_dag*mat_in(idx, kw, lw, ikpt)
-            END DO
+  DO jw = 1, Nw
+    DO iw = 1, Nw
+      DO lw = 1, Nw
+        U = eigvec(lw, jw)
+        DO kw = 1, Nw
+          UU_dag = U*CONJG(eigvec(kw, iw))
+          DO idx = 1, ldX
+            mat_out(idx, iw, jw) = mat_out(idx, iw, jw) &
+                                   + UU_dag*mat_in(idx, kw, lw)
           END DO
         END DO
       END DO

@@ -6,7 +6,7 @@ MODULE itg_R
   IMPLICIT NONE
   TYPE(R_vec_type)::R_vec
 
-  COMPLEX(DP), ALLOCATABLE::H_R(:, :, :)
+  COMPLEX(DP), ALLOCATABLE::H_R(:, :, :), dH_R(:, :, :, :)
   COMPLEX(DP), ALLOCATABLE::A_R(:, :, :, :), A_R_b(:, :, :, :)
 CONTAINS
   SUBROUTINE make_R_data()
@@ -14,6 +14,7 @@ CONTAINS
     USE constants, ONLY: zero
     USE fft_base, ONLY: fft_q2R
     USE debug_data, ONLY: write_matrix, write_diag_matrix
+    USE der_base, ONLY: der_R
     INTEGER::inb, ikpt, irpt, jrpt, iw, jw
     !
     CALL R_vec%build_R(w90data)
@@ -44,11 +45,16 @@ CONTAINS
       END DO
     END DO
     ! CALL write_matrix('A_R.itg', A_R, R_vec%nRpt, 1)
+
+    ALLOCATE (dH_R(3, Nw, Nw, R_vec%nrpt))
+    CALL der_R(R_vec, H_R, dH_R)
+    ! CALL write_matrix('dH_R.itg', dH_R, R_vec%nrpt, 1)
   END SUBROUTINE make_R_data
   !
   SUBROUTINE clear_R_data()
     CALL R_vec%clear()
     IF (ALLOCATED(H_R)) DEALLOCATE (H_R)
+    IF (ALLOCATED(dH_R)) DEALLOCATE (dH_R)
     IF (ALLOCATED(A_R)) DEALLOCATE (A_R)
     IF (ALLOCATED(A_R_b)) DEALLOCATE (A_R_b)
   END SUBROUTINE clear_R_data

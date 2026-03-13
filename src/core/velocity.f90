@@ -1,38 +1,21 @@
-SUBROUTINE velocity(R_vec, H_R, A_k_H, v_k)
+SUBROUTINE velocity(R_vec, A_k_H, dH_k_H, v_k)
   USE kinds, ONLY: DP
-  USE constants, ONLY: zi, zero
+  USE constants, ONLY: zi
   USE system, ONLY: Nw
-  USE debug_data, ONLY: write_matrix
   USE R_vector, ONLY: R_vec_type
   USE kpoints, ONLY: t_kpt, kpoint_type, t_iks
   USE fft_base, ONLY: fft_R2k
-  USE der_base, ONLY: der_R
   IMPLICIT NONE
   TYPE(R_vec_type), INTENT(INOUT)::R_vec
-  COMPLEX(DP), INTENT(IN)::H_R(Nw, Nw, R_vec%nrpt)
-  COMPLEX(DP), INTENT(IN)::A_k_H(3, Nw, Nw, t_kpt%nkpt)
-  COMPLEX(DP), INTENT(OUT)::v_k(3, Nw, Nw, t_kpt%nkpt)
-  COMPLEX(DP)::dH_R(3, Nw, Nw, R_vec%nrpt)
-  COMPLEX(DP)::dH_k_W(3, Nw, Nw, t_kpt%nkpt)
-  COMPLEX(DP)::dH_k_H(3, Nw, Nw, t_kpt%nkpt)
-  INTEGER::ib, irpt, iw, jw, ipol
+  COMPLEX(DP), INTENT(IN)::A_k_H(3, Nw, Nw)
+  COMPLEX(DP), INTENT(IN)::dH_k_H(3, Nw, Nw)
+  COMPLEX(DP), INTENT(OUT)::v_k(3, Nw, Nw)
+  INTEGER::iw, jw
   !
-  CALL der_R(R_vec, H_R, dH_R)
-  ! CALL write_matrix('dH_R.itg', dH_R, R_vec%nrpt, 1)
-  DO t_iks = 1, t_kpt%nkpt
-    CALL fft_R2k(R_vec, dH_R, dH_k_W(:, :, :, t_iks))
-  END DO
-  ! CALL write_matrix('dH_k_W.itg', dH_k_W, t_kpt%nkpt, 1)
-  CALL t_kpt%rotate(dH_k_W, dH_k_H)
-  ! CALL write_matrix('dH_k_H.itg', dH_k_H, t_kpt%nkpt, 1)
-  DO t_iks = 1, t_kpt%nkpt
-    DO iw = 1, Nw
-      DO jw = 1, Nw
-        v_k(:, iw, jw, t_iks) = dH_k_H(:, iw, jw, t_iks) + zi*A_k_H(:, iw, jw, t_iks) &
-                                *(t_kpt%eigval(iw, t_iks) - t_kpt%eigval(jw, t_iks))
-      END DO
+  DO iw = 1, Nw
+    DO jw = 1, Nw
+      v_k(:, iw, jw) = dH_k_H(:, iw, jw) + zi*A_k_H(:, iw, jw) &
+                       *(t_kpt%eigval(iw, t_iks) - t_kpt%eigval(jw, t_iks))
     END DO
   END DO
-  CALL check_Hermiticity(t_kpt%nkpt, 3, v_k, 1.0E-10_DP)
-  ! CALL write_matrix('v_k.itg', v_k, t_kpt%nkpt, 1)
 END SUBROUTINE velocity
