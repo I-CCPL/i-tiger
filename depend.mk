@@ -24,8 +24,9 @@
 ./build/w90_mmn.o : ./build/constants.o ./build/system.o ./build/algo_unique.o ./build/kinds.o ./build/io_global.o ./build/mp_base.o 
 ./build/wannier90.o : ./build/kpoints.o ./build/io_global.o ./build/kinds.o 
 ./build/algo_unique.o : ./build/kinds.o 
+./build/clock.o : ./build/io_global.o ./build/mp_global.o ./build/kinds.o 
 ./build/constants.o : ./build/kinds.o 
-./build/env.o : ./build/mp_global.o ./build/io_global.o 
+./build/env.o : ./build/char.o ./build/mp_global.o ./build/io_global.o 
 ./build/errore.o : ./build/io_global.o ./build/mp_global.o 
 ./build/io_global.o : ./build/mp_base.o ./build/io_param.o 
 ./build/kinds.o : ./build/io_param.o 

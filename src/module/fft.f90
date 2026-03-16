@@ -58,6 +58,7 @@ SUBROUTINE fft_q2R_4d(w90data, R_vec, ldX, X_q, X_R)
   REAL(DP)::phase
   COMPLEX(DP)::exp_phase
   !
+  CALL start_clock('fft_q2R')
   ! WRITE (stdout, '(2X, A)') '- Performing Fourier transform from q to R space...'
   DO irpt = 1, R_vec%nRpt
     X_R(:, :, :, irpt) = zero
@@ -72,6 +73,7 @@ SUBROUTINE fft_q2R_4d(w90data, R_vec, ldX, X_q, X_R)
       END DO
     END DO
   END DO
+  CALL stop_clock('fft_q2R')
 END SUBROUTINE fft_q2R_4d
 
 SUBROUTINE fft_R2k_4d(R_vec, ldX, X_R, X_k)
@@ -90,6 +92,7 @@ SUBROUTINE fft_R2k_4d(R_vec, ldX, X_R, X_k)
   REAL(DP)::phase
   COMPLEX(DP)::exp_phase
   !
+  CALL start_clock('fft_R2k')
   ! WRITE (stdout, '(2X, A)') '- Performing Fourier transform from R to k space...'
   X_k(:, :, :) = zero
   DO irpt = 1, R_vec%nRpt
@@ -101,4 +104,5 @@ SUBROUTINE fft_R2k_4d(R_vec, ldX, X_R, X_k)
       END DO
     END DO
   END DO
+  CALL stop_clock('fft_R2k')
 END SUBROUTINE fft_R2k_4d

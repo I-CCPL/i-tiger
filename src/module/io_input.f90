@@ -24,6 +24,7 @@ CONTAINS
     LOGICAL::tend
     INTEGER::i
     !
+    CALL start_clock('read_input')
     !... Read Namelists
     CALL read_control()
     CALL read_itg()
@@ -47,7 +48,9 @@ CONTAINS
         WRITE (stdout, '(A)') 'Warning: card '//TRIM(card)//' ignored.'
       END SELECT
     END DO
+    !
     WRITE (stdout, '(2X, A)') 'Reading input completed.'
+    CALL stop_clock('read_input')
     CALL write_sep_line()
   END SUBROUTINE read_input
   !

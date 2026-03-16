@@ -17,6 +17,7 @@ CONTAINS
     USE der_base, ONLY: der_R
     INTEGER::inb, ikpt, irpt, jrpt, iw, jw
     REAL(DP)::tmp_vec(3)
+    CALL start_clock('make_R_data')
     !
     CALL R_vec%build_R(w90data)
     !
@@ -53,6 +54,7 @@ CONTAINS
     ALLOCATE (dH_R(3, Nw, Nw, R_vec%nrpt))
     CALL der_R(R_vec, H_R, dH_R)
     ! CALL write_matrix('dH_R.itg', dH_R, R_vec%nrpt, 1)
+    CALL stop_clock('make_R_data')
   END SUBROUTINE make_R_data
   !
   SUBROUTINE clear_R_data()

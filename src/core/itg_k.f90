@@ -20,6 +20,7 @@ CONTAINS
     USE lin_eig_H, ONLY: eig_H
     USE kpoints, ONLY: t_iks
     INTEGER::iw, jw
+    CALL start_clock('make_k_data')
 
     ! Eigenvalues and eigenvectors
     CALL fft_R2k(R_vec, H_R, t_kpt%H_k(:, :))
@@ -38,6 +39,7 @@ CONTAINS
       CALL velocity(R_vec, A_k_H, dH_k_H, v_k)
       CALL OAM_mod_diag(t_kpt%eigval(:, t_iks), v_k, L_k(:, :, t_iks))
     END IF
+    CALL stop_clock('make_k_data')
   END SUBROUTINE make_k_data
   !
   SUBROUTINE write_k_data()
