@@ -3,7 +3,7 @@ SUBROUTINE velocity(R_vec, A_k_H, dH_k_H, v_k)
   USE constants, ONLY: zi
   USE system, ONLY: Nw
   USE R_vector, ONLY: R_vec_type
-  USE kpoints, ONLY: t_kpt, kpoint_type, t_iks
+  USE kpoints, ONLY: t_kpt, t_iks
   USE fft_base, ONLY: fft_R2k
   IMPLICIT NONE
   TYPE(R_vec_type), INTENT(INOUT)::R_vec
@@ -12,8 +12,8 @@ SUBROUTINE velocity(R_vec, A_k_H, dH_k_H, v_k)
   COMPLEX(DP), INTENT(OUT)::v_k(3, Nw, Nw)
   INTEGER::iw, jw
   !
-  DO iw = 1, Nw
-    DO jw = 1, Nw
+  DO jw = 1, Nw
+    DO iw = 1, Nw
       v_k(:, iw, jw) = dH_k_H(:, iw, jw) + zi*A_k_H(:, iw, jw) &
                        *(t_kpt%eigval(iw, t_iks) - t_kpt%eigval(jw, t_iks))
     END DO

@@ -1,6 +1,6 @@
   SUBROUTINE errore(code, routine, msg)
     USE mp_global, ONLY: mp_abort
-    USE io_global, ONLY: stdout, write_bold_line
+    USE io_global, ONLY: stdout
     IMPLICIT NONE
     INTEGER, INTENT(IN) :: code
     CHARACTER(len=*), INTENT(IN)::routine

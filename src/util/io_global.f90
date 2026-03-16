@@ -29,10 +29,15 @@ CONTAINS
     END IF
   END SUBROUTINE check_file
   !
-  SUBROUTINE write_sep_line()
-    WRITE (stdout, '(A)') REPEAT('-', 50)
-  END SUBROUTINE write_sep_line
-  SUBROUTINE write_bold_line()
-    WRITE (stdout, '(A)') REPEAT('=', 50)
-  END SUBROUTINE write_bold_line
 END MODULE io_global
+!
+SUBROUTINE write_sep_line()
+  USE io_global, ONLY: stdout
+  IMPLICIT NONE
+  WRITE (stdout, '(A)') REPEAT('-', 50)
+END SUBROUTINE write_sep_line
+SUBROUTINE write_bold_line()
+  USE io_global, ONLY: stdout
+  IMPLICIT NONE
+  WRITE (stdout, '(A)') REPEAT('=', 50)
+END SUBROUTINE write_bold_line

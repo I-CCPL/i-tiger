@@ -1,11 +1,11 @@
 MODULE env
   USE io_global, ONLY: stdout
   IMPLICIT NONE
-  CHARACTER(LEN=12)::itg_version = 'v0.0.0.21'
+  CHARACTER(LEN=12)::itg_version = 'v0.0.0.22'
 CONTAINS
   SUBROUTINE env_start(date, time)
     USE mp_global, ONLY: mp_start, mp_rank, mp_root, mp_size, mp_barrier
-    USE io_global, ONLY: ionode, stdout, write_bold_line
+    USE io_global, ONLY: ionode, stdout
     CHARACTER(LEN=*), INTENT(IN)::date, time
     CHARACTER(len=10)::cdate, ctime
     !

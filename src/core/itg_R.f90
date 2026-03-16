@@ -16,6 +16,7 @@ CONTAINS
     USE debug_data, ONLY: write_matrix, write_diag_matrix
     USE der_base, ONLY: der_R
     INTEGER::inb, ikpt, irpt, jrpt, iw, jw
+    REAL(DP)::tmp_vec(3)
     !
     CALL R_vec%build_R(w90data)
     !
@@ -28,16 +29,19 @@ CONTAINS
     A_R = zero
     DO inb = 1, w90data%nnb
       CALL fft_q2R(w90data, R_vec, w90data%Aq(:, :, :, :, inb), A_R_b)
+
       ikpt = 0
-      DO irpt = 1, R_vec%nRpt
-        DO jrpt = 1, R_vec%nRpt
+      DO jrpt = 1, R_vec%nRpt
+        tmp_vec = -R_vec%R_red(:, jrpt)
+        DO irpt = 1, R_vec%nRpt
           IF (.NOT. eq_vec_real(R_Vec%R_red(:, irpt), &
-                                -R_vec%R_red(:, jrpt), 1.0D-12)) THEN
+                                tmp_vec, 1.0D-12)) THEN
             CYCLE
           END IF
           ikpt = ikpt + 1
           DO jw = 1, Nw
             DO iw = 1, Nw
+              ! Enforce Hermiticity of A_R
               A_R(:, iw, jw, irpt) = A_R(:, iw, jw, irpt) + (A_R_b(:, iw, jw, irpt) + CONJG(A_R_b(:, jw, iw, jrpt)))/2
             END DO
           END DO

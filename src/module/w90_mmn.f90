@@ -59,7 +59,6 @@ CONTAINS
   MODULE SUBROUTINE build_w90_bvec(self)
     !< Build b vectors, the index map from (nnb, nkpt) to (nnb) and weight factor w_b
     USE kinds, ONLY: eq_real, eq_vec_real
-    USE io_global, ONLY: write_sep_line
     USE algo_unique, ONLY: qsort_perm
     USE system, ONLY: red2cart_recip
     CLASS(w90data_type), INTENT(inout) :: self
@@ -224,6 +223,7 @@ CONTAINS
       END DO
     END DO
 
+    CALL write_sep_line()
   END SUBROUTINE build_w90_Aq
 
 END SUBMODULE w90_mmn

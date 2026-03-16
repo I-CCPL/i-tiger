@@ -80,7 +80,7 @@ CONTAINS
   SUBROUTINE build_Rvecs(self, w90data)
     USE kinds, ONLY: eq_real
     USE constants, ONLY: vec_0
-    USE io_global, ONLY: stdout, write_sep_line
+    USE io_global, ONLY: stdout
     USE wannier90, ONLY: w90data_type
     USE system, ONLY: Nw, red2cart_real, cart2red_real
     CLASS(R_vec_type), INTENT(INOUT)::self
@@ -94,6 +94,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE::w_R(:, :, :)
     ! TODO: cell_expand from input
     INTEGER::cell_expand(3) = (/1, 1, 1/)
+    INTEGER::tmp_arr(3)
     INTEGER::cell_range(3)
     REAL(DP)::dr_nmR0(3) !< R0 + r_m - r_n
     LOGICAL, ALLOCATABLE::bRvec_selected(:)
@@ -103,7 +104,6 @@ CONTAINS
 
     CALL self%build_shift(w90data%wannier_center_cart)
 
-    CALL write_sep_line()
     WRITE (stdout, '(2X, A)') 'Building R vectors for Fourier transform...'
     ! Build T vectors
     cell_range(:) = 2*cell_expand(:) + 1
@@ -112,8 +112,9 @@ CONTAINS
     WRITE (stdout, '(2X, A, I0)') '- Number of considered T vectors: ', ncell
     ALLOCATE (Tvec_red(3, ncell))
     ALLOCATE (Tvec_cart(3, ncell))
+    tmp_arr(:) = -cell_expand(:)
     DO icell = 1, ncell
-      CALL grid_idx2xyz(cell_range, icell, cell_x, cell_y, cell_z, -cell_expand)
+      CALL grid_idx2xyz(cell_range, icell, cell_x, cell_y, cell_z, tmp_arr)
       Tvec_red(:, icell) = (/cell_x*w90data%k_grid(1), &
                              cell_y*w90data%k_grid(2), &
                              cell_z*w90data%k_grid(3)/)

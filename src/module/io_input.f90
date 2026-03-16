@@ -17,7 +17,7 @@ MODULE io_input
 CONTAINS
   SUBROUTINE read_input()
     USE char_mod, ONLY: captital
-    USE io_global, ONLY: stdout, prefix, write_sep_line
+    USE io_global, ONLY: stdout, prefix
     USE wannier90, ONLY: w90data
     CHARACTER(LEN=256)::line
     CHARACTER(LEN=80)::card

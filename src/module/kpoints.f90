@@ -22,6 +22,8 @@ MODULE kpoints
   CONTAINS
     PROCEDURE::divide_k => divide_k_idx
     PROCEDURE::global_k => global_k_idx
+    PROCEDURE::gather => gather_r_data
+    PROCEDURE::receive => rec_r_data
     PROCEDURE::build_path => build_kpath
     PROCEDURE::build_mesh => build_kmesh
     PROCEDURE::rotate => rotate_k
@@ -31,33 +33,33 @@ MODULE kpoints
   !< Interpolated k-point list.
   INTEGER, PUBLIC::t_iks
   !< Interpolated k-point index. ikpt for coarse, iks for dense.
+  INTERFACE
+    MODULE SUBROUTINE divide_k_idx(self)
+      CLASS(kpoint_type), INTENT(INOUT)::self
+    END SUBROUTINE divide_k_idx
+    MODULE FUNCTION global_k_idx(self, k_local) RESULT(k_global)
+      CLASS(kpoint_type), INTENT(IN)::self
+      INTEGER, INTENT(IN)::k_local
+      INTEGER :: k_global
+    END FUNCTION global_k_idx
+    MODULE SUBROUTINE gather_r_data(self, length, f_in, f_out)
+      CLASS(kpoint_type), INTENT(INOUT) :: self
+      INTEGER, INTENT(IN) :: length
+      REAL(DP), INTENT(IN) :: f_in(length, self%nkpt)
+      REAL(DP), INTENT(OUT) :: f_out(length, self%nktot)
+    END SUBROUTINE gather_r_data
+    MODULE SUBROUTINE rec_r_data(self, length, vec)
+      CLASS(kpoint_type), INTENT(INOUT) :: self
+      INTEGER, INTENT(IN) :: length
+      REAL(DP), INTENT(INOUT) :: vec(length, self%nktot)
+    END SUBROUTINE rec_r_data
+  END INTERFACE
+  INTEGER, PUBLIC, ALLOCATABLE::recvcounts(:)
+  INTEGER, PUBLIC, ALLOCATABLE::displs(:)
 CONTAINS
-  SUBROUTINE divide_k_idx(self)
-    USE mp_global, ONLY: mp_rank, mp_size
-    CLASS(kpoint_type), INTENT(INOUT)::self
-    INTEGER::ik_start, ik_end
-    self%nkpt = self%nktot/mp_size
-    IF (mp_rank + 1 <= MOD(self%nktot, mp_size)) THEN
-      self%nkpt = self%nkpt + 1
-    END IF
-
-    ik_start = global_k_idx(self, 1)
-    ik_end = ik_start + self%nkpt - 1
-    self%k_cart(:, 1:self%nkpt) = self%k_cart(:, ik_start:ik_end)
-    self%k_red(:, 1:self%nkpt) = self%k_red(:, ik_start:ik_end)
-  END SUBROUTINE divide_k_idx
-
-  FUNCTION global_k_idx(self, k_local) RESULT(k_global)
-    USE mp_global, ONLY: mp_rank, mp_size
-    CLASS(kpoint_type), INTENT(IN)::self
-    INTEGER, INTENT(IN)::k_local
-    INTEGER :: k_global
-    INTEGER::q, r
-    q = self%nktot/mp_size
-    r = MOD(self%nktot, mp_size)
-    k_global = mp_rank*q + MIN(mp_rank, r) + k_local
-  END FUNCTION global_k_idx
-
+  ! ==================================================
+  !... K point generation
+  ! ==================================================
   SUBROUTINE build_kpath(self, npath, skp, nkpps)
     USE system, ONLY: red2cart_recip
     CLASS(kpoint_type), INTENT(INOUT)::self
@@ -133,10 +135,9 @@ CONTAINS
     self%wk = 1.0_DP/REAL(nktot, DP)
   END SUBROUTINE build_kmesh
 
-  SUBROUTINE rotate_k(self, ikpt, mat_in, mat_out)
+  SUBROUTINE rotate_k(self, mat_in, mat_out)
     USE system, ONLY: Nw
     CLASS(kpoint_type), INTENT(INOUT)::self
-    INTEGER, INTENT(IN)::ikpt
     COMPLEX(DP), INTENT(IN)::mat_in(..)
     COMPLEX(DP), INTENT(OUT)::mat_out(..)
     INTEGER::ldX, ldY

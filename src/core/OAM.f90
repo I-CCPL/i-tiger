@@ -39,20 +39,20 @@ SUBROUTINE OAM_mod_diag(eigval, v_k, L_k)
   REAL(DP), INTENT(IN)::eigval(Nw)
   COMPLEX(DP), INTENT(IN)::v_k(3, Nw, Nw)
   REAL(DP), INTENT(OUT)::L_k(3, Nw)
-  INTEGER::iw, jw, ipol, jpol, kpol
+  INTEGER::iw, kw, ipol, jpol, kpol
   REAL(DP)::dE_mk
   !
   DO iw = 1, Nw
     L_k(:, iw) = 0.0_DP
-    DO jw = 1, Nw
-      dE_mk = eigval(iw) - eigval(jw)
+    DO kw = 1, Nw
+      dE_mk = eigval(iw) - eigval(kw)
       IF (ABS(dE_mk) < OAM_thr) CYCLE
       DO kpol = 1, 3
         ipol = MOD(kpol, 3) + 1
         jpol = MOD(kpol + 1, 3) + 1
         L_k(kpol, iw) = L_k(kpol, iw) &
-                        + AIMAG(v_k(ipol, iw, jw)*v_k(jpol, jw, iw) - &
-                                v_k(jpol, iw, jw)*v_k(ipol, jw, iw)) &
+                        + AIMAG(v_k(ipol, iw, kw)*v_k(jpol, kw, iw) - &
+                                v_k(jpol, iw, kw)*v_k(ipol, kw, iw)) &
                         /dE_mk
       END DO
     END DO

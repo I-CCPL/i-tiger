@@ -138,7 +138,6 @@ CONTAINS
   ! ==================================================
   MODULE SUBROUTINE build_w90_Hq(self)
     !< Build Hamiltonian in q-space
-    USE io_global, ONLY: write_sep_line
     USE lin_eig_H, ONLY: eig_H
     USE mp_base, ONLY: mp_bcast
     USE system, ONLY: Nw
