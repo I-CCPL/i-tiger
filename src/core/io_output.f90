@@ -53,7 +53,7 @@ CONTAINS
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file=fname)
     WRITE (stdout, '(2X, A)') '- Writing OAM data to "'//TRIM(fname)//'"...'
-    WRITE (io_unit, '("#", A)') 'k_pos, OAM'
+    WRITE (io_unit, '("#", A)') 'k_pos, OAM (hbar)'
 
     DO iw = 1, Nw
       DO ikpt = 1, t_kpt%nktot

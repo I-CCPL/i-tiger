@@ -1,6 +1,6 @@
 SUBROUTINE velocity(R_vec, A_k_H, dH_k_H, v_k)
   USE kinds, ONLY: DP
-  USE constants, ONLY: zi
+  USE constants, ONLY: zi, hbar_evfs
   USE system, ONLY: Nw
   USE R_vector, ONLY: R_vec_type
   USE kpoints, ONLY: t_kpt, t_iks
@@ -14,8 +14,9 @@ SUBROUTINE velocity(R_vec, A_k_H, dH_k_H, v_k)
   !
   DO jw = 1, Nw
     DO iw = 1, Nw
-      v_k(:, iw, jw) = dH_k_H(:, iw, jw) + zi*A_k_H(:, iw, jw) &
-                       *(t_kpt%eigval(iw, t_iks) - t_kpt%eigval(jw, t_iks))
+      v_k(:, iw, jw) = (dH_k_H(:, iw, jw) + zi*A_k_H(:, iw, jw) &
+                        *(t_kpt%eigval(iw, t_iks) - t_kpt%eigval(jw, t_iks))) &
+                       /hbar_evfs
     END DO
   END DO
 END SUBROUTINE velocity

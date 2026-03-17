@@ -4,9 +4,11 @@ MODULE itg_k
   USE itg_R, ONLY: R_vec
   USE kpoints, ONLY: t_kpt
   IMPLICIT NONE
-  COMPLEX(DP), ALLOCATABLE::A_k_W(:, :, :), A_k_H(:, :, :)
+  !... X_bar = U^+ X U
+  !... X_k_H = X_bar only for Gauge-covariant X
+  COMPLEX(DP), ALLOCATABLE::A_k_W(:, :, :), A_bar(:, :, :)
   !< Berry connection (3, Nw, Nw)
-  COMPLEX(DP), ALLOCATABLE::dH_k_W(:, :, :), dH_k_H(:, :, :)
+  COMPLEX(DP), ALLOCATABLE::dH_k_W(:, :, :), dH_bar(:, :, :)
   !< Derivative of Hamiltonian (3, Nw, Nw)
   COMPLEX(DP), ALLOCATABLE::v_k(:, :, :)
   !< Velocity matrix (3, Nw, Nw)
@@ -32,11 +34,11 @@ CONTAINS
     IF (lOAM) THEN
       ! Derivative of Hamiltonian
       CALL fft_R2k(R_vec, dH_R, dH_k_W)
-      CALL t_kpt%rotate(dH_k_W, dH_k_H)
+      CALL t_kpt%rotate(dH_k_W, dH_bar)
       ! Berry connection
       CALL fft_R2k(R_vec, A_R, A_k_W)
-      CALL t_kpt%rotate(A_k_W, A_k_H)
-      CALL velocity(R_vec, A_k_H, dH_k_H, v_k)
+      CALL t_kpt%rotate(A_k_W, A_bar)
+      CALL velocity(R_vec, A_bar, dH_bar, v_k)
       CALL OAM_mod_diag(t_kpt%eigval(:, t_iks), v_k, L_k(:, :, t_iks))
     END IF
     CALL stop_clock('make_k_data')
@@ -84,9 +86,9 @@ CONTAINS
     ALLOCATE (t_kpt%eigval(Nw, t_kpt%nkpt))
     ALLOCATE (t_kpt%eigvec(Nw, Nw))
     ALLOCATE (A_k_W(3, Nw, Nw))
-    ALLOCATE (A_k_H(3, Nw, Nw))
+    ALLOCATE (A_bar(3, Nw, Nw))
     ALLOCATE (dH_k_W(3, Nw, Nw))
-    ALLOCATE (dH_k_H(3, Nw, Nw))
+    ALLOCATE (dH_bar(3, Nw, Nw))
     ALLOCATE (v_k(3, Nw, Nw))
     ALLOCATE (L_k(3, Nw, t_kpt%nkpt))
     L_k = 0.0_DP
@@ -95,9 +97,9 @@ CONTAINS
   !
   SUBROUTINE clear_k_data()
     IF (ALLOCATED(A_k_W)) DEALLOCATE (A_k_W)
-    IF (ALLOCATED(A_k_H)) DEALLOCATE (A_k_H)
+    IF (ALLOCATED(A_bar)) DEALLOCATE (A_bar)
     IF (ALLOCATED(dH_k_W)) DEALLOCATE (dH_k_W)
-    IF (ALLOCATED(dH_k_H)) DEALLOCATE (dH_k_H)
+    IF (ALLOCATED(dH_bar)) DEALLOCATE (dH_bar)
     IF (ALLOCATED(v_k)) DEALLOCATE (v_k)
     IF (ALLOCATED(L_k)) DEALLOCATE (L_k)
   END SUBROUTINE clear_k_data

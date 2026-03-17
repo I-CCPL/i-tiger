@@ -1,15 +1,17 @@
 SUBROUTINE OAM_mod(eigval, v_k, L_k)
+  !< OAM [hbar]
   USE kinds, ONLY: DP
-  USE constants, ONLY: zero, zi
+  USE constants, ONLY: zero, zi, m_e
   USE io_input, ONLY: OAM_thr
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)
   COMPLEX(DP), INTENT(IN)::v_k(3, Nw, Nw)
   COMPLEX(DP), INTENT(OUT)::L_k(3, Nw, Nw)
-  REAL(DP)::dE_mk, dE_nk
+  REAL(DP)::dE_mk, dE_nk, factor
   INTEGER::iw, jw, kw, ipol, jpol, kpol
   !
+  factor = -zi*m_e/2
   DO jw = 1, Nw
     L_k(:, :, jw) = zero
     DO kw = 1, Nw
@@ -22,9 +24,9 @@ SUBROUTINE OAM_mod(eigval, v_k, L_k)
           ipol = MOD(kpol, 3) + 1
           jpol = MOD(kpol + 1, 3) + 1
           L_k(kpol, iw, jw) = L_k(kpol, iw, jw) &
-                              - zi*(v_k(ipol, iw, kw)*v_k(jpol, kw, jw) - &
-                                    v_k(jpol, iw, kw)*v_k(ipol, kw, jw)) &
-                              *(1/dE_nk + 1/dE_mk)/2
+                              + factor*(v_k(ipol, iw, kw)*v_k(jpol, kw, jw) - &
+                                        v_k(jpol, iw, kw)*v_k(ipol, kw, jw)) &
+                              *(1/dE_nk + 1/dE_mk)
         END DO
       END DO
     END DO
@@ -32,7 +34,9 @@ SUBROUTINE OAM_mod(eigval, v_k, L_k)
 END SUBROUTINE OAM_mod
 
 SUBROUTINE OAM_mod_diag(eigval, v_k, L_k)
+  !< OAM [hbar] for diagonal elements
   USE kinds, ONLY: DP
+  USE constants, ONLY: zero, zi, m_e
   USE io_input, ONLY: OAM_thr
   USE system, ONLY: Nw
   IMPLICIT NONE
@@ -40,8 +44,9 @@ SUBROUTINE OAM_mod_diag(eigval, v_k, L_k)
   COMPLEX(DP), INTENT(IN)::v_k(3, Nw, Nw)
   REAL(DP), INTENT(OUT)::L_k(3, Nw)
   INTEGER::iw, kw, ipol, jpol, kpol
-  REAL(DP)::dE_mk
+  REAL(DP)::factor, dE_mk
   !
+  factor = m_e
   DO iw = 1, Nw
     L_k(:, iw) = 0.0_DP
     DO kw = 1, Nw
@@ -51,8 +56,8 @@ SUBROUTINE OAM_mod_diag(eigval, v_k, L_k)
         ipol = MOD(kpol, 3) + 1
         jpol = MOD(kpol + 1, 3) + 1
         L_k(kpol, iw) = L_k(kpol, iw) &
-                        + AIMAG(v_k(ipol, iw, kw)*v_k(jpol, kw, iw) - &
-                                v_k(jpol, iw, kw)*v_k(ipol, kw, iw)) &
+                        + factor*AIMAG(v_k(ipol, iw, kw)*v_k(jpol, kw, iw) - &
+                                       v_k(jpol, iw, kw)*v_k(ipol, kw, iw)) &
                         /dE_mk
       END DO
     END DO
