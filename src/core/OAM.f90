@@ -2,7 +2,7 @@ SUBROUTINE OAM_mod(eigval, v_k, L_k)
   !< OAM [hbar]
   USE kinds, ONLY: DP
   USE constants, ONLY: zero, zi, m_e
-  USE io_input, ONLY: OAM_thr
+  USE io_input, ONLY: dE_thr
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)
@@ -16,10 +16,10 @@ SUBROUTINE OAM_mod(eigval, v_k, L_k)
     L_k(:, :, jw) = zero
     DO kw = 1, Nw
       dE_mk = eigval(jw) - eigval(kw)
-      IF (ABS(dE_mk) < OAM_thr) CYCLE
+      IF (ABS(dE_mk) < dE_thr) CYCLE
       DO iw = 1, Nw
         dE_nk = eigval(iw) - eigval(kw)
-        IF (ABS(dE_nk) < OAM_thr) CYCLE
+        IF (ABS(dE_nk) < dE_thr) CYCLE
         DO kpol = 1, 3
           ipol = MOD(kpol, 3) + 1
           jpol = MOD(kpol + 1, 3) + 1
@@ -37,7 +37,7 @@ SUBROUTINE OAM_mod_diag(eigval, v_k, L_k)
   !< OAM [hbar] for diagonal elements
   USE kinds, ONLY: DP
   USE constants, ONLY: zero, zi, m_e
-  USE io_input, ONLY: OAM_thr
+  USE io_input, ONLY: dE_thr
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)
@@ -51,7 +51,7 @@ SUBROUTINE OAM_mod_diag(eigval, v_k, L_k)
     L_k(:, iw) = 0.0_DP
     DO kw = 1, Nw
       dE_mk = eigval(iw) - eigval(kw)
-      IF (ABS(dE_mk) < OAM_thr) CYCLE
+      IF (ABS(dE_mk) < dE_thr) CYCLE
       DO kpol = 1, 3
         ipol = MOD(kpol, 3) + 1
         jpol = MOD(kpol + 1, 3) + 1

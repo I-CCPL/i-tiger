@@ -6,6 +6,8 @@ MODULE io_output
   IMPLICIT NONE
   LOGICAL, PRIVATE::binit = .FALSE.
   REAL(DP), ALLOCATABLE::k_pos(:)
+
+  PRIVATE::writing_info
 CONTAINS
   SUBROUTINE io_output_init()
     USE kpoints, ONLY: t_kpt
@@ -23,6 +25,11 @@ CONTAINS
     binit = .TRUE.
   END SUBROUTINE io_output_init
   !
+  SUBROUTINE writing_info(data_name, fname)
+    CHARACTER(LEN=*), INTENT(IN) :: data_name, fname
+    WRITE (stdout, '(2X, A, A)') '- Writing '//TRIM(data_name)//' data to "'//TRIM(fname)//'"...'
+  END SUBROUTINE writing_info
+  !
   SUBROUTINE write_band(fname, eigval)
     USE io_global, ONLY: stdout
     CHARACTER(LEN=*), INTENT(IN) :: fname
@@ -32,7 +39,7 @@ CONTAINS
     !
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file=fname)
-    WRITE (stdout, '(2X, A)') '- Writing band structure data to "'//TRIM(fname)//'"...'
+    CALL writing_info('band structure', fname)
     WRITE (io_unit, '("#", A)') 'k_pos, eigenvalue (eV)'
 
     DO iw = 1, Nw
@@ -52,7 +59,7 @@ CONTAINS
     !
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file=fname)
-    WRITE (stdout, '(2X, A)') '- Writing OAM data to "'//TRIM(fname)//'"...'
+    CALL writing_info('OAM', fname)
     WRITE (io_unit, '("#", A)') 'k_pos, OAM (hbar)'
 
     DO iw = 1, Nw
@@ -63,4 +70,23 @@ CONTAINS
     END DO
     CLOSE (io_unit)
   END SUBROUTINE write_OAM
+  !
+  SUBROUTINE write_Berry(fname, O_k)
+    CHARACTER(LEN=*), INTENT(IN) :: fname
+    REAL(DP), INTENT(IN) :: O_k(3, t_kpt%nktot)
+    INTEGER :: io_unit, ikpt
+    IF (.NOT. ionode) RETURN
+    !
+    io_unit = get_free_unit()
+    OPEN (unit=io_unit, file=fname)
+    CALL writing_info('Berry curvature', fname)
+    WRITE (io_unit, '("#", A)') 'k_pos, Berry  (arb.)'
+
+    DO ikpt = 1, t_kpt%nktot
+      WRITE (io_unit, '(F10.4, 3(1X, ES12.4E3))') k_pos(ikpt), O_k(:, ikpt)
+    END DO
+    WRITE (io_unit, *) ! blank line
+    CLOSE (io_unit)
+  END SUBROUTINE write_Berry
+
 END MODULE io_output

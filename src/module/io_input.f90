@@ -12,7 +12,9 @@ MODULE io_input
   ! INTEGER::dos_Emin
   ! INTEGER::dos_Emax
   LOGICAL::lOAM = .FALSE.
-  REAL(DP)::OAM_thr = 1D-8
+  LOGICAL::lBerry = .FALSE.
+  REAL(DP)::dE_thr = 1D-8
+  REAL(DP)::Ef = 0.0_DP
   !
 CONTAINS
   SUBROUTINE read_input()
@@ -76,17 +78,18 @@ CONTAINS
   END SUBROUTINE read_control
   !
   SUBROUTINE read_itg()
-    NAMELIST /itg/ lBand, lOAM, OAM_thr
+    NAMELIST /itg/ lBand, lOAM, lBerry, dE_thr, Ef
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) THEN
       READ (stdin, nml=itg)
-      IF (lOAM) THEN
-        WRITE (stdout, '(2X, A, ES11.4)') '- OAM with threshold: ', OAM_thr
-      END IF
+      WRITE (stdout, '(2X, A, ES11.4)') '- dE threshold: ', dE_thr
+      WRITE (stdout, '(2X, A, ES11.4)') '- Fermi energy: ', Ef
     END IF
     CALL mp_bcast(lBand)
     CALL mp_bcast(lOAM)
-    CALL mp_bcast(OAM_thr)
+    CALL mp_bcast(lBerry)
+    CALL mp_bcast(dE_thr)
+    CALL mp_bcast(Ef)
   END SUBROUTINE read_itg
   !
   SUBROUTINE read_line(line, tend)
@@ -109,6 +112,7 @@ CONTAINS
   SUBROUTINE read_kpts(line)
     USE char_mod, ONLY: match
     USE kpoints, ONLY: t_kpt
+    USE system, ONLY: red2cart_recip
     CHARACTER(LEN=256), INTENT(INOUT)::line
     LOGICAL::tend
     INTEGER::i
@@ -118,6 +122,7 @@ CONTAINS
     INTEGER::npath
     REAL(DP), ALLOCATABLE::skp(:, :)
     INTEGER, ALLOCATABLE::nkpps(:)
+    REAL(DP)::dk_red(3), dk_cart(3), k_pos
     !
     WRITE (stdout, '(2X, A)') 'Reading K_POINTS Cards...'
     IF (match('AUTOMATIC', line)) THEN
@@ -155,6 +160,16 @@ CONTAINS
       !
       WRITE (stdout, '(2X, A)') '- k-points along the path'
       WRITE (stdout, '(2X, A, I0)') '- Total k-points: ', t_kpt%nktot
+
+      k_pos = 0.0_DP
+      WRITE (stdout, 5413) 1, k_pos
+      DO i = 2, npath
+        dk_red = skp(:, i) - skp(:, i - 1)
+        CALL red2cart_recip(dk_red, dk_cart)
+        k_pos = k_pos + SQRT(SUM(dk_cart**2))
+        WRITE (stdout, 5413) i, k_pos
+      END DO
+5413  FORMAT(2X, '- high sym. k pos(', I0, '): ', F10.4)
       !
     END IF
 

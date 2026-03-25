@@ -74,6 +74,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE::w_shell(:)
     REAL(DP)::I(9)
     INTEGER::ldim, lwork, info, idx, jdx, kdx
+    CHARACTER(LEN=256) :: msg
 
     !... Build bvec_red
     WRITE (stdout, '(2X, A)') 'Building b vectors...'
@@ -106,11 +107,22 @@ CONTAINS
         bvec_red(:, 1) = REAL(self%neighbour_g(:, inb, ikpt), DP) &
                          + self%kpts%k_red(:, iknb) - self%kpts%k_red(:, ikpt)
         DO jnb = 1, self%nnb
-          IF (eq_vec_real(bvec_red(:, 1), self%bvec_red(:, jnb), 1.0D-12)) THEN
+          IF (eq_vec_real(bvec_red(:, 1), self%bvec_red(:, jnb), 1.0D-10)) THEN
             self%bvec_index(inb, ikpt) = jnb
             EXIT
           END IF
         END DO
+      END DO
+    END DO
+
+    ! Check if all bvecs are mapped
+    ! Try to reduce the tolerance if not mapped.
+    DO ikpt = 1, self%kpts%nkpt
+      DO inb = 1, self%nnb
+        IF (self%bvec_index(inb, ikpt) == 0) THEN
+          WRITE (msg, '(A, I4, A, I4)') 'Failed to find bvec index for inb=', inb, ', ikpt=', ikpt
+          CALL errore(1, 'build_w90_bvec', TRIM(msg))
+        END IF
       END DO
     END DO
 

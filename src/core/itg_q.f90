@@ -1,5 +1,5 @@
 MODULE itg_q
-  USE wannier90, ONLY: w90data
+  USE wannier90, ONLY: w90data, lreq_mmn
   IMPLICIT NONE
 CONTAINS
   SUBROUTINE make_q_data()
@@ -8,8 +8,10 @@ CONTAINS
     !
     CALL w90data%build_Hq()
     ! CALL write_matrix('H_q.itg', w90data%Hq, w90data%kpts%nkpt, 1)
-    CALL w90data%build_bvec()
-    CALL w90data%build_Aq()
+    IF (lreq_mmn) THEN
+      CALL w90data%build_bvec()
+      CALL w90data%build_Aq()
+    END IF
     !
     CALL stop_clock('make_q_data')
   END SUBROUTINE make_q_data
