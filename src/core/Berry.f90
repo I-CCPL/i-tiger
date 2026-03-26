@@ -1,5 +1,5 @@
 SUBROUTINE Berry_mod(eigval, v_k, O_k)
-  USE constants, ONLY: DP
+  USE constants, ONLY: DP, hbar_eVfs
   USE system, ONLY: Nw
   USE io_input, ONLY: dE_thr
   IMPLICIT NONE
@@ -7,7 +7,8 @@ SUBROUTINE Berry_mod(eigval, v_k, O_k)
   COMPLEX(DP), INTENT(IN)::v_k(3, Nw, Nw)
   REAL(DP), INTENT(OUT)::O_k(3, Nw)
   INTEGER::iw1, iw2, ipol, jpol, kpol
-  REAL(DP)::denom
+  REAL(DP)::denom, factor
+  factor = -2.0_DP*(hbar_eVfs**2)
   DO iw1 = 1, Nw
     O_k(:, iw1) = 0.0_DP
     DO iw2 = 1, Nw
@@ -16,7 +17,7 @@ SUBROUTINE Berry_mod(eigval, v_k, O_k)
       DO kpol = 1, 3
         ipol = MOD(kpol, 3) + 1
         jpol = MOD(kpol + 1, 3) + 1
-        O_k(kpol, iw1) = O_k(kpol, iw1) - 2.0_DP*DIMAG(v_k(ipol, iw1, iw2)*v_k(jpol, iw2, iw1)/(denom**2))
+        O_k(kpol, iw1) = O_k(kpol, iw1) + factor*DIMAG(v_k(ipol, iw1, iw2)*v_k(jpol, iw2, iw1)/(denom**2))
       END DO
     END DO
   END DO

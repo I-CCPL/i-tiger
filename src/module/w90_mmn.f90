@@ -107,7 +107,7 @@ CONTAINS
         bvec_red(:, 1) = REAL(self%neighbour_g(:, inb, ikpt), DP) &
                          + self%kpts%k_red(:, iknb) - self%kpts%k_red(:, ikpt)
         DO jnb = 1, self%nnb
-          IF (eq_vec_real(bvec_red(:, 1), self%bvec_red(:, jnb), 1.0D-10)) THEN
+          IF (eq_vec_real(bvec_red(:, 1), self%bvec_red(:, jnb), 1.0D-6)) THEN
             self%bvec_index(inb, ikpt) = jnb
             EXIT
           END IF

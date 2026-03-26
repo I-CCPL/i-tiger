@@ -80,7 +80,7 @@ CONTAINS
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file=fname)
     CALL writing_info('Berry curvature', fname)
-    WRITE (io_unit, '("#", A)') 'k_pos, Berry  (arb.)'
+    WRITE (io_unit, '("#", A)') 'k_pos, Berry  (Ang^2)'
 
     DO ikpt = 1, t_kpt%nktot
       WRITE (io_unit, '(F10.4, 3(1X, ES12.4E3))') k_pos(ikpt), O_k(:, ikpt)

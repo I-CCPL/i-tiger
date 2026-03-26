@@ -1,7 +1,7 @@
 MODULE env
   USE io_global, ONLY: stdout
   IMPLICIT NONE
-  CHARACTER(LEN=12)::itg_version = 'v0.0.0.26'
+  CHARACTER(LEN=12)::itg_version = 'v0.0.0.27'
 CONTAINS
   SUBROUTINE env_start(date, time)
     USE mp_global, ONLY: mp_start, mp_rank, mp_root, mp_size, mp_barrier
