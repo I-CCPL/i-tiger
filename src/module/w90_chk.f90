@@ -11,7 +11,7 @@ CONTAINS
     CLASS(w90data_type), INTENT(INOUT) :: self
     TYPE(chk_dum_type), INTENT(OUT) :: chk_dum
     !
-    INTEGER::io_unit, ios, ikpt
+    INTEGER::io_unit, ios, ikpt, i
     INTEGER::ndw
     !
     WRITE (stdout, '(2X, A)') 'Reading .chk file...'
@@ -36,11 +36,11 @@ CONTAINS
         READ (io_unit)
       END IF
 
-      READ (io_unit) real_lattice
+      READ (io_unit) (real_lattice(i, :), i=1, 3)
       WRITE (stdout, '(2X, A, 3F12.6)') '- real_lattice:', real_lattice(:, 1)
       WRITE (stdout, '(2X, A, 3F12.6)') '               ', real_lattice(:, 2)
       WRITE (stdout, '(2X, A, 3F12.6)') '               ', real_lattice(:, 3)
-      READ (io_unit) recip_lattice
+      READ (io_unit) (recip_lattice(i, :), i=1, 3)
       WRITE (stdout, '(2X, A, 3F12.6)') '- recip_lattice:', recip_lattice(:, 1)
       WRITE (stdout, '(2X, A, 3F12.6)') '                ', recip_lattice(:, 2)
       WRITE (stdout, '(2X, A, 3F12.6)') '                ', recip_lattice(:, 3)
