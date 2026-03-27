@@ -88,7 +88,7 @@ CONTAINS
       bvec_red(:, inb) = REAL(self%neighbour_g(:, inb, ikpt), DP) &
                          + self%kpts%k_red(:, iknb) - self%kpts%k_red(:, ikpt)
       CALL red2cart_recip(bvec_red(:, inb), bvec_cart)
-      bvec_length(inb) = SQRT(SUM(bvec_cart(:)**2))
+      bvec_length(inb) = NORM2(bvec_cart)
     END DO
     ! Sort by vector length
     CALL qsort_perm(bvec_length, bvec_sort_index)

@@ -15,6 +15,15 @@ MODULE io_input
   LOGICAL::lBerry = .FALSE.
   REAL(DP)::dE_thr = 1D-8
   REAL(DP)::Ef = 0.0_DP
+
+  !... Shift current calculation parameters
+  !... Frequency: eV units from input
+  LOGICAL::lShift = .FALSE.
+  REAL(DP)::shift_wmin = 0.0_DP
+  REAL(DP)::shift_wmax = 0.0_DP
+  REAL(DP)::shift_dw = 0.0_DP
+  INTEGER::shift_nw
+  REAL(DP)::shift_eta = 0.01_DP
   !
 CONTAINS
   SUBROUTINE read_input()
@@ -78,18 +87,48 @@ CONTAINS
   END SUBROUTINE read_control
   !
   SUBROUTINE read_itg()
-    NAMELIST /itg/ lBand, lOAM, lBerry, dE_thr, Ef
+    USE system, ONLY: dim
+    NAMELIST /itg/ lBand, lOAM, lBerry, dE_thr, Ef, &
+      dim, lShift, shift_wmin, shift_wmax, shift_dw, shift_eta
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) THEN
       READ (stdin, nml=itg)
       WRITE (stdout, '(2X, A, ES11.4)') '- dE threshold: ', dE_thr
       WRITE (stdout, '(2X, A, ES11.4)') '- Fermi energy: ', Ef
+      WRITE (stdout, '(2X, A, 1X, I0)') '- Dimension: ', dim
+      IF (lShift) THEN
+        shift_nw = CEILING((shift_wmax - shift_wmin)/shift_dw) + 1
+        WRITE (stdout, '(2X, A, 2(1X, ES11.4))') '- Shift energy window (eV): ', shift_wmin, shift_wmax
+        WRITE (stdout, '(2X, A, 1X, ES11.4)') '- Shift broadening (eV): ', shift_eta
+        WRITE (stdout, '(2X, A, 1X, ES11.4)') '- Shift dw (eV): ', shift_dw
+        WRITE (stdout, '(2X, A, 1X, I0)') '- Shift w points: ', shift_nw
+      END IF
     END IF
     CALL mp_bcast(lBand)
     CALL mp_bcast(lOAM)
     CALL mp_bcast(lBerry)
     CALL mp_bcast(dE_thr)
     CALL mp_bcast(Ef)
+    CALL mp_bcast(dim)
+    IF (dim < 1 .OR. dim > 3) THEN
+      CALL errore(1, 'read_itg', 'dimensionality must be 1, 2, or 3')
+    END IF
+    CALL mp_bcast(lShift)
+    IF (lShift) THEN
+      CALL mp_bcast(shift_wmin)
+      CALL mp_bcast(shift_wmax)
+      CALL mp_bcast(shift_eta)
+      CALL mp_bcast(shift_dw)
+      CALL mp_bcast(shift_nw)
+      IF (shift_wmax <= shift_wmin) &
+        CALL errore(1, 'read_itg', 'shift_wmax must be greater than shift_wmin')
+      IF (shift_dw <= 0.0_DP) &
+        CALL errore(1, 'read_itg', 'shift_dw must be positive')
+      IF (shift_nw <= 0) &
+        CALL errore(1, 'read_itg', 'shift_nw must be positive')
+      IF (shift_eta <= 0.0_DP) &
+        CALL errore(1, 'read_itg', 'shift_eta must be positive')
+    END IF
   END SUBROUTINE read_itg
   !
   SUBROUTINE read_line(line, tend)
@@ -142,6 +181,10 @@ CONTAINS
       WRITE (stdout, '(2X,A, 1X, I0)') '- Total k-points: ', t_kpt%nktot
       !
     ELSE IF (match('CRYSTAL_B', line)) THEN
+      IF (lShift) CALL errore(1, 'read_kpts', &
+                              'shift current requires a uniform k-mesh.' &
+                              //' Use AUTOMATIC keyword.')
+
       CALL read_line(line, tend)
       IF (tend) GOTO 10
       READ (line, *, END=10) npath
@@ -166,14 +209,12 @@ CONTAINS
       DO i = 2, npath
         dk_red = skp(:, i) - skp(:, i - 1)
         CALL red2cart_recip(dk_red, dk_cart)
-        k_pos = k_pos + SQRT(SUM(dk_cart**2))
+        k_pos = k_pos + NORM2(dk_cart)
         WRITE (stdout, 5413) i, k_pos
       END DO
 5413  FORMAT(2X, '- high sym. k pos(', I0, '): ', F10.4)
       !
     END IF
-
-    ! CALL t_kpt%divide_k()
 
     RETURN
 10  CALL errore(1, 'read_kpts', 'end of file')

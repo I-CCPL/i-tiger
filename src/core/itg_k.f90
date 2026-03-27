@@ -10,7 +10,7 @@ MODULE itg_k
   !< Berry connection (3, Nw, Nw)
   COMPLEX(DP), ALLOCATABLE::dH_k_W(:, :, :), dH_bar(:, :, :)
   !< Derivative of Hamiltonian (3, Nw, Nw)
-  COMPLEX(DP), ALLOCATABLE::v_k(:, :, :)
+  COMPLEX(DP), ALLOCATABLE::v_bar(:, :, :)
   !< Velocity matrix (3, Nw, Nw)
   REAL(DP), ALLOCATABLE::L_k(:, :, :)
   !< OAM matrix (3, Nw, nkpt)
@@ -18,15 +18,18 @@ MODULE itg_k
   !< Berry curvature matrix (3, Nw)
   REAL(DP), ALLOCATABLE::berry(:, :)
   !< Berry curvature (3, nkpt)
+  REAL(DP), ALLOCATABLE::shift_w(:, :, :)
+  REAL(DP), ALLOCATABLE::shift_hw(:)
 CONTAINS
   SUBROUTINE make_k_data()
     USE itg_R, ONLY: H_R, A_R, dH_R
     USE fft_base, ONLY: fft_R2k
-    USE io_input, ONLY: lOAM, lBerry
+    USE io_input, ONLY: lOAM, lBerry, lShift
     USE lin_eig_H, ONLY: eig_H
     USE wannier90, ONLY: lreq_mmn
     USE kpoints, ONLY: t_iks
-    INTEGER::iw, jw
+    USE NLO, ONLY: shift_current
+    INTEGER::iw
     CALL start_clock('make_k_data')
 
     ! Eigenvalues and eigenvectors
@@ -43,23 +46,28 @@ CONTAINS
       ! Berry connection
       CALL fft_R2k(R_vec, A_R, A_k_W)
       CALL t_kpt%rotate(A_k_W, A_bar)
-      CALL velocity(R_vec, A_bar, dH_bar, v_k)
+      CALL velocity(R_vec, A_bar, dH_bar, v_bar)
     END IF
 
     IF (lOAM) THEN
-      CALL OAM_mod_diag(t_kpt%eigval(:, t_iks), v_k, L_k(:, :, t_iks))
+      CALL OAM_mod_diag(t_kpt%eigval(:, t_iks), v_bar, L_k(:, :, t_iks))
     END IF
     IF (lBerry) THEN
-      CALL Berry_mod(t_kpt%eigval(:, t_iks), v_k, O_k(:, :))
+      CALL Berry_mod(t_kpt%eigval(:, t_iks), v_bar, O_k(:, :))
       CALL Berry_sum(t_kpt%eigval(:, t_iks), O_k(:, :), berry(:, t_iks))
+    END IF
+    IF (lShift) THEN
+      CALL shift_current(t_kpt%eigval(:, t_iks), A_bar, v_bar, shift_hw, shift_w)
     END IF
     CALL stop_clock('make_k_data')
   END SUBROUTINE make_k_data
   !
   SUBROUTINE write_k_data()
     USE io_global, ONLY: stdout, ionode
-    USE io_input, ONLY: lBand, lOAM, lBerry
-    USE io_output, ONLY: io_output_init, write_band, write_OAM, write_Berry
+    USE io_input, ONLY: lBand, lOAM, lBerry, lShift
+    USE io_output, ONLY: io_output_init, write_band, write_OAM, write_Berry, write_shift
+    USE mp_base, ONLY: mp_sum
+    USE system, ONLY: dim
     REAL(DP), ALLOCATABLE::eigval(:, :)
     REAL(DP), ALLOCATABLE::L_k_tot(:, :, :)
     REAL(DP), ALLOCATABLE::berry_tot(:, :)
@@ -100,29 +108,48 @@ CONTAINS
       DEALLOCATE (berry_tot)
     END IF
 
+    IF (lShift) THEN
+      CALL mp_sum(shift_w)
+      shift_w = shift_w*t_kpt%wk
+      CALL write_shift('itg.shift', shift_hw, shift_w)
+    END IF
+
     CALL write_sep_line()
   END SUBROUTINE write_k_data
   !
   SUBROUTINE allocate_k_data()
     USE system, ONLY: Nw
-    USE io_input, ONLY: lOAM, lBerry
+    USE io_input, ONLY: lOAM, lBerry, lShift, shift_nw, shift_wmin, shift_dw
+    INTEGER::i
     CALL t_kpt%divide_k()
     ALLOCATE (t_kpt%H_k(Nw, Nw))
     ALLOCATE (t_kpt%eigval(Nw, t_kpt%nkpt))
     ALLOCATE (t_kpt%eigvec(Nw, Nw))
 
-    IF (lOAM .OR. lBerry) THEN
+    IF (lOAM .OR. lBerry .OR. lShift) THEN
       ALLOCATE (A_k_W(3, Nw, Nw))
       ALLOCATE (A_bar(3, Nw, Nw))
       ALLOCATE (dH_k_W(3, Nw, Nw))
       ALLOCATE (dH_bar(3, Nw, Nw))
-      ALLOCATE (v_k(3, Nw, Nw))
+      ALLOCATE (v_bar(3, Nw, Nw))
+    END IF
+    IF (lShift) THEN
+      ALLOCATE (shift_w(3, 6, shift_nw))
+      ALLOCATE (shift_hw(shift_nw))
+      IF (shift_nw == 1) THEN
+        shift_hw(1) = shift_wmin
+      ELSE
+        DO i = 1, shift_nw
+          shift_hw(i) = shift_wmin + REAL(i - 1, DP)*shift_dw
+        END DO
+      END IF
     END IF
 
     IF (lOAM) ALLOCATE (L_k(3, Nw, t_kpt%nkpt))
     IF (lBerry) ALLOCATE (O_k(3, Nw))
     IF (lBerry) ALLOCATE (berry(3, t_kpt%nkpt))
-    L_k = 0.0_DP
+    IF (ALLOCATED(L_k)) L_k = 0.0_DP
+    IF (ALLOCATED(shift_w)) shift_w = 0.0_DP
     t_kpt%eigval = 0.0_DP
   END SUBROUTINE allocate_k_data
   !
@@ -131,9 +158,11 @@ CONTAINS
     IF (ALLOCATED(A_bar)) DEALLOCATE (A_bar)
     IF (ALLOCATED(dH_k_W)) DEALLOCATE (dH_k_W)
     IF (ALLOCATED(dH_bar)) DEALLOCATE (dH_bar)
-    IF (ALLOCATED(v_k)) DEALLOCATE (v_k)
+    IF (ALLOCATED(v_bar)) DEALLOCATE (v_bar)
     IF (ALLOCATED(L_k)) DEALLOCATE (L_k)
     IF (ALLOCATED(O_k)) DEALLOCATE (O_k)
     IF (ALLOCATED(berry)) DEALLOCATE (berry)
+    IF (ALLOCATED(shift_w)) DEALLOCATE (shift_w)
+    IF (ALLOCATED(shift_hw)) DEALLOCATE (shift_hw)
   END SUBROUTINE clear_k_data
 END MODULE itg_k
