@@ -5,7 +5,7 @@ BIN_DIR ?= ./bin
 TARGET ?= $(BIN_DIR)/i-tiger.x
 TMP_FILE ?= /tmp/makedepf90_$(USER)
 
-LD ?= mpiifort
+LD := mpiifort
 LDFLAGS ?= 
 LDLIBS ?= $(BLAS_LIBS)
 
