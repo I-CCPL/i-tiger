@@ -88,6 +88,27 @@ CONTAINS
     CLOSE (io_unit)
   END SUBROUTINE write_Berry
   !
+  SUBROUTINE write_Berry_k(fname, berry_k)
+    CHARACTER(LEN=*), INTENT(IN) :: fname
+    REAL(DP), INTENT(IN) :: berry_k(3, Nw, t_kpt%nktot)
+    INTEGER :: io_unit, ikpt, iw
+    IF (.NOT. ionode) RETURN
+    !
+    io_unit = get_free_unit()
+    OPEN (unit=io_unit, file=fname)
+    CALL writing_info('Berry curvature', fname)
+    WRITE (io_unit, '("#", A)') 'k_pos, Berry  (arb.)'
+
+    DO iw = 1, Nw
+      DO ikpt = 1, t_kpt%nktot
+        WRITE (io_unit, '(F10.4, 3(1X, ES12.4E3))') k_pos(ikpt), berry_k(:, iw, ikpt)
+      END DO
+      WRITE (io_unit, *) ! blank line
+    END DO
+    WRITE (io_unit, *) ! blank line
+    CLOSE (io_unit)
+  END SUBROUTINE write_Berry_k
+  !
   SUBROUTINE write_shift(fname, hw, sigma_w)
     USE system, ONLY: dim
     CHARACTER(LEN=*), INTENT(IN) :: fname

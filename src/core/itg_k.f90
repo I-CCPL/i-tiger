@@ -17,6 +17,7 @@ MODULE itg_k
   REAL(DP), ALLOCATABLE::O_k(:, :)
   !< Berry curvature matrix (3, Nw)
   REAL(DP), ALLOCATABLE::berry(:, :)
+  REAL(DP), ALLOCATABLE::berry_k(:, :, :)
   !< Berry curvature (3, nkpt)
   REAL(DP), ALLOCATABLE::shift_w(:, :, :)
   REAL(DP), ALLOCATABLE::shift_hw(:)
@@ -54,6 +55,7 @@ CONTAINS
     END IF
     IF (lBerry) THEN
       CALL Berry_mod(t_kpt%eigval(:, t_iks), v_bar, O_k(:, :))
+      berry_k(:, :, t_iks) = O_k(:, :)
       CALL Berry_sum(t_kpt%eigval(:, t_iks), O_k(:, :), berry(:, t_iks))
     END IF
     IF (lShift) THEN
@@ -65,12 +67,14 @@ CONTAINS
   SUBROUTINE write_k_data()
     USE io_global, ONLY: stdout, ionode
     USE io_input, ONLY: lBand, lOAM, lBerry, lShift
-    USE io_output, ONLY: io_output_init, write_band, write_OAM, write_Berry, write_shift
+    USE io_output, ONLY: io_output_init, write_band, write_OAM, &
+                         write_Berry, write_Berry_k, write_shift
     USE mp_base, ONLY: mp_sum
     USE system, ONLY: dim
     REAL(DP), ALLOCATABLE::eigval(:, :)
     REAL(DP), ALLOCATABLE::L_k_tot(:, :, :)
     REAL(DP), ALLOCATABLE::berry_tot(:, :)
+    REAL(DP), ALLOCATABLE::berry_k_tot(:, :, :)
     !
     WRITE (stdout, '(2X, A)') 'Write k data...'
     CALL io_output_init()
@@ -100,11 +104,15 @@ CONTAINS
     IF (lBerry) THEN
       IF (ionode) THEN
         ALLOCATE (berry_tot(3, t_kpt%nktot))
+        ALLOCATE (berry_k_tot(3, Nw, t_kpt%nktot))
       ELSE
         ALLOCATE (berry_tot(0, 0))
+        ALLOCATE (berry_k_tot(0, 0, 0))
       END IF
       CALL t_kpt%gather(3, berry, berry_tot)
+      CALL t_kpt%gather(3*Nw, berry_k, berry_k_tot)
       CALL write_Berry('itg.Berry.dat', berry_tot)
+      CALL write_Berry_k('itg.Berry_k.dat', berry_k_tot)
       DEALLOCATE (berry_tot)
     END IF
 
@@ -148,6 +156,7 @@ CONTAINS
     IF (lOAM) ALLOCATE (L_k(3, Nw, t_kpt%nkpt))
     IF (lBerry) ALLOCATE (O_k(3, Nw))
     IF (lBerry) ALLOCATE (berry(3, t_kpt%nkpt))
+    IF (lBerry) ALLOCATE (berry_k(3, Nw, t_kpt%nkpt))
     IF (ALLOCATED(L_k)) L_k = 0.0_DP
     IF (ALLOCATED(shift_w)) shift_w = 0.0_DP
     t_kpt%eigval = 0.0_DP
@@ -162,6 +171,7 @@ CONTAINS
     IF (ALLOCATED(L_k)) DEALLOCATE (L_k)
     IF (ALLOCATED(O_k)) DEALLOCATE (O_k)
     IF (ALLOCATED(berry)) DEALLOCATE (berry)
+    IF (ALLOCATED(berry_k)) DEALLOCATE (berry_k)
     IF (ALLOCATED(shift_w)) DEALLOCATE (shift_w)
     IF (ALLOCATED(shift_hw)) DEALLOCATE (shift_hw)
   END SUBROUTINE clear_k_data
