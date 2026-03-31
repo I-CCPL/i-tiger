@@ -14,7 +14,7 @@ MODULE io_input
   LOGICAL::lOAM = .FALSE.
   LOGICAL::lBerry = .FALSE.
   REAL(DP)::dE_thr = 1D-8
-  REAL(DP)::Ef = 0.0_DP
+  REAL(DP)::E_fermi = 0.0_DP
 
   !... Shift current calculation parameters
   !... Frequency: eV units from input
@@ -88,13 +88,13 @@ CONTAINS
   !
   SUBROUTINE read_itg()
     USE system, ONLY: dim
-    NAMELIST /itg/ lBand, lOAM, lBerry, dE_thr, Ef, &
+    NAMELIST /itg/ lBand, lOAM, lBerry, dE_thr, E_fermi, &
       dim, lShift, shift_wmin, shift_wmax, shift_dw, shift_eta
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) THEN
       READ (stdin, nml=itg)
       WRITE (stdout, '(2X, A, ES11.4)') '- dE threshold: ', dE_thr
-      WRITE (stdout, '(2X, A, ES11.4)') '- Fermi energy: ', Ef
+      WRITE (stdout, '(2X, A, ES11.4)') '- Fermi energy: ', E_fermi
       WRITE (stdout, '(2X, A, 1X, I0)') '- Dimension: ', dim
       IF (lShift) THEN
         shift_nw = CEILING((shift_wmax - shift_wmin)/shift_dw) + 1
@@ -108,7 +108,7 @@ CONTAINS
     CALL mp_bcast(lOAM)
     CALL mp_bcast(lBerry)
     CALL mp_bcast(dE_thr)
-    CALL mp_bcast(Ef)
+    CALL mp_bcast(E_fermi)
     CALL mp_bcast(dim)
     IF (dim < 1 .OR. dim > 3) THEN
       CALL errore(1, 'read_itg', 'dimensionality must be 1, 2, or 3')
@@ -176,8 +176,8 @@ CONTAINS
       CALL mp_bcast(sk3)
       CALL t_kpt%build_mesh(nk1, nk2, nk3, sk1, sk2, sk3)
       !
-      WRITE (stdout, '(2X, A, (1X, 3I0))') '- K-Mesh: ', nk1, nk2, nk3
-      WRITE (stdout, '(2X, A, (1X, 3I0))') '- Shift:  ', sk1, sk2, sk3
+      WRITE (stdout, '(2X, A, 3(1X, I0))') '- K-Mesh: ', nk1, nk2, nk3
+      WRITE (stdout, '(2X, A, 3(1X, I0))') '- Shift:  ', sk1, sk2, sk3
       WRITE (stdout, '(2X,A, 1X, I0)') '- Total k-points: ', t_kpt%nktot
       !
     ELSE IF (match('CRYSTAL_B', line)) THEN

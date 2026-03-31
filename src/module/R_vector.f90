@@ -187,6 +187,7 @@ CONTAINS
     DEALLOCATE (Tvec_cart)
 
     WRITE (stdout, '(2X, A)') '- Selecting R vectors...'
+    WRITE (stdout, '(2X, A, I0)') '- Number of R=R0+T vectors: ', nRpt
     ! unique R vectors are selected
     self%nRpt = 0
     DO irpt = 1, nRpt
@@ -194,6 +195,7 @@ CONTAINS
         self%nRpt = self%nRpt + 1
       END IF
     END DO
+    WRITE (stdout, '(2X, A, I0)') '- Number of selected R vectors: ', self%nRpt
     ALLOCATE (self%R_red(3, self%nRpt))
     ALLOCATE (self%R_cart(3, self%nRpt))
     ALLOCATE (self%w_R(Nw, Nw, self%nRpt))

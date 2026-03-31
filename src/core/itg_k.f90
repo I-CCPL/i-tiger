@@ -6,11 +6,11 @@ MODULE itg_k
   IMPLICIT NONE
   !... X_bar = U^+ X U
   !... X_k_H = X_bar only for Gauge-covariant X
-  COMPLEX(DP), ALLOCATABLE::A_k_W(:, :, :), A_bar(:, :, :)
+  COMPLEX(DP), ALLOCATABLE::A_k_W(:, :, :), A_bar(:, :, :), A_k_H(:, :, :)
   !< Berry connection (3, Nw, Nw)
   COMPLEX(DP), ALLOCATABLE::dH_k_W(:, :, :), dH_bar(:, :, :)
   !< Derivative of Hamiltonian (3, Nw, Nw)
-  COMPLEX(DP), ALLOCATABLE::v_bar(:, :, :)
+  COMPLEX(DP), ALLOCATABLE::v_k_H(:, :, :)
   !< Velocity matrix (3, Nw, Nw)
   REAL(DP), ALLOCATABLE::L_k(:, :, :)
   !< OAM matrix (3, Nw, nkpt)
@@ -29,7 +29,7 @@ CONTAINS
     USE lin_eig_H, ONLY: eig_H
     USE wannier90, ONLY: lreq_mmn
     USE kpoints, ONLY: t_iks
-    USE NLO, ONLY: shift_current
+    USE NLO, ONLY: shift_k_H
     INTEGER::iw
     CALL start_clock('make_k_data')
 
@@ -47,19 +47,20 @@ CONTAINS
       ! Berry connection
       CALL fft_R2k(R_vec, A_R, A_k_W)
       CALL t_kpt%rotate(A_k_W, A_bar)
-      CALL velocity(R_vec, A_bar, dH_bar, v_bar)
+      CALL velocity(R_vec, A_bar, dH_bar, v_k_H)
     END IF
 
     IF (lOAM) THEN
-      CALL OAM_mod_diag(t_kpt%eigval(:, t_iks), v_bar, L_k(:, :, t_iks))
+      CALL OAM_mod_diag(t_kpt%eigval(:, t_iks), v_k_H, L_k(:, :, t_iks))
     END IF
     IF (lBerry) THEN
-      CALL Berry_mod(t_kpt%eigval(:, t_iks), v_bar, O_k(:, :))
+      CALL Berry_mod(t_kpt%eigval(:, t_iks), v_k_H, O_k(:, :))
       berry_k(:, :, t_iks) = O_k(:, :)
       CALL Berry_sum(t_kpt%eigval(:, t_iks), O_k(:, :), berry(:, t_iks))
     END IF
     IF (lShift) THEN
-      CALL shift_current(t_kpt%eigval(:, t_iks), A_bar, v_bar, shift_hw, shift_w)
+      CALL vel_to_berry(t_kpt%eigval(:, t_iks), v_k_H, A_k_H)
+      CALL shift_k_H(t_kpt%eigval(:, t_iks), A_k_H, v_k_H, shift_hw, shift_w)
     END IF
     CALL stop_clock('make_k_data')
   END SUBROUTINE make_k_data
@@ -128,20 +129,22 @@ CONTAINS
   SUBROUTINE allocate_k_data()
     USE system, ONLY: Nw
     USE io_input, ONLY: lOAM, lBerry, lShift, shift_nw, shift_wmin, shift_dw
+    USE wannier90, ONLY: lreq_mmn
     INTEGER::i
     CALL t_kpt%divide_k()
     ALLOCATE (t_kpt%H_k(Nw, Nw))
     ALLOCATE (t_kpt%eigval(Nw, t_kpt%nkpt))
     ALLOCATE (t_kpt%eigvec(Nw, Nw))
 
-    IF (lOAM .OR. lBerry .OR. lShift) THEN
+    IF (lreq_mmn) THEN
       ALLOCATE (A_k_W(3, Nw, Nw))
       ALLOCATE (A_bar(3, Nw, Nw))
       ALLOCATE (dH_k_W(3, Nw, Nw))
       ALLOCATE (dH_bar(3, Nw, Nw))
-      ALLOCATE (v_bar(3, Nw, Nw))
+      ALLOCATE (v_k_H(3, Nw, Nw))
     END IF
     IF (lShift) THEN
+      ALLOCATE (A_k_H(3, Nw, Nw))
       ALLOCATE (shift_w(3, 6, shift_nw))
       ALLOCATE (shift_hw(shift_nw))
       IF (shift_nw == 1) THEN
@@ -167,7 +170,7 @@ CONTAINS
     IF (ALLOCATED(A_bar)) DEALLOCATE (A_bar)
     IF (ALLOCATED(dH_k_W)) DEALLOCATE (dH_k_W)
     IF (ALLOCATED(dH_bar)) DEALLOCATE (dH_bar)
-    IF (ALLOCATED(v_bar)) DEALLOCATE (v_bar)
+    IF (ALLOCATED(v_k_H)) DEALLOCATE (v_k_H)
     IF (ALLOCATED(L_k)) DEALLOCATE (L_k)
     IF (ALLOCATED(O_k)) DEALLOCATE (O_k)
     IF (ALLOCATED(berry)) DEALLOCATE (berry)

@@ -1,4 +1,4 @@
-SUBROUTINE velocity(R_vec, A_bar, dH_bar, v_bar)
+SUBROUTINE velocity(R_vec, A_bar, dH_bar, v_k_H)
   USE kinds, ONLY: DP
   USE constants, ONLY: zi, hbar_evfs
   USE system, ONLY: Nw
@@ -9,14 +9,41 @@ SUBROUTINE velocity(R_vec, A_bar, dH_bar, v_bar)
   TYPE(R_vec_type), INTENT(INOUT)::R_vec
   COMPLEX(DP), INTENT(IN)::A_bar(3, Nw, Nw)
   COMPLEX(DP), INTENT(IN)::dH_bar(3, Nw, Nw)
-  COMPLEX(DP), INTENT(OUT)::v_bar(3, Nw, Nw)
+  COMPLEX(DP), INTENT(OUT)::v_k_H(3, Nw, Nw)
   INTEGER::iw, jw
   !
   DO jw = 1, Nw
     DO iw = 1, Nw
-      v_bar(:, iw, jw) = (dH_bar(:, iw, jw) + zi*A_bar(:, iw, jw) &
+      v_k_H(:, iw, jw) = (dH_bar(:, iw, jw) + zi*A_bar(:, iw, jw) &
                           *(t_kpt%eigval(iw, t_iks) - t_kpt%eigval(jw, t_iks))) &
                          /hbar_evfs
     END DO
   END DO
 END SUBROUTINE velocity
+
+SUBROUTINE vel_to_berry(eigval, v_k_H, A_k_H)
+  USE kinds, ONLY: DP
+  USE io_input, ONLY: dE_thr
+  USE constants, ONLY: zero, zi, hbar_evfs
+  USE system, ONLY: Nw
+  IMPLICIT NONE
+  REAL(DP), INTENT(IN)::eigval(Nw)
+  COMPLEX(DP), INTENT(IN)::v_k_H(3, Nw, Nw)
+  COMPLEX(DP), INTENT(OUT)::A_k_H(3, Nw, Nw)
+  INTEGER::iw, jw
+  REAL(DP)::dE
+  COMPLEX(DP)::factor
+  !
+  factor = hbar_evfs/zi
+  DO jw = 1, Nw
+    DO iw = 1, Nw
+      IF (iw == jw) THEN
+        A_k_H(:, iw, jw) = zero
+        CYCLE
+      END IF
+      !
+      dE = eigval(iw) - eigval(jw)
+      A_k_H(:, iw, jw) = factor*v_k_H(:, iw, jw)/(dE + zi*dE_thr)
+    END DO
+  END DO
+END SUBROUTINE vel_to_berry

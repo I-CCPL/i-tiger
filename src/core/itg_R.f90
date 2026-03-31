@@ -11,58 +11,66 @@ MODULE itg_R
   COMPLEX(DP), ALLOCATABLE::dA_R(:, :, :, :, :)
 CONTAINS
   SUBROUTINE make_R_data()
-    USE kinds, ONLY: eq_vec_real
     USE constants, ONLY: zero
     USE fft_base, ONLY: fft_q2R
-    USE debug_data, ONLY: write_matrix, write_diag_matrix
     USE der_base, ONLY: der_R
     USE io_input, ONLY: lShift
-    INTEGER::inb, ikpt, irpt, jrpt, iw, jw
-    REAL(DP)::tmp_vec(3)
+    USE wannier90, ONLY: lreq_mmn
+    INTEGER::inb
     CALL start_clock('make_R_data')
     !
     CALL R_vec%build_R(w90data)
     !
     ALLOCATE (H_R(Nw, Nw, R_vec%nRpt))
     CALL fft_q2R(w90data, R_vec, w90data%Hq, H_R)
-    ! CALL write_matrix('H_R.itg', H_R, R_vec%nRpt, 1)
 
-    ALLOCATE (A_R(3, Nw, Nw, R_vec%nRpt))
-    ALLOCATE (A_R_b(3, Nw, Nw, R_vec%nRpt))
-    A_R = zero
-    DO inb = 1, w90data%nnb
-      CALL fft_q2R(w90data, R_vec, w90data%Aq(:, :, :, :, inb), A_R_b)
+    IF (lreq_mmn) THEN
+      ALLOCATE (A_R(3, Nw, Nw, R_vec%nRpt))
+      ALLOCATE (A_R_b(3, Nw, Nw, R_vec%nRpt))
+      A_R = zero
+      DO inb = 1, w90data%nnb
+        CALL fft_q2R(w90data, R_vec, w90data%Aq(:, :, :, :, inb), A_R_b)
+        CALL enforce_Hemiticity_R(A_R_b, A_R)
+      END DO
 
-      ikpt = 0
-      DO jrpt = 1, R_vec%nRpt
-        tmp_vec = -R_vec%R_red(:, jrpt)
-        DO irpt = 1, R_vec%nRpt
-          IF (.NOT. eq_vec_real(R_Vec%R_red(:, irpt), &
-                                tmp_vec, 1.0D-12)) THEN
-            CYCLE
-          END IF
-          ikpt = ikpt + 1
-          DO jw = 1, Nw
-            DO iw = 1, Nw
-              ! Enforce Hermiticity of A_R
-              A_R(:, iw, jw, irpt) = A_R(:, iw, jw, irpt) + (A_R_b(:, iw, jw, irpt) + CONJG(A_R_b(:, jw, iw, jrpt)))/2
-            END DO
+      ! IF (lShift) THEN
+      !   ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
+      !   CALL der_R(R_vec, A_R, dA_R)
+      ! END IF
+
+      ALLOCATE (dH_R(3, Nw, Nw, R_vec%nRpt))
+      dH_R = zero
+      CALL der_R(R_vec, H_R, dH_R)
+    END IF
+    CALL stop_clock('make_R_data')
+  END SUBROUTINE make_R_data
+  !
+  SUBROUTINE enforce_Hemiticity_R(mat_in, mat_out)
+    USE kinds, ONLY: DP, eq_vec_real
+    USE constants, ONLY: zero
+    COMPLEX(DP), INTENT(IN)::mat_in(:, :, :, :)
+    COMPLEX(DP), INTENT(OUT)::mat_out(:, :, :, :)
+    INTEGER::iw, jw, irpt, jrpt
+    REAL(DP)::tmp_vec(3)
+    !
+    DO jrpt = 1, R_vec%nRpt
+      tmp_vec = -R_vec%R_red(:, jrpt)
+      DO irpt = 1, R_vec%nRpt
+        IF (.NOT. eq_vec_real(R_Vec%R_red(:, irpt), &
+                              tmp_vec, 1.0D-12)) THEN
+          CYCLE
+        END IF
+        !
+        DO jw = 1, Nw
+          DO iw = 1, Nw
+            ! Enforce Hermiticity. mat_out = (mat_in + mat_in^dagger)/2
+            mat_out(:, iw, jw, irpt) = mat_out(:, iw, jw, irpt) + &
+                                       (mat_in(:, iw, jw, irpt) + CONJG(mat_in(:, jw, iw, jrpt)))/2
           END DO
         END DO
       END DO
     END DO
-    ! CALL write_matrix('A_R.itg', A_R, R_vec%nRpt, 1)
-
-    IF (lShift) THEN
-      ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
-      CALL der_R(R_vec, A_R, dA_R)
-    END IF
-
-    ALLOCATE (dH_R(3, Nw, Nw, R_vec%nrpt))
-    CALL der_R(R_vec, H_R, dH_R)
-    ! CALL write_matrix('dH_R.itg', dH_R, R_vec%nrpt, 1)
-    CALL stop_clock('make_R_data')
-  END SUBROUTINE make_R_data
+  END SUBROUTINE enforce_Hemiticity_R
   !
   SUBROUTINE clear_R_data()
     CALL R_vec%clear()

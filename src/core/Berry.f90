@@ -25,7 +25,7 @@ END SUBROUTINE Berry_mod
 
 SUBROUTINE Berry_sum(eigval, O_k, berry)
   USE constants, ONLY: DP
-  USE io_input, ONLY: Ef
+  USE io_input, ONLY: E_fermi
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)
@@ -34,7 +34,7 @@ SUBROUTINE Berry_sum(eigval, O_k, berry)
   INTEGER::iw, ipol
   berry = 0.0_DP
   DO iw = 1, Nw
-    IF (eigval(iw) > Ef) CYCLE
+    IF (eigval(iw) > E_fermi) CYCLE
     DO ipol = 1, 3
       berry(ipol) = berry(ipol) + O_k(ipol, iw)
     END DO

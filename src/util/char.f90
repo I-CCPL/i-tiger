@@ -35,39 +35,41 @@ CONTAINS
   !
   SUBROUTINE add_comma(str)
     CHARACTER(LEN=*), INTENT(INOUT)::str
-    CHARACTER(LEN=30)::tmp
-    INTEGER::len1, len2, i, j, q, r
-    len1 = LEN_TRIM(str)
-    i = 1
+    CHARACTER(LEN=LEN(str))::tmp
+    INTEGER::first, in_pos, out_pos, len_num, n_digits
+
+    tmp = ' '
+    first = 1
     IF (str(1:1) == '-') THEN
       tmp(1:1) = '-'
-      i = 2
+      first = 2
     END IF
 
-    len2 = 0
-    DO WHILE (i <= len1)
-      IF (str(i:i) < '0' .OR. str(i:i) > '9') THEN
-        EXIT
+    len_num = 0
+    DO in_pos = first, LEN_TRIM(str)
+      IF (str(in_pos:in_pos) < '0' .OR. str(in_pos:in_pos) > '9') EXIT
+      len_num = len_num + 1
+    END DO
+
+    IF (len_num == 0) RETURN
+
+    out_pos = first + len_num + (len_num - 1)/3 - 1
+    in_pos = first + len_num - 1
+    n_digits = 0
+
+    DO WHILE (in_pos >= first)
+      tmp(out_pos:out_pos) = str(in_pos:in_pos)
+      out_pos = out_pos - 1
+      in_pos = in_pos - 1
+      n_digits = n_digits + 1
+
+      IF (MOD(n_digits, 3) == 0 .AND. in_pos >= first) THEN
+        tmp(out_pos:out_pos) = ','
+        out_pos = out_pos - 1
       END IF
-      len2 = len2 + 1
-      len1 = len1 - 1
     END DO
 
-    j = i
-    q = (len2 - 1)/3
-    r = MOD(len2 - 1, 3)
-    IF (q /= 0) THEN
-      tmp(j:j + r) = str(i:i + r)
-      j = j + r + 1
-      i = i + r + 1
-    END IF
-    DO WHILE (q > 0)
-      q = q - 1
-      tmp(j:j) = ','
-      tmp(j + 1:j + 4) = str(i:i + 3)
-      j = j + 4
-      i = i + 3
-    END DO
-    str = tmp
+    str = ' '
+    str(1:LEN_TRIM(tmp)) = tmp(1:LEN_TRIM(tmp))
   END SUBROUTINE add_comma
 END MODULE char_mod

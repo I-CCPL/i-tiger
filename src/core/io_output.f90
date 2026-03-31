@@ -136,10 +136,10 @@ CONTAINS
       CALL writing_info('shift current', fname_a)
       WRITE (io_unit, 0947) 'shift current units: '//TRIM(unit_str)
       WRITE (io_unit, 0947) 'current direction: '//a_lab(ia)
-      WRITE (io_unit, 0947) 'hw, xx, xy, yy, yz, zz, zx'
+      WRITE (io_unit, 0947) 'hw (eV), xx, xy, yy, yz, zz, zx'
 
       DO iom = 1, SIZE(hw)
-        WRITE (io_unit, '(ES16.8E3, 6(1X, ES16.8E3))') hw(iom), sigma_w(ia, :, iom)
+        WRITE (io_unit, '(F13.6, 6(1X, ES16.8E3))') hw(iom), sigma_w(ia, :, iom)
       END DO
       CLOSE (io_unit)
     END DO
