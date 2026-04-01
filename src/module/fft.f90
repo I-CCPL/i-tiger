@@ -29,7 +29,7 @@ CONTAINS
     COMPLEX(DP), INTENT(IN) :: X_R(..)
     !< (ldX, Nw, Nw, nRpt)
     COMPLEX(DP), INTENT(OUT) :: X_k(..)
-    !< (ldX, Nw, Nw, Nkpt)
+    !< (ldX, Nw, Nw)
     INTEGER::ldX, ldY
     ldY = SIZE(X_R)/Nw/Nw/R_vec%nRpt
     ldX = SIZE(X_k)/Nw/Nw

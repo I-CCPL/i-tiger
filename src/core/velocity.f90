@@ -43,7 +43,12 @@ SUBROUTINE vel_to_berry(eigval, v_k_H, A_k_H)
       END IF
       !
       dE = eigval(iw) - eigval(jw)
-      A_k_H(:, iw, jw) = factor*v_k_H(:, iw, jw)/(dE + zi*dE_thr)
+      IF (ABS(dE) <= dE_thr) THEN
+        A_k_H(:, iw, jw) = zero
+        CYCLE
+      END IF
+      !
+      A_k_H(:, iw, jw) = factor*v_k_H(:, iw, jw)/dE
     END DO
   END DO
 END SUBROUTINE vel_to_berry

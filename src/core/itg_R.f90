@@ -9,6 +9,7 @@ MODULE itg_R
   COMPLEX(DP), ALLOCATABLE::H_R(:, :, :), dH_R(:, :, :, :)
   COMPLEX(DP), ALLOCATABLE::A_R(:, :, :, :), A_R_b(:, :, :, :)
   COMPLEX(DP), ALLOCATABLE::dA_R(:, :, :, :, :)
+  COMPLEX(DP), ALLOCATABLE::d2H_R(:, :, :, :, :)
 CONTAINS
   SUBROUTINE make_R_data()
     USE constants, ONLY: zero
@@ -33,14 +34,15 @@ CONTAINS
         CALL enforce_Hemiticity_R(A_R_b, A_R)
       END DO
 
-      ! IF (lShift) THEN
-      !   ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
-      !   CALL der_R(R_vec, A_R, dA_R)
-      ! END IF
-
       ALLOCATE (dH_R(3, Nw, Nw, R_vec%nRpt))
       dH_R = zero
       CALL der_R(R_vec, H_R, dH_R)
+      IF (lShift) THEN
+        ALLOCATE (d2H_R(3, 3, Nw, Nw, R_vec%nRpt))
+        ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
+        CALL der_R(R_vec, dH_R, d2H_R)
+        CALL der_R(R_vec, A_R, dA_R)
+      END IF
     END IF
     CALL stop_clock('make_R_data')
   END SUBROUTINE make_R_data
@@ -77,7 +79,7 @@ CONTAINS
     IF (ALLOCATED(H_R)) DEALLOCATE (H_R)
     IF (ALLOCATED(dH_R)) DEALLOCATE (dH_R)
     IF (ALLOCATED(A_R)) DEALLOCATE (A_R)
-    IF (ALLOCATED(dA_R)) DEALLOCATE (dA_R)
+    IF (ALLOCATED(d2H_R)) DEALLOCATE (d2H_R)
     IF (ALLOCATED(A_R_b)) DEALLOCATE (A_R_b)
   END SUBROUTINE clear_R_data
 END MODULE itg_R

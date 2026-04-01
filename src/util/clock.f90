@@ -98,6 +98,31 @@ SUBROUTINE stop_clock(label)
          'A, " not found.")') TRIM(name)
 END SUBROUTINE stop_clock
 
+FUNCTION get_clock(label) RESULT(wall_time)
+  USE clocks
+  IMPLICIT NONE
+  CHARACTER(LEN=*), INTENT(IN)::label
+  REAL(DP)::wall_time
+  REAL(DP)::e_cpu, e_wall
+  CHARACTER(LEN=16)::name
+  INTEGER::i
+  !
+  name = TRIM(label)
+  DO i = 1, nclock
+    IF (clock_name(i) == name) THEN
+      IF (is_on(i)) THEN
+        CALL get_time(e_cpu, e_wall)
+        wall_time = t_wall(i) + e_wall - s_wall(i)
+      ELSE
+        wall_time = t_wall(i)
+      END IF
+      RETURN
+    END IF
+  END DO
+  !
+  wall_time = 0.0_DP
+END FUNCTION get_clock
+
 SUBROUTINE print_clock(label)
   USE clocks
   USE mp_global, ONLY: mp_size
