@@ -4,7 +4,8 @@ MODULE constants
   !--- Mathematical constants
   REAL(DP), PARAMETER::pi = ACOS(-1.0_DP)
   REAL(DP), PARAMETER::tpi = 2.0_DP*pi !< 2*pi
-  REAL(DP), PARAMETER :: sqtpi = SQRT(tpi) !< sqrt(2pi)
+  REAL(DP), PARAMETER::sq_pi = SQRT(pi) !< sqrt(pi)
+  REAL(DP), PARAMETER :: sq_tpi = SQRT(tpi) !< sqrt(2pi)
   COMPLEX(DP), PARAMETER::zero = CMPLX(0.0_DP, 0.0_DP, DP)
   COMPLEX(DP), PARAMETER::zi = CMPLX(0.0_DP, 1.0_DP, DP) !< imaginary unit
   COMPLEX(DP), PARAMETER :: pi2zi = (0.0_DP, 2.0_DP)*pi !< 2pi*(zi)

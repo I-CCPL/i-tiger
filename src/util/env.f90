@@ -1,7 +1,7 @@
 MODULE env
   USE io_global, ONLY: stdout
   IMPLICIT NONE
-  CHARACTER(LEN=12)::itg_version = 'v0.0.0.30'
+  CHARACTER(LEN=12)::itg_version = 'v0.0.0.31'
 CONTAINS
   SUBROUTINE env_start(date, time)
     USE mp_global, ONLY: mp_start, mp_rank, mp_root, mp_size, mp_barrier
@@ -33,7 +33,7 @@ CONTAINS
     USE kinds, ONLY: DP
     INTEGER, INTENT(IN)::ikpt, nkpt
     REAL(DP), EXTERNAL::get_clock
-    IF (MOD(ikpt, 25) == 1 .OR. ikpt - 1 == nkpt) THEN
+    IF (MOD(ikpt, 100) == 1 .OR. ikpt - 1 == nkpt) THEN
       WRITE (stdout, 2398) ikpt - 1, nkpt, get_clock('i-TIGER')
     END IF
 2398 FORMAT(2X, "- k-point ", I0, " / ", I0, " (Elapsed: ", F0.1, "s)")

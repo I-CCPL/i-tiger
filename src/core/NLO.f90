@@ -8,6 +8,7 @@ CONTAINS
     USE io_input, ONLY: dE_thr, shift_eta
     USE system, ONLY: Nw, V_cell_3D
     USE kpoints, ONLY: t_kpt
+    USE delta_func, ONLY: delta_gaussian
     REAL(DP), INTENT(IN) :: hw(:)
     REAL(DP), INTENT(INOUT) :: sigma_w(3, 6, SIZE(hw))
     REAL(DP), INTENT(IN) :: eigval(Nw)
@@ -131,19 +132,6 @@ CONTAINS
       END DO
     END DO
   END SUBROUTINE shift_kernel_mn
-  !
-  PURE REAL(DP) FUNCTION delta_lorentz(x, eta)
-    USE constants, ONLY: pi
-    REAL(DP), INTENT(IN) :: x, eta
-    delta_lorentz = eta/(pi*(x*x + eta*eta))
-  END FUNCTION delta_lorentz
-  !
-  !> Gaussian broadening d(x)= exp(-(x/eta)^2)*2/(sqrt(2pi)*eta), eta= sqrt(2)*sigma
-  PURE REAL(DP) FUNCTION delta_gaussian(x, eta)
-    USE constants, ONLY: sqtpi
-    REAL(DP), INTENT(IN) :: x, eta
-    delta_gaussian = EXP(-(x/eta)**2)*2/(sqtpi*eta)
-  END FUNCTION delta_gaussian
   !
   PURE REAL(DP) FUNCTION occ_T0(en)
     USE io_input, ONLY: E_fermi
