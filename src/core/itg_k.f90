@@ -6,7 +6,7 @@ MODULE itg_k
   IMPLICIT NONE
   !... X_bar = U^+ X U
   !... X_k_H = X_bar only for Gauge-covariant X
-  COMPLEX(DP), ALLOCATABLE::A_k_W(:, :, :), A_bar(:, :, :), A_k_H(:, :, :)
+  COMPLEX(DP), ALLOCATABLE::A_k_W(:, :, :), A_bar(:, :, :)
   !< Berry connection (3, Nw, Nw)
   COMPLEX(DP), ALLOCATABLE::dA_k_W(:, :, :, :), dA_bar(:, :, :, :)
   !< Derivative of Berry connection (3, 3, Nw, Nw)
@@ -23,29 +23,16 @@ MODULE itg_k
   REAL(DP), ALLOCATABLE::berry(:, :)
   REAL(DP), ALLOCATABLE::berry_k(:, :, :)
   !< Berry curvature (3, nkpt)
-  REAL(DP), ALLOCATABLE::shift_w(:, :, :)
-  REAL(DP), ALLOCATABLE::shift_hw(:)
 CONTAINS
   SUBROUTINE make_k_data()
-    USE constants, ONLY: hbar_evfs, zero, zi
     USE itg_R, ONLY: H_R, A_R, dH_R, dA_R, d2H_R
     USE fft_base, ONLY: fft_R2k
-    USE io_input, ONLY: lOAM, lBerry, lShift, dE_thr
+    USE io_input, ONLY: lOAM, lBerry, lShift
     USE lin_eig_H, ONLY: eig_H
     USE wannier90, ONLY: lreq_mmn
-    USE kpoints, ONLY: t_iks
-    USE NLO, ONLY: shift_current, occ_T0
-    USE kpoints, ONLY: t_kpt
-    USE delta_func, ONLY: dE_inv
-    INTEGER::iw, jw, a, b, n, m, p, c, bc
-    INTEGER, PARAMETER :: bc2b(6) = (/1, 1, 2, 2, 3, 3/)
-    INTEGER, PARAMETER :: bc2c(6) = (/1, 2, 2, 3, 3, 1/)
-    REAL(DP)::dE, w_inv(Nw, Nw), occ(Nw), fmn
-    COMPLEX(DP)::psum, v_bar(3, Nw, Nw), dr_bar
-    COMPLEX(DP)::del_bar(3), w_bar(3, 3, Nw, Nw)
-    COMPLEX(DP)::dA_gen
-    COMPLEX(DP)::r_nm(3), dr_mn(3, 3), kernel_mn(3, 6)
-    REAL(DP)::eta = 0.04 ! eV
+    USE kpoints, ONLY: t_iks, t_kpt
+    USE NLO, ONLY: NLO_main
+    INTEGER::iw
     CALL start_clock('make_k_data')
 
     ! Eigenvalues and eigenvectors
@@ -62,7 +49,7 @@ CONTAINS
       ! Berry connection
       CALL fft_R2k(R_vec, A_R, A_k_W)
       CALL t_kpt%rotate(A_k_W, A_bar)
-      CALL velocity(R_vec, A_bar, dH_bar, v_k_H)
+      CALL velocity(A_bar, dH_bar, v_k_H)
     END IF
 
     IF (lOAM) THEN
@@ -74,82 +61,13 @@ CONTAINS
       CALL Berry_sum(t_kpt%eigval(:, t_iks), O_k(:, :), berry(:, t_iks))
     END IF
     IF (lShift) THEN
-      ! CALL vel_to_berry(t_kpt%eigval(:, t_iks), v_k_H, A_k_H)
-      ! CALL shift_current(shift_hw, shift_w, t_kpt%eigval(:, t_iks), v_k_H, A_k_H)
-      ! CALL shift_current(shift_hw, shift_w, t_kpt%eigval(:, t_iks), v_k_H, A_k_H, dH_k_W)
-
       CALL fft_R2k(R_vec, dA_R, dA_k_W)
       CALL t_kpt%rotate(dA_k_W, dA_bar)
-      ! dH_bar = dH_bar/hbar_evfs
-      ! CALL vel_to_berry(t_kpt%eigval(:, t_iks), dH_bar, A_bar)
 
       CALL fft_R2k(R_vec, d2H_R, d2H_k_W)
       CALL t_kpt%rotate(d2H_k_W, d2H_bar)
 
-      DO n = 1, Nw
-        occ(n) = occ_T0(t_kpt%eigval(n, t_iks))
-        DO m = 1, Nw
-          dE = t_kpt%eigval(n, t_iks) - t_kpt%eigval(m, t_iks)
-          w_inv(n, m) = dE_inv(dE, eta)*hbar_evfs
-          v_bar(:, n, m) = dH_bar(:, n, m)/hbar_evfs
-        END DO
-      END DO
-
-      CALL start_clock('shift_current')
-      DO m = 1, Nw
-        DO n = 1, Nw
-          IF (m == n) CYCLE
-          dE = t_kpt%eigval(m, t_iks) - t_kpt%eigval(n, t_iks)
-          IF (ABS(dE) <= dE_thr) CYCLE
-          fmn = occ(m) - occ(n)
-          IF (ABS(fmn) <= 1.0D-14) CYCLE
-
-          del_bar(:) = v_bar(:, m, m) - v_bar(:, n, n)
-          DO a = 1, 3
-            r_nm(a) = v_bar(a, n, m)*w_inv(n, m)/zi + a_bar(a, n, m)
-            DO b = 1, 3
-              psum = zero
-              w_bar(a, b, m, n) = d2H_bar(a, b, m, n)/hbar_evfs
-              DO p = 1, Nw
-                IF (p == m .OR. p == n) CYCLE
-                psum = psum &
-                       + (v_bar(a, m, p)*v_bar(b, p, n))*w_inv(p, n) &
-                       - (v_bar(b, m, p)*v_bar(a, p, n))*w_inv(m, p)
-              END DO
-              dr_bar = zi*w_inv(m, n) &
-                       *( &
-                       (v_bar(a, m, n)*del_bar(b) &
-                        + v_bar(b, m, n)*del_bar(a))*w_inv(m, n) &
-                       - w_bar(a, b, m, n) &
-                       + psum &
-                       )
-
-              psum = zero
-              DO p = 1, Nw
-                psum = psum &
-                       + (v_bar(b, m, p)*a_bar(a, p, n))*w_inv(m, p) &
-                       - (a_bar(a, m, p)*v_bar(b, p, n))*w_inv(p, n)
-              END DO
-              da_gen = dA_bar(b, a, m, n) &
-                       + psum
-
-              dr_mn(a, b) = dr_bar + da_gen &
-                            - (a_bar(b, m, m) - a_bar(b, n, n)) &
-                            *(v_bar(a, m, n)*w_inv(m, n) + zi*a_bar(a, m, n))
-            END DO
-          END DO
-
-          DO a = 1, 3
-            DO bc = 1, 6
-              b = bc2b(bc)
-              c = bc2c(bc)
-              kernel_mn(a, bc) = r_nm(b)*dr_mn(c, a) + r_nm(c)*dr_mn(b, a)
-            END DO
-          END DO
-          CALL shift_current(shift_hw, shift_w, dE, fmn, kernel_mn)
-        END DO
-      END DO
-      CALL stop_clock('shift_current')
+      CALL NLO_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar)
     END IF
     CALL stop_clock('make_k_data')
   END SUBROUTINE make_k_data
@@ -158,9 +76,8 @@ CONTAINS
     USE io_global, ONLY: stdout, ionode
     USE io_input, ONLY: lBand, lOAM, lBerry, lShift
     USE io_output, ONLY: io_output_init, write_band, write_OAM, &
-                         write_Berry, write_Berry_k, write_shift
-    USE mp_base, ONLY: mp_sum
-    USE system, ONLY: dim
+                         write_Berry, write_Berry_k
+    USE NLO, ONLY: NLO_write
     REAL(DP), ALLOCATABLE::eigval(:, :)
     REAL(DP), ALLOCATABLE::L_k_tot(:, :, :)
     REAL(DP), ALLOCATABLE::berry_tot(:, :)
@@ -205,13 +122,10 @@ CONTAINS
       CALL write_Berry_k('itg.Berry_k.dat', berry_k_tot)
       DEALLOCATE (berry_tot)
       DEALLOCATE (berry_k_tot)
-      DEALLOCATE (berry_k_tot)
     END IF
 
     IF (lShift) THEN
-      CALL mp_sum(shift_w)
-      shift_w = shift_w*t_kpt%wk
-      CALL write_shift('itg.shift', shift_hw, shift_w)
+      CALL NLO_write(t_kpt)
     END IF
 
     CALL write_sep_line()
@@ -219,8 +133,9 @@ CONTAINS
   !
   SUBROUTINE allocate_k_data()
     USE system, ONLY: Nw
-    USE io_input, ONLY: lOAM, lBerry, lShift, shift_nw, shift_wmin, shift_dw
+    USE io_input, ONLY: lOAM, lBerry, lShift
     USE wannier90, ONLY: lreq_mmn
+    USE NLO, ONLY: NLO_init
     INTEGER::i
     CALL t_kpt%divide_k()
     ALLOCATE (t_kpt%H_k(Nw, Nw))
@@ -235,20 +150,11 @@ CONTAINS
       ALLOCATE (v_k_H(3, Nw, Nw))
     END IF
     IF (lShift) THEN
-      ALLOCATE (A_k_H(3, Nw, Nw))
       ALLOCATE (dA_k_W(3, 3, Nw, Nw))
       ALLOCATE (dA_bar(3, 3, Nw, Nw))
       ALLOCATE (d2H_k_W(3, 3, Nw, Nw))
       ALLOCATE (d2H_bar(3, 3, Nw, Nw))
-      ALLOCATE (shift_w(3, 6, shift_nw))
-      ALLOCATE (shift_hw(shift_nw))
-      IF (shift_nw == 1) THEN
-        shift_hw(1) = shift_wmin
-      ELSE
-        DO i = 1, shift_nw
-          shift_hw(i) = shift_wmin + REAL(i - 1, DP)*shift_dw
-        END DO
-      END IF
+      CALL NLO_init()
     END IF
 
     IF (lOAM) ALLOCATE (L_k(3, Nw, t_kpt%nkpt))
@@ -256,11 +162,11 @@ CONTAINS
     IF (lBerry) ALLOCATE (berry(3, t_kpt%nkpt))
     IF (lBerry) ALLOCATE (berry_k(3, Nw, t_kpt%nkpt))
     IF (ALLOCATED(L_k)) L_k = 0.0_DP
-    IF (ALLOCATED(shift_w)) shift_w = 0.0_DP
     t_kpt%eigval = 0.0_DP
   END SUBROUTINE allocate_k_data
   !
   SUBROUTINE clear_k_data()
+    USE NLO, ONLY: NLO_clear
     IF (ALLOCATED(A_k_W)) DEALLOCATE (A_k_W)
     IF (ALLOCATED(A_bar)) DEALLOCATE (A_bar)
     IF (ALLOCATED(dH_k_W)) DEALLOCATE (dH_k_W)
@@ -270,7 +176,6 @@ CONTAINS
     IF (ALLOCATED(O_k)) DEALLOCATE (O_k)
     IF (ALLOCATED(berry)) DEALLOCATE (berry)
     IF (ALLOCATED(berry_k)) DEALLOCATE (berry_k)
-    IF (ALLOCATED(shift_w)) DEALLOCATE (shift_w)
-    IF (ALLOCATED(shift_hw)) DEALLOCATE (shift_hw)
+    CALL NLO_clear()
   END SUBROUTINE clear_k_data
 END MODULE itg_k

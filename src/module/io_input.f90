@@ -14,6 +14,9 @@ MODULE io_input
   LOGICAL::lOAM = .FALSE.
   LOGICAL::lBerry = .FALSE.
   REAL(DP)::dE_thr = 1D-8
+  !< threshold for identifying degenerate states in eV
+  REAL(DP)::dE_eta = 0.04
+  !< broadening parameter for 1/dE
   REAL(DP)::E_fermi = 0.0_DP
 
   !... Shift current calculation parameters
@@ -88,7 +91,7 @@ CONTAINS
   !
   SUBROUTINE read_itg()
     USE system, ONLY: dim
-    NAMELIST /itg/ lBand, lOAM, lBerry, dE_thr, E_fermi, &
+    NAMELIST /itg/ lBand, lOAM, lBerry, dE_thr, dE_eta, E_fermi, &
       dim, lShift, shift_wmin, shift_wmax, shift_dw, shift_eta
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) THEN

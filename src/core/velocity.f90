@@ -1,4 +1,4 @@
-SUBROUTINE velocity(R_vec, A_bar, dH_bar, v_k_H)
+SUBROUTINE velocity(A_bar, dH_bar, v_k_H)
   USE kinds, ONLY: DP
   USE constants, ONLY: zi, hbar_evfs
   USE system, ONLY: Nw
@@ -6,7 +6,6 @@ SUBROUTINE velocity(R_vec, A_bar, dH_bar, v_k_H)
   USE kpoints, ONLY: t_kpt, t_iks
   USE fft_base, ONLY: fft_R2k
   IMPLICIT NONE
-  TYPE(R_vec_type), INTENT(INOUT)::R_vec
   COMPLEX(DP), INTENT(IN)::A_bar(3, Nw, Nw)
   COMPLEX(DP), INTENT(IN)::dH_bar(3, Nw, Nw)
   COMPLEX(DP), INTENT(OUT)::v_k_H(3, Nw, Nw)
