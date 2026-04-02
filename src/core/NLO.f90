@@ -3,54 +3,40 @@ MODULE NLO
   USE kinds, ONLY: DP
   IMPLICIT NONE
 CONTAINS
-  SUBROUTINE shift_current(hw, sigma_w, eigval, v_k_X, A_k_X, dA_k_X)
-    USE constants, ONLY: pi, zi, hbar_evfs, e_chg_au, e_chg_si, ev2j, FS2SEC, ry2ev
+  SUBROUTINE shift_current(hw, sigma_w, dE, fmn, kernel_mn)
+    USE constants, ONLY: pi, zi, hbar_evfs, e_chg_au, e_chg_si, FS2SEC
     USE io_input, ONLY: dE_thr, shift_eta
-    USE system, ONLY: Nw, V_cell_3D
-    USE kpoints, ONLY: t_kpt
+    USE system, ONLY: V_cell_3D
     USE delta_func, ONLY: delta_gaussian
     REAL(DP), INTENT(IN) :: hw(:)
     REAL(DP), INTENT(INOUT) :: sigma_w(3, 6, SIZE(hw))
-    REAL(DP), INTENT(IN) :: eigval(Nw)
-    COMPLEX(DP), INTENT(IN) :: v_k_X(3, Nw, Nw)
-    COMPLEX(DP), INTENT(IN) :: A_k_X(3, Nw, Nw)
-    COMPLEX(DP), INTENT(IN), OPTIONAL :: dA_k_X(3, 3, Nw, Nw)
-    INTEGER :: n, m, iom
-    REAL(DP) :: dE, fmn, delta_w, conv_fact
-    COMPLEX(DP) :: pref_raw, factor
-    COMPLEX(DP) :: dr_mn(3, 3), kernel_mn(3, 6)
+    REAL(DP), INTENT(IN) :: dE, fmn
+    COMPLEX(DP), INTENT(IN) :: kernel_mn(3, 6)
+    INTEGER :: iom
+    REAL(DP) :: delta_w, conv_fact
+    REAL(DP) :: kernel_re(3, 6)
+    COMPLEX(DP), SAVE :: factor = (0.0_DP, 0.0_DP)
+    LOGICAL, SAVE :: binit = .FALSE.
     !
-    CALL start_clock('shift_current')
-    !> (e/fs * 1/V^2/fs/Ang^3) units
-    pref_raw = -zi*pi*(e_chg_au**3)/(4.0_DP*(hbar_evfs**2)*V_cell_3D)
-    !> (e/fs to muA) units
-    conv_fact = 1.0D6*e_chg_si/FS2SEC
-    factor = pref_raw*conv_fact
+    IF (ABS(dE) <= dE_thr) RETURN
+    IF (ABS(fmn) <= 1.0D-14) RETURN
     !
-    DO m = 1, Nw
-      DO n = 1, Nw
-        dE = (eigval(m) - eigval(n))
-        IF (ABS(dE) <= dE_thr) CYCLE
-        fmn = occ_T0(eigval(m)) - occ_T0(eigval(n))
-        IF (ABS(fmn) <= 1.0D-14) CYCLE
-        !
-        IF (PRESENT(dA_k_X)) THEN
-          CALL dr_gen(m, n, dE, dr_mn, v_k_X, A_k_X, dA_k_X(:, :, m, n))
-        ELSE
-          CALL dr_gen(m, n, dE, dr_mn, v_k_X, A_k_X)
-        END IF
-        CALL shift_kernel_mn(kernel_mn, A_k_X(:, n, m), dr_mn)
-        !
-        DO iom = 1, SIZE(hw)
-          !> (fs) units
-          delta_w = (delta_gaussian(dE - hw(iom), shift_eta) &
-                     + delta_gaussian(-dE - hw(iom), shift_eta))*hbar_evfs
-          sigma_w(:, :, iom) = sigma_w(:, :, iom) &
-                               + DBLE(factor*kernel_mn(:, :))*fmn*delta_w
-        END DO
-      END DO
+    IF (.NOT. binit) THEN
+      !> (e/fs * 1/V^2/fs/Ang^3) units
+      factor = -zi*pi*(e_chg_au**3)/(4.0_DP*(hbar_evfs**2)*V_cell_3D)
+      !> (e/fs to muA) units
+      conv_fact = 1.0D6*e_chg_si/FS2SEC
+      factor = factor*conv_fact
+      binit = .TRUE.
+    END IF
+    !
+    kernel_re(:, :) = DBLE(factor*kernel_mn(:, :))*fmn
+    DO iom = 1, SIZE(hw)
+      !> (fs) units
+      delta_w = (delta_gaussian(dE - hw(iom), shift_eta) &
+                 + delta_gaussian(-dE - hw(iom), shift_eta))*hbar_evfs
+      sigma_w(:, :, iom) = sigma_w(:, :, iom) + kernel_re(:, :)*delta_w
     END DO
-    CALL stop_clock('shift_current')
   END SUBROUTINE shift_current
   !
   SUBROUTINE dr_gen(m, n, dE_mn, dr_mn, v_k_X, A_k_X, dA_k_X)

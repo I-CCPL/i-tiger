@@ -1,7 +1,7 @@
 MODULE env
   USE io_global, ONLY: stdout
   IMPLICIT NONE
-  CHARACTER(LEN=12)::itg_version = 'v0.0.0.31'
+  CHARACTER(LEN=12)::itg_version = 'v0.0.0.32'
 CONTAINS
   SUBROUTINE env_start(date, time)
     USE mp_global, ONLY: mp_start, mp_rank, mp_root, mp_size, mp_barrier
@@ -108,7 +108,7 @@ CONTAINS
     CALL print_clock('make_q_data')
     CALL print_clock('make_R_data')
     CALL print_clock('make_k_data')
-    CALL print_clock('shift_k_H')
+    CALL print_clock('shift_current')
     CALL print_clock('i-TIGER')
   END SUBROUTINE print_all_clocks
 END MODULE

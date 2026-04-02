@@ -13,6 +13,7 @@ MODULE itg_k
   COMPLEX(DP), ALLOCATABLE::dH_k_W(:, :, :), dH_bar(:, :, :)
   !< Derivative of Hamiltonian (3, Nw, Nw)
   COMPLEX(DP), ALLOCATABLE::d2H_k_W(:, :, :, :), d2H_bar(:, :, :, :)
+  !< Second derivative of Hamiltonian (3, 3, Nw, Nw)
   COMPLEX(DP), ALLOCATABLE::v_k_H(:, :, :)
   !< Velocity matrix (3, Nw, Nw)
   REAL(DP), ALLOCATABLE::L_k(:, :, :)
@@ -26,17 +27,25 @@ MODULE itg_k
   REAL(DP), ALLOCATABLE::shift_hw(:)
 CONTAINS
   SUBROUTINE make_k_data()
-    USE constants, ONLY: hbar_evfs, zero, zi, hbar_evfs
+    USE constants, ONLY: hbar_evfs, zero, zi
     USE itg_R, ONLY: H_R, A_R, dH_R, dA_R, d2H_R
     USE fft_base, ONLY: fft_R2k
-    USE io_input, ONLY: lOAM, lBerry, lShift
+    USE io_input, ONLY: lOAM, lBerry, lShift, dE_thr
     USE lin_eig_H, ONLY: eig_H
     USE wannier90, ONLY: lreq_mmn
     USE kpoints, ONLY: t_iks
-    USE NLO, ONLY: shift_current
-    INTEGER::iw, jw, a, b, n, m, p
-    REAL(DP)::dE, w_nm
-    COMPLEX(DP)::r(3, Nw, Nw), dr(3, 3, Nw, Nw)
+    USE NLO, ONLY: shift_current, occ_T0
+    USE kpoints, ONLY: t_kpt
+    USE delta_func, ONLY: dE_inv
+    INTEGER::iw, jw, a, b, n, m, p, c, bc
+    INTEGER, PARAMETER :: bc2b(6) = (/1, 1, 2, 2, 3, 3/)
+    INTEGER, PARAMETER :: bc2c(6) = (/1, 2, 2, 3, 3, 1/)
+    REAL(DP)::dE, w_inv(Nw, Nw), occ(Nw), fmn
+    COMPLEX(DP)::psum, v_bar(3, Nw, Nw), dr_bar
+    COMPLEX(DP)::del_bar(3), w_bar(3, 3, Nw, Nw)
+    COMPLEX(DP)::dA_gen
+    COMPLEX(DP)::r_nm(3), dr_mn(3, 3), kernel_mn(3, 6)
+    REAL(DP)::eta = 0.04 ! eV
     CALL start_clock('make_k_data')
 
     ! Eigenvalues and eigenvectors
@@ -69,14 +78,78 @@ CONTAINS
       ! CALL shift_current(shift_hw, shift_w, t_kpt%eigval(:, t_iks), v_k_H, A_k_H)
       ! CALL shift_current(shift_hw, shift_w, t_kpt%eigval(:, t_iks), v_k_H, A_k_H, dH_k_W)
 
-      dH_bar = dH_bar/hbar_evfs
-      ! CALL fft_R2k(R_vec, dA_R, dA_k_W)
-      ! CALL t_kpt%rotate(dA_k_W, dA_bar)
-      CALL vel_to_berry(t_kpt%eigval(:, t_iks), dH_bar, A_bar)
+      CALL fft_R2k(R_vec, dA_R, dA_k_W)
+      CALL t_kpt%rotate(dA_k_W, dA_bar)
+      ! dH_bar = dH_bar/hbar_evfs
+      ! CALL vel_to_berry(t_kpt%eigval(:, t_iks), dH_bar, A_bar)
+
       CALL fft_R2k(R_vec, d2H_R, d2H_k_W)
       CALL t_kpt%rotate(d2H_k_W, d2H_bar)
 
-      CALL shift_current(shift_hw, shift_w, t_kpt%eigval(:, t_iks), dH_bar, A_bar, d2H_bar)
+      DO n = 1, Nw
+        occ(n) = occ_T0(t_kpt%eigval(n, t_iks))
+        DO m = 1, Nw
+          dE = t_kpt%eigval(n, t_iks) - t_kpt%eigval(m, t_iks)
+          w_inv(n, m) = dE_inv(dE, eta)*hbar_evfs
+          v_bar(:, n, m) = dH_bar(:, n, m)/hbar_evfs
+        END DO
+      END DO
+
+      CALL start_clock('shift_current')
+      DO m = 1, Nw
+        DO n = 1, Nw
+          IF (m == n) CYCLE
+          dE = t_kpt%eigval(m, t_iks) - t_kpt%eigval(n, t_iks)
+          IF (ABS(dE) <= dE_thr) CYCLE
+          fmn = occ(m) - occ(n)
+          IF (ABS(fmn) <= 1.0D-14) CYCLE
+
+          del_bar(:) = v_bar(:, m, m) - v_bar(:, n, n)
+          DO a = 1, 3
+            r_nm(a) = v_bar(a, n, m)*w_inv(n, m)/zi + a_bar(a, n, m)
+            DO b = 1, 3
+              psum = zero
+              w_bar(a, b, m, n) = d2H_bar(a, b, m, n)/hbar_evfs
+              DO p = 1, Nw
+                IF (p == m .OR. p == n) CYCLE
+                psum = psum &
+                       + (v_bar(a, m, p)*v_bar(b, p, n))*w_inv(p, n) &
+                       - (v_bar(b, m, p)*v_bar(a, p, n))*w_inv(m, p)
+              END DO
+              dr_bar = zi*w_inv(m, n) &
+                       *( &
+                       (v_bar(a, m, n)*del_bar(b) &
+                        + v_bar(b, m, n)*del_bar(a))*w_inv(m, n) &
+                       - w_bar(a, b, m, n) &
+                       + psum &
+                       )
+
+              psum = zero
+              DO p = 1, Nw
+                psum = psum &
+                       + (v_bar(b, m, p)*a_bar(a, p, n))*w_inv(m, p) &
+                       - (a_bar(a, m, p)*v_bar(b, p, n))*w_inv(p, n)
+              END DO
+              da_gen = dA_bar(b, a, m, n) &
+                       + psum
+
+              dr_mn(a, b) = dr_bar + da_gen &
+                            - (a_bar(b, m, m) - a_bar(b, n, n)) &
+                            *(v_bar(a, m, n)*w_inv(m, n) + zi*a_bar(a, m, n))
+            END DO
+          END DO
+
+          DO a = 1, 3
+            DO bc = 1, 6
+              b = bc2b(bc)
+              c = bc2c(bc)
+              kernel_mn(a, bc) = r_nm(b)*dr_mn(c, a) + r_nm(c)*dr_mn(b, a)
+            END DO
+          END DO
+          CALL shift_current(shift_hw, shift_w, dE, fmn, kernel_mn)
+        END DO
+      END DO
+      CALL stop_clock('shift_current')
     END IF
     CALL stop_clock('make_k_data')
   END SUBROUTINE make_k_data
@@ -131,6 +204,7 @@ CONTAINS
       CALL write_Berry('itg.Berry.dat', berry_tot)
       CALL write_Berry_k('itg.Berry_k.dat', berry_k_tot)
       DEALLOCATE (berry_tot)
+      DEALLOCATE (berry_k_tot)
       DEALLOCATE (berry_k_tot)
     END IF
 
