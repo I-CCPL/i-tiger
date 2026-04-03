@@ -4,10 +4,18 @@ MODULE NLO
   IMPLICIT NONE
   REAL(DP), ALLOCATABLE::shift_w(:, :, :)
   REAL(DP), ALLOCATABLE::shift_hw(:)
+  !... factors
+  COMPLEX(DP)::fac_dielec
+  COMPLEX(DP)::fac_shift
+
 CONTAINS
   SUBROUTINE NLO_init()
+    USE constants, ONLY: pi, zi, hbar_evfs, e_chg_au, e_chg_si, FS2SEC
     USE io_input, ONLY: shift_nw, shift_wmin, shift_dw
+    USE system, ONLY: V_cell_3D
     INTEGER::i
+    REAL(DP)::conv_fact
+
     ALLOCATE (shift_w(3, 6, shift_nw))
     ALLOCATE (shift_hw(shift_nw))
     IF (shift_nw == 1) THEN
@@ -19,6 +27,16 @@ CONTAINS
     END IF
     shift_w = 0.0_DP
 
+    !... shift current
+    !> [e/fs * 1/V^2 * 1/fs/Ang^3] units
+    !> kernel is [fs*Ang^3] units, so overall [e/fs * 1/V^2]
+    fac_shift = -zi*pi*(e_chg_au**3)/(4.0_DP*(hbar_evfs**2)*V_cell_3D)
+    !> [e/fs] to [muA] units
+    conv_fact = 1.0D6*e_chg_si/FS2SEC
+    fac_shift = fac_shift*conv_fact
+
+    !... convert delta_E to delta_w
+    fac_shift = fac_shift*hbar_evfs
   END SUBROUTINE NLO_init
   SUBROUTINE NLO_clear()
     IF (ALLOCATED(shift_w)) DEALLOCATE (shift_w)
@@ -72,6 +90,7 @@ CONTAINS
 
         del_bar(:) = v_bar(:, m, m) - v_bar(:, n, n)
         DO a = 1, 3
+          ! PRB 97, 245143 (2018) Eq. (22)
           gen_r_nm(a) = v_bar(a, n, m)*w_inv(n, m)/zi + A_bar(a, n, m)
           DO b = 1, 3
             psum = zero
@@ -98,7 +117,7 @@ CONTAINS
             END DO
             da_mn = dA_bar(b, a, m, n) &
                     + psum
-
+            ! PRB 97, 245143 (2018) Eq. (36)
             gen_dr_mn(a, b) = dr_mn + da_mn &
                               - (A_bar(b, m, m) - A_bar(b, n, n)) &
                               *(v_bar(a, m, n)*w_inv(m, n) + zi*A_bar(a, m, n))
@@ -112,9 +131,7 @@ CONTAINS
   END SUBROUTINE NLO_main
   !
   SUBROUTINE shift_current(hw, sigma_w, dE, fmn, r_nm, dr_mn)
-    USE constants, ONLY: pi, zi, hbar_evfs, e_chg_au, e_chg_si, FS2SEC
     USE io_input, ONLY: dE_thr, shift_eta
-    USE system, ONLY: V_cell_3D
     USE delta_func, ONLY: delta_gaussian
     REAL(DP), INTENT(IN) :: hw(:)
     REAL(DP), INTENT(INOUT) :: sigma_w(3, 6, SIZE(hw))
@@ -123,19 +140,8 @@ CONTAINS
     INTEGER :: a, b, c, bc, iom
     INTEGER, PARAMETER :: bc2b(6) = (/1, 1, 2, 2, 3, 3/)
     INTEGER, PARAMETER :: bc2c(6) = (/1, 2, 2, 3, 3, 1/)
-    REAL(DP) :: delta_w, conv_fact
+    REAL(DP) :: delta_E
     COMPLEX(DP) :: kernel_mn(3, 6)
-    COMPLEX(DP), SAVE :: factor = (0.0_DP, 0.0_DP)
-    LOGICAL, SAVE :: binit = .FALSE.
-    !
-    IF (.NOT. binit) THEN
-      !> (e/fs * 1/V^2/fs/Ang^3) units
-      factor = -zi*pi*(e_chg_au**3)/(4.0_DP*(hbar_evfs**2)*V_cell_3D)
-      !> (e/fs to muA) units
-      conv_fact = 1.0D6*e_chg_si/FS2SEC
-      factor = factor*conv_fact
-      binit = .TRUE.
-    END IF
     !
     DO a = 1, 3
       DO bc = 1, 6
@@ -146,9 +152,9 @@ CONTAINS
     END DO
 
     DO iom = 1, SIZE(hw)
-      delta_w = (delta_gaussian(dE - hw(iom), shift_eta) &
-                 + delta_gaussian(-dE - hw(iom), shift_eta))*hbar_evfs
-      sigma_w(:, :, iom) = sigma_w(:, :, iom) + fmn*delta_w*DBLE(factor*kernel_mn(:, :))
+      delta_E = delta_gaussian(dE - hw(iom), shift_eta) &
+                + delta_gaussian(-dE - hw(iom), shift_eta)
+      sigma_w(:, :, iom) = sigma_w(:, :, iom) + fmn*delta_E*DBLE(fac_shift*kernel_mn(:, :))
     END DO
   END SUBROUTINE shift_current
   !

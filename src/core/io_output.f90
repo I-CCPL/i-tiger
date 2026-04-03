@@ -110,7 +110,7 @@ CONTAINS
   END SUBROUTINE write_Berry_k
   !
   SUBROUTINE write_shift(fname, hw, sigma_w)
-    USE system, ONLY: dim
+    ! USE system, ONLY: dim
     CHARACTER(LEN=*), INTENT(IN) :: fname
     REAL(DP), INTENT(IN) :: hw(:)
     REAL(DP), INTENT(IN) :: sigma_w(3, 6, SIZE(hw))
@@ -120,14 +120,15 @@ CONTAINS
     CHARACTER(LEN=1), PARAMETER :: a_lab(3) = (/'x', 'y', 'z'/)
     IF (.NOT. ionode) RETURN
     !
-    SELECT CASE (dim)
-    CASE (3)
-      unit_str = 'muA/V^2'
-    CASE (2)
-      unit_str = 'muA*Ang/V^2'
-    CASE (1)
-      unit_str = 'muA*Ang^2/V^2'
-    END SELECT
+    ! SELECT CASE (dim)
+    ! CASE (3)
+    !   unit_str = 'microA/V^2'
+    ! CASE (2)
+    !   unit_str = 'microA*Ang/V^2'
+    ! CASE (1)
+    !   unit_str = 'microA*Ang^2/V^2'
+    ! END SELECT
+    unit_str = '[microA/V^2]'
     !
     DO ia = 1, 3
       fname_a = TRIM(fname)//'_'//a_lab(ia)//'.dat'

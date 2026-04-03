@@ -12,11 +12,13 @@ MODULE system
   !< Reciprocal lattice (a*b=2pi)
   REAL(DP) :: recip_lattice_inv(3, 3)
   !< Inverse reciprocal lattice
-  INTEGER::dim = 3
   REAL(DP)::V_cell_3D
   !< Volume of unit cell
-  REAL(DP)::V_cell_nD
+
+  !... NOT PROPERLY IMPLEMENTED YET
+  ! REAL(DP)::V_cell_nD
   !< Volume of unit cell for nD system (n=1, 2, 3)
+  ! INTEGER::dim = 3
   !
   INTERFACE red2cart_real
     MODULE PROCEDURE red2cart_real_1D, red2cart_real_2D
@@ -46,16 +48,16 @@ CONTAINS
 
     tmp_vec = cross3(real_lattice(:, 1), real_lattice(:, 2))
     V_cell_3D = ABS(dot3(tmp_vec, real_lattice(:, 3)))
-    SELECT CASE (dim)
-    CASE (3)
-      V_cell_nD = V_cell_3D
-    CASE (2)
-      ! Assume align in the xy-plane
-      V_cell_nD = NORM2(tmp_vec)
-    CASE (1)
-      ! Assume align in the z-axis
-      V_cell_nD = NORM2(real_lattice(:, 3))
-    END SELECT
+    ! SELECT CASE (dim)
+    ! CASE (3)
+    !   V_cell_nD = V_cell_3D
+    ! CASE (2)
+    !   ! Assume align in the xy-plane
+    !   V_cell_nD = NORM2(tmp_vec)
+    ! CASE (1)
+    !   ! Assume align in the z-axis
+    !   V_cell_nD = NORM2(real_lattice(:, 3))
+    ! END SELECT
   END SUBROUTINE cell_setup
   !
   SUBROUTINE red2cart_real_1D(A_red, A_cart)

@@ -90,15 +90,15 @@ CONTAINS
   END SUBROUTINE read_control
   !
   SUBROUTINE read_itg()
-    USE system, ONLY: dim
-    NAMELIST /itg/ lBand, lOAM, lBerry, dE_thr, dE_eta, E_fermi, &
-      dim, lShift, shift_wmin, shift_wmax, shift_dw, shift_eta
+    ! USE system, ONLY: dim
+    NAMELIST /itg/ lBand, lOAM, lBerry, dE_thr, dE_eta, E_fermi, & ! dim &
+      lShift, shift_wmin, shift_wmax, shift_dw, shift_eta
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) THEN
       READ (stdin, nml=itg)
       WRITE (stdout, '(2X, A, ES11.4)') '- dE threshold: ', dE_thr
       WRITE (stdout, '(2X, A, ES11.4)') '- Fermi energy: ', E_fermi
-      WRITE (stdout, '(2X, A, 1X, I0)') '- Dimension: ', dim
+      ! WRITE (stdout, '(2X, A, 1X, I0)') '- Dimension: ', dim
       IF (lShift) THEN
         shift_nw = CEILING((shift_wmax - shift_wmin)/shift_dw) + 1
         WRITE (stdout, '(2X, A, 2(1X, ES11.4))') '- Shift energy window (eV): ', shift_wmin, shift_wmax
@@ -112,10 +112,10 @@ CONTAINS
     CALL mp_bcast(lBerry)
     CALL mp_bcast(dE_thr)
     CALL mp_bcast(E_fermi)
-    CALL mp_bcast(dim)
-    IF (dim < 1 .OR. dim > 3) THEN
-      CALL errore(1, 'read_itg', 'dimensionality must be 1, 2, or 3')
-    END IF
+    ! CALL mp_bcast(dim)
+    ! IF (dim < 1 .OR. dim > 3) THEN
+    !   CALL errore(1, 'read_itg', 'dimensionality must be 1, 2, or 3')
+    ! END IF
     CALL mp_bcast(lShift)
     IF (lShift) THEN
       CALL mp_bcast(shift_wmin)
