@@ -1,5 +1,5 @@
 ./build/Berry.o : ./build/io_input.o ./build/system.o ./build/constants.o 
-./build/NLO.o : ./build/delta_funct.o ./build/io_output.o ./build/kpoints.o ./build/mp_base.o ./build/system.o ./build/io_input.o ./build/constants.o ./build/kinds.o 
+./build/NLO.o : ./build/delta_funct.o ./build/io_output.o ./build/io_global.o ./build/mp_base.o ./build/kpoints.o ./build/system.o ./build/constants.o ./build/io_input.o ./build/kinds.o 
 ./build/OAM.o : ./build/system.o ./build/io_input.o ./build/constants.o ./build/kinds.o 
 ./build/io_output.o : ./build/kpoints.o ./build/system.o ./build/io_global.o ./build/kinds.o 
 ./build/itg_R.o : ./build/io_input.o ./build/derivation.o ./build/fft.o ./build/constants.o ./build/R_vector.o ./build/wannier90.o ./build/system.o ./build/kinds.o 

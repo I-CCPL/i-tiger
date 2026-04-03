@@ -19,14 +19,14 @@ MODULE io_input
   !< broadening parameter for 1/dE
   REAL(DP)::E_fermi = 0.0_DP
 
-  !... Shift current calculation parameters
+  !... Nonlinear optics calculation parameters
   !... Frequency: eV units from input
-  LOGICAL::lShift = .FALSE.
-  REAL(DP)::shift_wmin = 0.0_DP
-  REAL(DP)::shift_wmax = 0.0_DP
-  REAL(DP)::shift_dw = 0.0_DP
-  INTEGER::shift_nw
-  REAL(DP)::shift_eta = 0.01_DP
+  LOGICAL::lNLO = .FALSE.
+  REAL(DP)::NLO_Emin = 0.0_DP
+  REAL(DP)::NLO_Emax = 0.0_DP
+  REAL(DP)::NLO_dE = 0.0_DP
+  INTEGER::NLO_nE
+  REAL(DP)::NLO_eta = 0.01_DP
   !
 CONTAINS
   SUBROUTINE read_input()
@@ -92,19 +92,19 @@ CONTAINS
   SUBROUTINE read_itg()
     ! USE system, ONLY: dim
     NAMELIST /itg/ lBand, lOAM, lBerry, dE_thr, dE_eta, E_fermi, & ! dim &
-      lShift, shift_wmin, shift_wmax, shift_dw, shift_eta
+      lNLO, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) THEN
       READ (stdin, nml=itg)
       WRITE (stdout, '(2X, A, ES11.4)') '- dE threshold: ', dE_thr
       WRITE (stdout, '(2X, A, ES11.4)') '- Fermi energy: ', E_fermi
       ! WRITE (stdout, '(2X, A, 1X, I0)') '- Dimension: ', dim
-      IF (lShift) THEN
-        shift_nw = CEILING((shift_wmax - shift_wmin)/shift_dw) + 1
-        WRITE (stdout, '(2X, A, 2(1X, ES11.4))') '- Shift energy window (eV): ', shift_wmin, shift_wmax
-        WRITE (stdout, '(2X, A, 1X, ES11.4)') '- Shift broadening (eV): ', shift_eta
-        WRITE (stdout, '(2X, A, 1X, ES11.4)') '- Shift dw (eV): ', shift_dw
-        WRITE (stdout, '(2X, A, 1X, I0)') '- Shift w points: ', shift_nw
+      IF (lNLO) THEN
+        NLO_nE = CEILING((NLO_Emax - NLO_Emin)/NLO_dE) + 1
+        WRITE (stdout, '(2X, A, 2(1X, ES11.4))') '- NLO energy window (eV): ', NLO_Emin, NLO_Emax
+        WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO broadening (eV): ', NLO_eta
+        WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO dE (eV): ', NLO_dE
+        WRITE (stdout, '(2X, A, 1X, I0)') '- NLO E points: ', NLO_nE
       END IF
     END IF
     CALL mp_bcast(lBand)
@@ -116,21 +116,21 @@ CONTAINS
     ! IF (dim < 1 .OR. dim > 3) THEN
     !   CALL errore(1, 'read_itg', 'dimensionality must be 1, 2, or 3')
     ! END IF
-    CALL mp_bcast(lShift)
-    IF (lShift) THEN
-      CALL mp_bcast(shift_wmin)
-      CALL mp_bcast(shift_wmax)
-      CALL mp_bcast(shift_eta)
-      CALL mp_bcast(shift_dw)
-      CALL mp_bcast(shift_nw)
-      IF (shift_wmax <= shift_wmin) &
-        CALL errore(1, 'read_itg', 'shift_wmax must be greater than shift_wmin')
-      IF (shift_dw <= 0.0_DP) &
-        CALL errore(1, 'read_itg', 'shift_dw must be positive')
-      IF (shift_nw <= 0) &
-        CALL errore(1, 'read_itg', 'shift_nw must be positive')
-      IF (shift_eta <= 0.0_DP) &
-        CALL errore(1, 'read_itg', 'shift_eta must be positive')
+    CALL mp_bcast(lNLO)
+    IF (lNLO) THEN
+      CALL mp_bcast(NLO_Emin)
+      CALL mp_bcast(NLO_Emax)
+      CALL mp_bcast(NLO_dE)
+      CALL mp_bcast(NLO_eta)
+      CALL mp_bcast(NLO_nE)
+      IF (NLO_Emax <= NLO_Emin) &
+        CALL errore(1, 'read_itg', 'NLO_Emax must be greater than NLO_Emin')
+      IF (NLO_dE <= 0.0_DP) &
+        CALL errore(1, 'read_itg', 'NLO_dE must be positive')
+      IF (NLO_nE <= 0) &
+        CALL errore(1, 'read_itg', 'NLO_nE must be positive')
+      IF (NLO_eta <= 0.0_DP) &
+        CALL errore(1, 'read_itg', 'NLO_eta must be positive')
     END IF
   END SUBROUTINE read_itg
   !
@@ -184,9 +184,9 @@ CONTAINS
       WRITE (stdout, '(2X,A, 1X, I0)') '- Total k-points: ', t_kpt%nktot
       !
     ELSE IF (match('CRYSTAL_B', line)) THEN
-      IF (lShift) CALL errore(1, 'read_kpts', &
-                              'shift current requires a uniform k-mesh.' &
-                              //' Use AUTOMATIC keyword.')
+      IF (lNLO) CALL errore(1, 'read_kpts', &
+                            'NLO requires a uniform k-mesh.' &
+                            //' Use AUTOMATIC keyword.')
 
       CALL read_line(line, tend)
       IF (tend) GOTO 10

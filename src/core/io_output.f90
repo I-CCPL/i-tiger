@@ -6,8 +6,6 @@ MODULE io_output
   IMPLICIT NONE
   LOGICAL, PRIVATE::binit = .FALSE.
   REAL(DP), ALLOCATABLE::k_pos(:)
-
-  PRIVATE::writing_info
 CONTAINS
   SUBROUTINE io_output_init()
     USE kpoints, ONLY: t_kpt
@@ -109,42 +107,5 @@ CONTAINS
     CLOSE (io_unit)
   END SUBROUTINE write_Berry_k
   !
-  SUBROUTINE write_shift(fname, hw, sigma_w)
-    ! USE system, ONLY: dim
-    CHARACTER(LEN=*), INTENT(IN) :: fname
-    REAL(DP), INTENT(IN) :: hw(:)
-    REAL(DP), INTENT(IN) :: sigma_w(3, 6, SIZE(hw))
-    INTEGER :: io_unit, iom, ia
-    CHARACTER(LEN=20) :: unit_str
-    CHARACTER(LEN=256) :: fname_a
-    CHARACTER(LEN=1), PARAMETER :: a_lab(3) = (/'x', 'y', 'z'/)
-    IF (.NOT. ionode) RETURN
-    !
-    ! SELECT CASE (dim)
-    ! CASE (3)
-    !   unit_str = 'microA/V^2'
-    ! CASE (2)
-    !   unit_str = 'microA*Ang/V^2'
-    ! CASE (1)
-    !   unit_str = 'microA*Ang^2/V^2'
-    ! END SELECT
-    unit_str = '[microA/V^2]'
-    !
-    DO ia = 1, 3
-      fname_a = TRIM(fname)//'_'//a_lab(ia)//'.dat'
-      io_unit = get_free_unit()
-      OPEN (unit=io_unit, file=fname_a)
-      CALL writing_info('shift current', fname_a)
-      WRITE (io_unit, 0947) 'shift current units: '//TRIM(unit_str)
-      WRITE (io_unit, 0947) 'current direction: '//a_lab(ia)
-      WRITE (io_unit, 0947) 'hw (eV), xx, xy, yy, yz, zz, zx'
-
-      DO iom = 1, SIZE(hw)
-        WRITE (io_unit, '(F13.6, 6(1X, ES16.8E3))') hw(iom), sigma_w(ia, :, iom)
-      END DO
-      CLOSE (io_unit)
-    END DO
-0947 FORMAT("# ", A)
-  END SUBROUTINE write_shift
 
 END MODULE io_output

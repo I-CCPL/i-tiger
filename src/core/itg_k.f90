@@ -27,7 +27,7 @@ CONTAINS
   SUBROUTINE make_k_data()
     USE itg_R, ONLY: H_R, A_R, dH_R, dA_R, d2H_R
     USE fft_base, ONLY: fft_R2k
-    USE io_input, ONLY: lOAM, lBerry, lShift
+    USE io_input, ONLY: lOAM, lBerry, lNLO
     USE lin_eig_H, ONLY: eig_H
     USE wannier90, ONLY: lreq_mmn
     USE kpoints, ONLY: t_iks, t_kpt
@@ -60,21 +60,21 @@ CONTAINS
       berry_k(:, :, t_iks) = O_k(:, :)
       CALL Berry_sum(t_kpt%eigval(:, t_iks), O_k(:, :), berry(:, t_iks))
     END IF
-    IF (lShift) THEN
+    IF (lNLO) THEN
       CALL fft_R2k(R_vec, dA_R, dA_k_W)
       CALL t_kpt%rotate(dA_k_W, dA_bar)
 
       CALL fft_R2k(R_vec, d2H_R, d2H_k_W)
       CALL t_kpt%rotate(d2H_k_W, d2H_bar)
 
-      CALL NLO_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar)
+      CALL NLO_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H)
     END IF
     CALL stop_clock('make_k_data')
   END SUBROUTINE make_k_data
   !
   SUBROUTINE write_k_data()
     USE io_global, ONLY: stdout, ionode
-    USE io_input, ONLY: lBand, lOAM, lBerry, lShift
+    USE io_input, ONLY: lBand, lOAM, lBerry, lNLO
     USE io_output, ONLY: io_output_init, write_band, write_OAM, &
                          write_Berry, write_Berry_k
     USE NLO, ONLY: NLO_write
@@ -83,6 +83,7 @@ CONTAINS
     REAL(DP), ALLOCATABLE::berry_tot(:, :)
     REAL(DP), ALLOCATABLE::berry_k_tot(:, :, :)
     !
+    CALL start_clock('write_k_data')
     WRITE (stdout, '(2X, A)') 'Write k data...'
     CALL io_output_init()
     !
@@ -124,16 +125,17 @@ CONTAINS
       DEALLOCATE (berry_k_tot)
     END IF
 
-    IF (lShift) THEN
+    IF (lNLO) THEN
       CALL NLO_write(t_kpt)
     END IF
 
     CALL write_sep_line()
+    CALL stop_clock('write_k_data')
   END SUBROUTINE write_k_data
   !
   SUBROUTINE allocate_k_data()
     USE system, ONLY: Nw
-    USE io_input, ONLY: lOAM, lBerry, lShift
+    USE io_input, ONLY: lOAM, lBerry, lNLO
     USE wannier90, ONLY: lreq_mmn
     USE NLO, ONLY: NLO_init
     INTEGER::i
@@ -149,12 +151,12 @@ CONTAINS
       ALLOCATE (dH_bar(3, Nw, Nw))
       ALLOCATE (v_k_H(3, Nw, Nw))
     END IF
-    IF (lShift) THEN
+    IF (lNLO) THEN
       ALLOCATE (dA_k_W(3, 3, Nw, Nw))
       ALLOCATE (dA_bar(3, 3, Nw, Nw))
       ALLOCATE (d2H_k_W(3, 3, Nw, Nw))
       ALLOCATE (d2H_bar(3, 3, Nw, Nw))
-      CALL NLO_init()
+      CALL NLO_init(t_kpt)
     END IF
 
     IF (lOAM) ALLOCATE (L_k(3, Nw, t_kpt%nkpt))

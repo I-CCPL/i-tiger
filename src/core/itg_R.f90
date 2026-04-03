@@ -15,7 +15,7 @@ CONTAINS
     USE constants, ONLY: zero
     USE fft_base, ONLY: fft_q2R
     USE der_base, ONLY: der_R
-    USE io_input, ONLY: lShift
+    USE io_input, ONLY: lNLO
     USE wannier90, ONLY: lreq_mmn
     INTEGER::inb
     CALL start_clock('make_R_data')
@@ -37,7 +37,7 @@ CONTAINS
       ALLOCATE (dH_R(3, Nw, Nw, R_vec%nRpt))
       dH_R = zero
       CALL der_R(R_vec, H_R, dH_R)
-      IF (lShift) THEN
+      IF (lNLO) THEN
         ALLOCATE (d2H_R(3, 3, Nw, Nw, R_vec%nRpt))
         ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
         CALL der_R(R_vec, dH_R, d2H_R)
