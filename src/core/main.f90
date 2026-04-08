@@ -13,13 +13,16 @@ PROGRAM main
   CALL read_input()
   !
   CALL make_q_data()
+  CALL debug_q()
   CALL make_R_data()
+  CALL debug_R()
   CALL clear_q_data()
   !
   CALL allocate_k_data()
   DO t_iks = 1, t_kpt%nkpt
     CALL print_k_info(t_iks, t_kpt%nkpt)
     CALL make_k_data()
+    CALL debug_k()
   END DO
   CALL print_k_info(t_iks, t_kpt%nkpt)
 

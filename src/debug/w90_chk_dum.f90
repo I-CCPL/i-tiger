@@ -4,7 +4,6 @@ CONTAINS
     CLASS(chk_dum_type), INTENT(INOUT) :: self
     IF (ALLOCATED(self%excl_bands)) DEALLOCATE (self%excl_bands)
     IF (ALLOCATED(self%lwindow)) DEALLOCATE (self%lwindow)
-    IF (ALLOCATED(self%ndimwin)) DEALLOCATE (self%ndimwin)
     IF (ALLOCATED(self%u_matrix_opt)) DEALLOCATE (self%u_matrix_opt)
     IF (ALLOCATED(self%u_matrix)) DEALLOCATE (self%u_matrix)
     IF (ALLOCATED(self%m_matrix)) DEALLOCATE (self%m_matrix)
@@ -54,7 +53,7 @@ CONTAINS
     WRITE (io_unit, '(A,2(1X,I0))') 'dims_eigval=', self%nbnd, self%kpts%nkpt
     IF (chk_dum%have_disentangled) THEN
       WRITE (io_unit, '(A,2(1X,I0))') 'dims_lwindow=', SIZE(chk_dum%lwindow, 1), SIZE(chk_dum%lwindow, 2)
-      WRITE (io_unit, '(A,1X,I0)') 'dims_ndimwin=', SIZE(chk_dum%ndimwin)
+      WRITE (io_unit, '(A,1X,I0)') 'dims_ndimwin=', SIZE(self%ndimwin)
       WRITE (io_unit, '(A,3(1X,I0))') 'dims_u_matrix_opt=', SIZE(chk_dum%u_matrix_opt, 1), SIZE(chk_dum%u_matrix_opt, 2), SIZE(chk_dum%u_matrix_opt, 3)
     ELSE
       WRITE (io_unit, '(A,2(1X,I0))') 'dims_lwindow=', 0, 0
@@ -92,8 +91,8 @@ CONTAINS
     CALL dump_l(TRIM(fbase)//'.lwindow', lv)
     DEALLOCATE (lv)
 
-    ALLOCATE (iv(SIZE(chk_dum%ndimwin)))
-    iv = RESHAPE(chk_dum%ndimwin, [SIZE(chk_dum%ndimwin)])
+    ALLOCATE (iv(SIZE(self%ndimwin)))
+    iv = RESHAPE(self%ndimwin, [SIZE(self%ndimwin)])
     CALL dump_i(TRIM(fbase)//'.ndimwin', iv)
     DEALLOCATE (iv)
 

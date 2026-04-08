@@ -30,9 +30,9 @@ SUBROUTINE check_Hermiticity(nkpt, ldX, Ham, tol)
   !
   herm_rel = herm_abs_max/MAX(h_abs_max, eps)
 
-  WRITE (stdout, '(2X, A, 1X, ES12.4E3)') '- hermiticity |H-H^+|_max:', herm_abs_max
-  WRITE (stdout, '(2X, A, 1X, ES12.4E3)') '- max element magnitude  :', h_abs_max
-  WRITE (stdout, '(2X, A, 1X, ES12.4E3)') '- hermiticity relative   :', herm_rel
+  WRITE (*, '(2X, A, 1X, ES12.4E3)') '- hermiticity |H-H^+|_max:', herm_abs_max
+  WRITE (*, '(2X, A, 1X, ES12.4E3)') '- max element magnitude  :', h_abs_max
+  WRITE (*, '(2X, A, 1X, ES12.4E3)') '- hermiticity relative   :', herm_rel
   IF (herm_rel > tol) THEN
     WRITE (msg, '(A,1X,ES12.4E3)') '- hermiticity check failed. relative=', herm_rel
     CALL errore(1, 'check_Hermiticity', TRIM(msg))

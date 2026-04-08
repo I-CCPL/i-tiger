@@ -10,6 +10,7 @@ MODULE itg_R
   COMPLEX(DP), ALLOCATABLE::A_R(:, :, :, :), A_R_b(:, :, :, :)
   COMPLEX(DP), ALLOCATABLE::dA_R(:, :, :, :, :)
   COMPLEX(DP), ALLOCATABLE::d2H_R(:, :, :, :, :)
+  REAL(DP), ALLOCATABLE::shift(:, :, :)
 CONTAINS
   SUBROUTINE make_R_data()
     USE constants, ONLY: zero
@@ -17,33 +18,48 @@ CONTAINS
     USE der_base, ONLY: der_R
     USE io_input, ONLY: lNLO
     USE wannier90, ONLY: lreq_mmn
-    INTEGER::inb
+    INTEGER::inb, iw, jw, ir0pt, ikpt, irpt, iuw, ideg
+    REAL(DP)::center(3, Nw)
     CALL start_clock('make_R_data')
     !
-    CALL R_vec%build_R(w90data)
+    CALL R_vec%build_ws(w90data)
+    ! CALL R_vec%build_R(w90data)
     !
     ALLOCATE (H_R(Nw, Nw, R_vec%nRpt))
-    CALL fft_q2R(w90data, R_vec, w90data%Hq, H_R)
+    CALL fft_q2R(w90data, R_vec, w90data%Hq, H_R)!, dH_R, shift)
 
     IF (lreq_mmn) THEN
       ALLOCATE (A_R(3, Nw, Nw, R_vec%nRpt))
-      ALLOCATE (A_R_b(3, Nw, Nw, R_vec%nRpt))
       A_R = zero
-      DO inb = 1, w90data%nnb
-        CALL fft_q2R(w90data, R_vec, w90data%Aq(:, :, :, :, inb), A_R_b)
-        CALL enforce_Hemiticity_R(A_R_b, A_R)
+      CALL fft_q2R(w90data, R_vec, w90data%Aq(:, :, :, :), A_R)
+      ! CALL enforce_Hemiticity_R(A_R_b, A_R)
+      DO irpt = 1, R_vec%nRpt
+        IF (ALL(R_vec%R_red(:, irpt) == 0)) THEN
+          DO iw = 1, Nw
+            center(:, iw) = DBLE(A_R(:, iw, iw, irpt))
+          END DO
+          EXIT
+        END IF
+      END DO
+
+      ALLOCATE (shift(3, Nw, Nw))
+      DO iw = 1, Nw
+        DO jw = 1, Nw
+          shift(:, iw, jw) = center(:, jw) - center(:, iw)
+        END DO
       END DO
 
       ALLOCATE (dH_R(3, Nw, Nw, R_vec%nRpt))
       dH_R = zero
-      CALL der_R(R_vec, H_R, dH_R)
+      CALL der_R(R_vec, H_R, dH_R, shift)
       IF (lNLO) THEN
         ALLOCATE (d2H_R(3, 3, Nw, Nw, R_vec%nRpt))
         ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
-        CALL der_R(R_vec, dH_R, d2H_R)
-        CALL der_R(R_vec, A_R, dA_R)
+        CALL der_R(R_vec, dH_R, d2H_R, shift)
+        CALL der_R(R_vec, A_R, dA_R, shift)
       END IF
     END IF
+    CALL write_sep_line()
     CALL stop_clock('make_R_data')
   END SUBROUTINE make_R_data
   !

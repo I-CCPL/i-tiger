@@ -2,6 +2,8 @@ MODULE R_vector
   USE kinds, ONLY: DP
   IMPLICIT NONE
   PRIVATE
+  ! TODO: cell_expand from input
+  INTEGER::cell_expand(3) = (/2, 2, 2/)
   !
   TYPE::R_vec_type
     INTEGER::nu_shift
@@ -27,10 +29,16 @@ MODULE R_vector
     !< R_vec in Cartesian coordinates (3, nRpt)
     REAL(DP), ALLOCATABLE::w_R(:, :, :)
     !< weight for each R vector (Nw, Nw, nRpt)
+
+    INTEGER, ALLOCATABLE::map_r02r(:, :, :)
+    !< map from r0 to corresponding arbitrary r (nR0pt, iuw, idegen)
+    INTEGER, ALLOCATABLE::map_r2r0(:, :, :)
+    !< map from r to corresponding arbitrary r0 (2, iuw, nRpt)
   CONTAINS
     PROCEDURE::clear => clear_Rvec
     PROCEDURE::build_shift => build_shift_vecs
     PROCEDURE::build_R => build_Rvecs
+    PROCEDURE::build_ws => build_ws
   END TYPE R_vec_type
   PUBLIC::R_vec_type
   !
@@ -92,8 +100,6 @@ CONTAINS
     REAL(DP), ALLOCATABLE::Tvec_red(:, :), Tvec_cart(:, :)
     REAL(DP), ALLOCATABLE::Rvec_cart(:, :), dist_min(:)
     REAL(DP), ALLOCATABLE::w_R(:, :, :)
-    ! TODO: cell_expand from input
-    INTEGER::cell_expand(3) = (/1, 1, 1/)
     INTEGER::tmp_arr(3)
     INTEGER::cell_range(3)
     REAL(DP)::dr_nmR0(3) !< R0 + r_m - r_n
@@ -189,12 +195,7 @@ CONTAINS
     WRITE (stdout, '(2X, A)') '- Selecting R vectors...'
     WRITE (stdout, '(2X, A, I0)') '- Number of R=R0+T vectors: ', nRpt
     ! unique R vectors are selected
-    self%nRpt = 0
-    DO irpt = 1, nRpt
-      IF (bRvec_selected(irpt)) THEN
-        self%nRpt = self%nRpt + 1
-      END IF
-    END DO
+    self%nRpt = COUNT(bRvec_selected)
     WRITE (stdout, '(2X, A, I0)') '- Number of selected R vectors: ', self%nRpt
     ALLOCATE (self%R_red(3, self%nRpt))
     ALLOCATE (self%R_cart(3, self%nRpt))
@@ -214,4 +215,193 @@ CONTAINS
 
     CALL write_sep_line()
   END SUBROUTINE build_Rvecs
+  SUBROUTINE build_ws(self, w90data)
+    USE io_global, ONLY: stdout
+    USE system, ONLY: Nw, red2cart_real
+    USE wannier90, ONLY: w90data_type
+    CLASS(R_vec_type), INTENT(INOUT)::self
+    TYPE(w90data_type), INTENT(INOUT)::w90data
+    INTEGER::n1, n2, n3, icnt, i1, i2, i3, degen, i
+    INTEGER::iw, jw, iuw, ir0pt
+    REAL(DP)::ndiff_red(3), ndiff_cart(3)
+    REAL(DP)::dist_min
+    REAL(DP), ALLOCATABLE::dist(:)
+
+    REAL(DP), ALLOCATABLE::w_R0(:), minRT(:, :, :), R_red(:, :)
+    INTEGER::nRpt, ncell, irpt, idx
+    INTEGER::cell_range(3)
+    INTEGER, ALLOCATABLE::ndegen(:, :), degen_idx(:, :)
+    LOGICAL, ALLOCATABLE::bRvec_selected(:)
+    cell_range(:) = 2*cell_expand(:) + 1
+    ncell = PRODUCT(cell_range)
+    ALLOCATE (dist(ncell))
+
+    CALL self%build_shift(w90data%wannier_center_cart)
+
+    !... find T vectors to find equivalent R vectors for each R0
+    self%nR0pt = 0
+    DO n1 = -w90data%k_grid(1), w90data%k_grid(1)
+      DO n2 = -w90data%k_grid(2), w90data%k_grid(2)
+        DO n3 = -w90data%k_grid(3), w90data%k_grid(3)
+          ! Loop over the 125 points R. R=0 corresponds to i1=i2=i3=0,
+          ! or icnt=63
+          icnt = 0
+          DO i1 = -cell_expand(1), cell_expand(1)
+            DO i2 = -cell_expand(2), cell_expand(2)
+              DO i3 = -cell_expand(3), cell_expand(3)
+                icnt = icnt + 1
+                ! Calculate distance squared |r-R|^2
+                ndiff_red(1) = n1 - i1*w90data%k_grid(1)
+                ndiff_red(2) = n2 - i2*w90data%k_grid(2)
+                ndiff_red(3) = n3 - i3*w90data%k_grid(3)
+                CALL red2cart_real(ndiff_red, ndiff_cart)
+                dist(icnt) = SUM(ndiff_cart**2)
+              END DO
+            END DO
+          END DO
+          dist_min = MINVAL(dist)
+          IF (ABS(dist(ncell/2 + 1) - dist_min) < 1.E-7_DP) THEN
+            self%nR0pt = self%nR0pt + 1
+          END IF
+        END DO
+      END DO
+    END DO
+
+    WRITE (stdout, '(2X, A, I0)') '- Searching R0 vectors: ', self%nR0pt
+    ALLOCATE (self%R0_red(3, self%nR0pt))
+    ALLOCATE (self%R0_cart(3, self%nR0pt))
+    ALLOCATE (w_R0(self%nR0pt))
+    self%nR0pt = 0
+    DO n1 = -w90data%k_grid(1), w90data%k_grid(1)
+      DO n2 = -w90data%k_grid(2), w90data%k_grid(2)
+        DO n3 = -w90data%k_grid(3), w90data%k_grid(3)
+          ! Loop over the 125 points R. R=0 corresponds to i1=i2=i3=0,
+          ! or icnt=63
+          icnt = 0
+          DO i1 = -cell_expand(1), cell_expand(1)
+            DO i2 = -cell_expand(2), cell_expand(2)
+              DO i3 = -cell_expand(3), cell_expand(3)
+                icnt = icnt + 1
+                ! Calculate distance squared |r-R|^2
+                ndiff_red(1) = n1 - i1*w90data%k_grid(1)
+                ndiff_red(2) = n2 - i2*w90data%k_grid(2)
+                ndiff_red(3) = n3 - i3*w90data%k_grid(3)
+                CALL red2cart_real(ndiff_red, ndiff_cart)
+                dist(icnt) = SUM(ndiff_cart**2)
+              END DO
+            END DO
+          END DO
+          dist_min = MINVAL(dist)
+          IF (ABS(dist(ncell/2 + 1) - dist_min) < 1.E-7_DP) THEN
+            self%nR0pt = self%nR0pt + 1
+            degen = 0
+            DO i = 1, ncell
+              IF (ABS(dist(i) - dist_min) < 1.E-7_DP) &
+                degen = degen + 1
+            END DO
+            w_R0(self%nR0pt) = 1.0D0/REAL(degen, DP)
+            self%R0_red(1, self%nR0pt) = n1
+            self%R0_red(2, self%nR0pt) = n2
+            self%R0_red(3, self%nR0pt) = n3
+            CALL red2cart_real(self%R0_red(:, self%nR0pt), self%R0_cart(:, self%nR0pt))
+          END IF
+        END DO
+      END DO
+    END DO
+
+    !... Search T vectors to minimize |R0+T+r_n-r_m| for each R0 and shift
+    nRpt = self%nR0pt*ncell
+    WRITE (stdout, '(2X, A, I0)') '- Searching R vectors: ', nRpt
+    ALLOCATE (bRvec_selected(nRpt))
+    ALLOCATE (R_red(3, nRpt))
+    ALLOCATE (ndegen(self%nu_shift, self%nR0pt))
+    ALLOCATE (degen_idx(self%nu_shift, nRpt))
+    ALLOCATE (minRT(3, self%nu_shift, self%nR0pt))
+
+    bRvec_selected = .FALSE.
+    degen_idx = 0
+
+    DO ir0pt = 1, self%nR0pt
+      DO jw = 1, Nw
+        DO iw = 1, Nw
+          iuw = self%shift_map_inv(iw, jw)
+          dist_min = SUM((self%R0_cart(:, ir0pt) + self%shift_cart(:, iuw))**2)
+          minRT(:, iuw, ir0pt) = self%R0_red(:, ir0pt)
+          ndegen(iuw, ir0pt) = 0
+          ! evaluate minimum distance for R0+T+r_n-r_m
+          DO i1 = -cell_expand(1), cell_expand(1)
+            DO i2 = -cell_expand(2), cell_expand(2)
+              DO i3 = -cell_expand(3), cell_expand(3)
+                ndiff_red(1) = self%R0_red(1, ir0pt) + i1*w90data%k_grid(1)
+                ndiff_red(2) = self%R0_red(2, ir0pt) + i2*w90data%k_grid(2)
+                ndiff_red(3) = self%R0_red(3, ir0pt) + i3*w90data%k_grid(3)
+                CALL red2cart_real(ndiff_red, ndiff_cart)
+                IF (SUM((ndiff_cart + self%shift_cart(:, iuw))**2) < dist_min) THEN
+                  dist_min = SUM((ndiff_cart + self%shift_cart(:, iuw))**2)
+                END IF
+              END DO
+            END DO
+          END DO
+          ! select R0+T
+          DO i1 = -cell_expand(1), cell_expand(1)
+            DO i2 = -cell_expand(2), cell_expand(2)
+              DO i3 = -cell_expand(3), cell_expand(3)
+                ! Calculate distance squared |r-R|^2
+                ndiff_red(1) = self%R0_red(1, ir0pt) + i1*w90data%k_grid(1)
+                ndiff_red(2) = self%R0_red(2, ir0pt) + i2*w90data%k_grid(2)
+                ndiff_red(3) = self%R0_red(3, ir0pt) + i3*w90data%k_grid(3)
+                CALL red2cart_real(ndiff_red, ndiff_cart)
+                IF (ABS(SQRT(SUM((ndiff_cart + self%shift_cart(:, iuw))**2)) &
+                        - SQRT(dist_min)) < 1E-5) THEN
+                  idx = (((i3 + cell_expand(3)) &
+                          *cell_range(2) + (i2 + cell_expand(2))) &
+                         *cell_range(1) + (i1 + cell_expand(1))) &
+                        *self%nR0pt + ir0pt
+                  bRvec_selected(idx) = .TRUE.
+                  R_red(:, idx) = ndiff_red(:)
+                  ndegen(iuw, ir0pt) = ndegen(iuw, ir0pt) + 1
+                  degen_idx(iuw, idx) = ndegen(iuw, ir0pt)
+                  !< idx is iuw's ndegen-th degenerate R vector for given R0
+                END IF
+              END DO
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+
+    ! count number of R vectors
+    self%nRpt = COUNT(bRvec_selected)
+    WRITE (stdout, '(2X, A, I0)') '- Number of selected R vectors: ', self%nRpt
+    ALLOCATE (self%R_red(3, self%nRpt))
+    ALLOCATE (self%R_cart(3, self%nRpt))
+    ALLOCATE (self%w_R(Nw, Nw, self%nRpt))
+    ALLOCATE (self%map_r02r(self%nR0pt, self%nu_shift, MAXVAL(ndegen)))
+    ALLOCATE (self%map_r2r0(2, self%nu_shift, self%nRpt))
+    irpt = 0
+    DO idx = 1, nRpt
+      IF (bRvec_selected(idx)) THEN
+        irpt = irpt + 1
+        self%R_red(:, irpt) = R_red(:, idx)
+        CALL red2cart_real(self%R_red(:, irpt), self%R_cart(:, irpt))
+        ir0pt = MOD(idx - 1, self%nR0pt) + 1
+        DO jw = 1, Nw
+          DO iw = 1, Nw
+            iuw = self%shift_map_inv(iw, jw)
+            i = degen_idx(iuw, idx)
+            IF (i == 0) THEN
+              self%w_R(iw, jw, irpt) = 0.0D0
+            ELSE
+              self%w_R(iw, jw, irpt) = 1.0D0/REAL(ndegen(iuw, ir0pt), DP)*w_R0(ir0pt)
+              self%map_r02r(ir0pt, iuw, i) = irpt
+            END IF
+            self%map_r2r0(1, iuw, irpt) = ir0pt
+            self%map_r2r0(2, iuw, irpt) = i
+          END DO
+        END DO
+      END IF
+    END DO
+
+    WRITE (stdout, '(2X, A)') '- Finished building R vectors.'
+  END SUBROUTINE build_ws
 END MODULE R_vector

@@ -20,7 +20,6 @@ MODULE wannier90
     LOGICAL :: have_disentangled
     REAL(DP) :: omega_invariant
     LOGICAL, ALLOCATABLE :: lwindow(:, :)
-    INTEGER, ALLOCATABLE :: ndimwin(:)
     COMPLEX(DP), ALLOCATABLE :: u_matrix_opt(:, :, :)
     COMPLEX(DP), ALLOCATABLE::u_matrix(:, :, :)
     COMPLEX(DP), ALLOCATABLE::m_matrix(:, :, :, :)
@@ -58,6 +57,10 @@ MODULE wannier90
     !... chk data
     COMPLEX(DP), ALLOCATABLE :: v_matrix(:, :, :)
     !< (nbnd, Nw, nkpt) for disentangled case
+    INTEGER, ALLOCATABLE :: ndimwin(:)
+    !< (nkpt) Number of bands in the outer window
+    INTEGER, ALLOCATABLE::win_min(:)
+    !< (nkpt) Minimum band index of the outer window
     REAL(DP), ALLOCATABLE::eigval(:, :)
     !< Eigenvalues (nbnd, nkpt)
     COMPLEX(DP), ALLOCATABLE :: eigvec(:, :, :)
@@ -79,8 +82,8 @@ MODULE wannier90
     !< b vectors in reduced coordinates (3, nnb)
     REAL(DP), ALLOCATABLE::wb(:)
     !< weight of b vector (nnb)
-    COMPLEX(DP), ALLOCATABLE :: Aq(:, :, :, :, :)
-    !< (3, Nw, Nw, nkpt, nnb)
+    COMPLEX(DP), ALLOCATABLE :: Aq(:, :, :, :)
+    !< (3, Nw, Nw, nkpt)
   CONTAINS
     PROCEDURE::clear => clear_w90_data
     PROCEDURE::read_files => read_w90_files
@@ -134,17 +137,15 @@ MODULE wannier90
   ! ==================================================
   INTERFACE
 
-    MODULE FUNCTION wannier_gauge_diag(nbnd, mat_H, v1, v2) RESULT(retval)
-      INTEGER, INTENT(IN)::nbnd
-      REAL(DP), INTENT(IN) :: mat_H(nbnd)
-      COMPLEX(DP), INTENT(IN) :: v1(nbnd), v2(nbnd)
+    MODULE FUNCTION wannier_gauge_diag(mat_H, v1, v2) RESULT(retval)
+      REAL(DP), INTENT(IN) :: mat_H(:)
+      COMPLEX(DP), INTENT(IN) :: v1(:), v2(:)
       COMPLEX(DP):: retval
     END FUNCTION wannier_gauge_diag
 
-    MODULE FUNCTION wannier_gauge(nbnd, mat_H, v1, v2) RESULT(retval)
-      INTEGER, INTENT(IN) :: nbnd
-      COMPLEX(DP), INTENT(IN) :: mat_H(nbnd, nbnd)
-      COMPLEX(DP), INTENT(IN) :: v1(nbnd), v2(nbnd)
+    MODULE FUNCTION wannier_gauge(mat_H, v1, v2) RESULT(retval)
+      COMPLEX(DP), INTENT(IN) :: mat_H(:, :)
+      COMPLEX(DP), INTENT(IN) :: v1(:), v2(:)
       COMPLEX(DP) :: retval
     END FUNCTION wannier_gauge
 

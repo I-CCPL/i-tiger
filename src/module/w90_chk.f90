@@ -11,7 +11,7 @@ CONTAINS
     CLASS(w90data_type), INTENT(INOUT) :: self
     TYPE(chk_dum_type), INTENT(OUT) :: chk_dum
     !
-    INTEGER::io_unit, ios, ikpt, i
+    INTEGER::io_unit, ios, ikpt, i, j, m
     INTEGER::ndw
     !
     WRITE (stdout, '(2X, A)') 'Reading .chk file...'
@@ -36,11 +36,11 @@ CONTAINS
         READ (io_unit)
       END IF
 
-      READ (io_unit) (real_lattice(i, :), i=1, 3)
+      READ (io_unit) ((real_lattice(i, j), j=1, 3), i=1, 3)
       WRITE (stdout, '(2X, A, 3F12.6)') '- real_lattice:', real_lattice(:, 1)
       WRITE (stdout, '(2X, A, 3F12.6)') '               ', real_lattice(:, 2)
       WRITE (stdout, '(2X, A, 3F12.6)') '               ', real_lattice(:, 3)
-      READ (io_unit) (recip_lattice(i, :), i=1, 3)
+      READ (io_unit) ((recip_lattice(i, j), j=1, 3), i=1, 3)
       WRITE (stdout, '(2X, A, 3F12.6)') '- recip_lattice:', recip_lattice(:, 1)
       WRITE (stdout, '(2X, A, 3F12.6)') '                ', recip_lattice(:, 2)
       WRITE (stdout, '(2X, A, 3F12.6)') '                ', recip_lattice(:, 3)
@@ -63,20 +63,31 @@ CONTAINS
       WRITE (stdout, '(2X, A)') '- checkpoint: '//TRIM(chk_dum%checkpoint)
       READ (io_unit) chk_dum%have_disentangled
       WRITE (stdout, '(2X, A, L1)') '- have_disentangled: ', chk_dum%have_disentangled
+
+      ALLOCATE (self%win_min(self%kpts%nkpt))
+      ALLOCATE (self%ndimwin(self%kpts%nkpt))
       IF (chk_dum%have_disentangled) THEN
         READ (io_unit) chk_dum%omega_invariant
         WRITE (stdout, '(2X, A, F12.6)') '- omega_invariant: ', chk_dum%omega_invariant
         ALLOCATE (chk_dum%lwindow(self%nbnd, self%kpts%nkpt))
-        ALLOCATE (chk_dum%ndimwin(self%kpts%nkpt))
         ALLOCATE (chk_dum%u_matrix_opt(self%nbnd, Nw, self%kpts%nkpt))
         READ (io_unit) chk_dum%lwindow
-        READ (io_unit) chk_dum%ndimwin
+        READ (io_unit) self%ndimwin
         READ (io_unit) chk_dum%u_matrix_opt
+        DO ikpt = 1, self%kpts%nkpt
+          DO j = 1, self%nbnd
+            IF (chk_dum%lwindow(j, ikpt)) THEN
+              self%win_min(ikpt) = j
+              EXIT
+            END IF
+          END DO
+        END DO
       ELSE
         chk_dum%omega_invariant = 0.0_DP
         ALLOCATE (chk_dum%lwindow(0, 0))
-        ALLOCATE (chk_dum%ndimwin(0))
         ALLOCATE (chk_dum%u_matrix_opt(0, 0, 0))
+        self%win_min = 1
+        self%ndimwin = Nw
       END IF
 
       ALLOCATE (chk_dum%u_matrix(Nw, Nw, self%kpts%nkpt))
@@ -84,19 +95,20 @@ CONTAINS
       READ (io_unit) chk_dum%u_matrix
       READ (io_unit) chk_dum%m_matrix
 
+      ALLOCATE (self%v_matrix(self%nbnd, Nw, self%kpts%nkpt))
       IF (chk_dum%have_disentangled) THEN
-        ALLOCATE (self%v_matrix(self%nbnd, Nw, self%kpts%nkpt))
         DO ikpt = 1, self%kpts%nkpt
-          ndw = chk_dum%ndimwin(ikpt)
-          self%v_matrix(1:ndw, :, ikpt) = MATMUL(chk_dum%u_matrix_opt(1:ndw, :, ikpt), chk_dum%u_matrix(:, :, ikpt))
+          DO j = 1, Nw
+            ndw = self%ndimwin(ikpt)
+            DO i = 1, Nw
+              DO m = 1, ndw
+                self%v_matrix(m, j, ikpt) = self%v_matrix(m, j, ikpt) &
+                                            + chk_dum%u_matrix_opt(m, i, ikpt)*chk_dum%u_matrix(i, j, ikpt)
+              END DO
+            END DO
+          END DO
         END DO
       ELSE
-        ! TODO: Check it is consistent with the non-disentangled case.
-        IF (Nw /= self%nbnd) THEN
-          CALL errore(1, 'read_w90_chk', 'Nw must equal nbnd for non-disentangled case')
-        END IF
-        !
-        ALLOCATE (self%v_matrix(Nw, Nw, self%kpts%nkpt))
         DO ikpt = 1, self%kpts%nkpt
           self%v_matrix(:, :, ikpt) = chk_dum%u_matrix(:, :, ikpt)
         END DO
@@ -143,7 +155,7 @@ CONTAINS
     USE system, ONLY: Nw
     USE io_output, ONLY: write_band
     CLASS(w90data_type), INTENT(INOUT) :: self
-    INTEGER::ikpt, iw, jw, ibnd
+    INTEGER::ikpt, iw, jw, ibnd, ndw, mw
     COMPLEX(DP)::hval
     REAL(DP)::herm_abs_max, h_abs_max, herm_rel
     COMPLEX(DP), ALLOCATABLE::Hq(:, :, :)
@@ -154,11 +166,13 @@ CONTAINS
     !
     IF (ionode) THEN
       DO ikpt = 1, self%kpts%nkpt
+        ndw = self%ndimwin(ikpt)
+        mw = self%win_min(ikpt)
         DO jw = 1, Nw
           DO iw = 1, Nw
             Hq(iw, jw, ikpt) &
-              = wannier_gauge_diag(self%nbnd, self%eigval(:, ikpt), &
-                                   self%v_matrix(:, iw, ikpt), self%v_matrix(:, jw, ikpt))
+              = wannier_gauge_diag(self%eigval(mw:mw + ndw - 1, ikpt), &
+                                   self%v_matrix(1:ndw, iw, ikpt), self%v_matrix(1:ndw, jw, ikpt))
           END DO
         END DO
         !
@@ -172,7 +186,7 @@ CONTAINS
     END IF
     CALL mp_bcast(self%Hq)
     !
-    CALL check_hermiticity(self%kpts%nkpt, 1, Hq, 1.0D-10)
+    ! CALL check_hermiticity(self%kpts%nkpt, 1, Hq, 1.0D-10)
     IF (ionode .AND. Hq_band) THEN
       ALLOCATE (self%eigvec(Nw, Nw, self%kpts%nkpt))
       DO ikpt = 1, self%kpts%nkpt

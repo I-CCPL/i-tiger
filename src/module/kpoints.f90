@@ -167,6 +167,11 @@ SUBROUTINE rotate_3d(ldX, eigvec, mat_in, mat_out)
   COMPLEX(DP)::U, UU_dag
   INTEGER::idx, iw, jw, kw, lw
   mat_out = zero
+  ! DO idx = 1, ldx
+  !   mat_out(idx, :, :) = MATMUL( &
+  !                        MATMUL(TRANSPOSE(CONJG(eigvec)), mat_in(idx, :, :)) &
+  !                        , eigvec)
+  ! END DO
   DO jw = 1, Nw
     DO iw = 1, Nw
       DO lw = 1, Nw

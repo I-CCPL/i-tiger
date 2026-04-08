@@ -5,6 +5,14 @@ MODULE io_input
   IMPLICIT NONE
   PRIVATE::read_control, read_itg, read_line, read_kpts
   !
+  !... debug
+  LOGICAL::debug_q = .FALSE.
+  LOGICAL::debug_R = .FALSE.
+  LOGICAL::debug_k = .FALSE.
+  !... itg
+  INTEGER::minR_type = 1
+  !< 1 for minimizing |R0+T+r_n-r_m|, 2 for minimizing |R0+T|
+
   LOGICAL::lBand = .FALSE.
   ! LOGICAL::lDOS = .FALSE.
   ! LOGICAL::lPDOS = .FALSE.
@@ -75,23 +83,27 @@ CONTAINS
     WRITE (stdout, '(2X, A)') 'Reading &CONTROL Namelist...'
     IF (ionode) THEN
       READ (stdin, nml=control)
-      IF (debug) THEN
-        WRITE (stdout, '(2X, A)') 'Debug mode is ON.'
-        CALL read_debug()
-      END IF
+    END IF
+    CALL mp_bcast(debug)
+    IF (debug) THEN
+      WRITE (stdout, '(2X, A)') 'Debug mode is ON.'
+      CALL read_debug()
     END IF
   CONTAINS
     SUBROUTINE read_debug()
       USE wannier90, ONLY: chk_w90, Hq_band
-      NAMELIST /debug/ chk_w90, Hq_band
+      NAMELIST /debug/ chk_w90, Hq_band, debug_q, debug_R, debug_k
       WRITE (stdout, '(2X, A)') 'Reading &DEBUG Namelist...'
-      READ (stdin, nml=debug)
+      IF (ionode) THEN
+        READ (stdin, nml=debug)
+      END IF
+      CALL mp_bcast(debug_k)
     END SUBROUTINE read_debug
   END SUBROUTINE read_control
   !
   SUBROUTINE read_itg()
     ! USE system, ONLY: dim
-    NAMELIST /itg/ lBand, lOAM, lBerry, dE_thr, dE_eta, E_fermi, & ! dim &
+    NAMELIST /itg/ minR_type, lBand, lOAM, lBerry, dE_thr, dE_eta, E_fermi, & ! dim &
       lNLO, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) THEN
@@ -107,10 +119,13 @@ CONTAINS
         WRITE (stdout, '(2X, A, 1X, I0)') '- NLO E points: ', NLO_nE
       END IF
     END IF
+    CALL mp_bcast(minR_type)
+    !
     CALL mp_bcast(lBand)
     CALL mp_bcast(lOAM)
     CALL mp_bcast(lBerry)
     CALL mp_bcast(dE_thr)
+    CALL mp_bcast(dE_eta)
     CALL mp_bcast(E_fermi)
     ! CALL mp_bcast(dim)
     ! IF (dim < 1 .OR. dim > 3) THEN

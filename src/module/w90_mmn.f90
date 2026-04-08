@@ -205,36 +205,45 @@ CONTAINS
   MODULE SUBROUTINE build_w90_Aq(self)
     !< Build A(q) in Wannier gauge
     USE constants, ONLY: zi
+    USE mp_base, ONLY: mp_bcast
     USE system, ONLY: Nw, red2cart_recip
     CLASS(w90data_type), INTENT(INOUT) :: self
     INTEGER::ikpt, inb, jnb, iknb, ibnd, jbnd, iw, jw, ipol
+    INTEGER::ndw1, ndw2, mw1, mw2
     REAL(DP)::b_cart(3)
-    COMPLEX(DP)::M_W, phase_factor, A_qb(3)
+    COMPLEX(DP)::M_W, A_qb(3, Nw, Nw)
     !< overlap matrix in Wannier gauge
     !
     WRITE (stdout, '(2X, A)') 'Building A(q)...'
-    ALLOCATE (self%Aq(3, Nw, Nw, self%kpts%nkpt, self%nnb))
-    ! WRITE (300, '(A)') '# ikpt, inb, iw, jw, A_qb'
-    DO inb = 1, self%nnb
+    ALLOCATE (self%Aq(3, Nw, Nw, self%kpts%nkpt))
+    IF (ionode) THEN
       DO ikpt = 1, self%kpts%nkpt
-        iknb = self%neighbour_k(inb, ikpt)
-        jnb = self%bvec_index(inb, ikpt)
-        CALL red2cart_recip(self%bvec_red(:, jnb), b_cart)
-        DO jw = 1, Nw
-          phase_factor = EXP(zi*DOT_PRODUCT(b_cart, self%wannier_center_cart(:, jw)))
-          DO iw = 1, Nw
-            M_W = wannier_gauge(self%nbnd, self%overlap(:, :, inb, ikpt), &
-                                self%v_matrix(:, iw, ikpt), self%v_matrix(:, jw, iknb))
-            ! WRITE (300, '(4I4, (SP,1X,2ES11.4,"j"))') ikpt, inb, iw, jw, M_W
-            A_qb(:) = zi*self%wb(jnb)*M_W*b_cart(:)
-            ! WRITE (300, '(4I3, 3(SP,2X,2ES11.4,"j"))') inb, ikpt, iw, jw, A_qb
-            self%Aq(:, iw, jw, ikpt, jnb) = phase_factor*A_qb(:)
-            ! WRITE (300, '(4I3, 3(SP,2X,2ES11.4,"j"))') inb, ikpt, iw, jw, self%Aq(:, iw, jw, ikpt, jnb)
+        ndw1 = self%ndimwin(ikpt)
+        mw1 = self%win_min(ikpt)
+        A_qb(:, :, :) = 0.0_DP
+        DO inb = 1, self%nnb
+          iknb = self%neighbour_k(inb, ikpt)
+          jnb = self%bvec_index(inb, ikpt)
+          ndw2 = self%ndimwin(iknb)
+          mw2 = self%win_min(iknb)
+          CALL red2cart_recip(self%bvec_red(:, jnb), b_cart)
+          DO jw = 1, Nw
+            DO iw = 1, Nw
+              M_W = wannier_gauge(self%overlap(mw1:mw1 + ndw1 - 1, mw2:mw2 + ndw2 - 1, inb, ikpt), &
+                                  self%v_matrix(1:ndw1, iw, ikpt), self%v_matrix(1:ndw2, jw, iknb))
+              A_qb(:, iw, jw) = A_qb(:, iw, jw) + zi*self%wb(jnb)*M_W*b_cart(:)
+            END DO
           END DO
         END DO
-      END DO
-    END DO
 
+        !... Enforce Hermicity
+        DO ipol = 1, 3
+          self%Aq(ipol, :, :, ikpt) = 0.5_DP*(A_qb(ipol, :, :) + CONJG(TRANSPOSE(A_qb(ipol, :, :))))
+        END DO
+      END DO
+    END IF
+
+    CALL mp_bcast(self%Aq)
     CALL write_sep_line()
   END SUBROUTINE build_w90_Aq
 

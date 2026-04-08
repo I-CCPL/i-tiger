@@ -25,7 +25,7 @@ MODULE itg_k
   !< Berry curvature (3, nkpt)
 CONTAINS
   SUBROUTINE make_k_data()
-    USE itg_R, ONLY: H_R, A_R, dH_R, dA_R, d2H_R
+    USE itg_R, ONLY: H_R, A_R, dH_R, dA_R, d2H_R, shift
     USE fft_base, ONLY: fft_R2k
     USE io_input, ONLY: lOAM, lBerry, lNLO
     USE lin_eig_H, ONLY: eig_H
@@ -33,10 +33,11 @@ CONTAINS
     USE kpoints, ONLY: t_iks, t_kpt
     USE NLO, ONLY: NLO_main
     INTEGER::iw
+
     CALL start_clock('make_k_data')
 
     ! Eigenvalues and eigenvectors
-    CALL fft_R2k(R_vec, H_R, t_kpt%H_k(:, :))
+    CALL fft_R2k(R_vec, H_R, t_kpt%H_k(:, :), shift, .FALSE.)
     DO iw = 1, Nw
       t_kpt%H_k(iw, iw) = REAL(t_kpt%H_k(iw, iw), DP)
     END DO
@@ -44,10 +45,10 @@ CONTAINS
 
     IF (lreq_mmn) THEN
       ! Derivative of Hamiltonian
-      CALL fft_R2k(R_vec, dH_R, dH_k_W)
+      CALL fft_R2k(R_vec, dH_R, dH_k_W, shift, .FALSE.)
       CALL t_kpt%rotate(dH_k_W, dH_bar)
       ! Berry connection
-      CALL fft_R2k(R_vec, A_R, A_k_W)
+      CALL fft_R2k(R_vec, A_R, A_k_W, shift, .TRUE.)
       CALL t_kpt%rotate(A_k_W, A_bar)
       CALL velocity(A_bar, dH_bar, v_k_H)
     END IF
@@ -61,10 +62,10 @@ CONTAINS
       CALL Berry_sum(t_kpt%eigval(:, t_iks), O_k(:, :), berry(:, t_iks))
     END IF
     IF (lNLO) THEN
-      CALL fft_R2k(R_vec, dA_R, dA_k_W)
+      CALL fft_R2k(R_vec, dA_R, dA_k_W, shift, .TRUE.)
       CALL t_kpt%rotate(dA_k_W, dA_bar)
 
-      CALL fft_R2k(R_vec, d2H_R, d2H_k_W)
+      CALL fft_R2k(R_vec, d2H_R, d2H_k_W, shift, .FALSE.)
       CALL t_kpt%rotate(d2H_k_W, d2H_bar)
 
       CALL NLO_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H)

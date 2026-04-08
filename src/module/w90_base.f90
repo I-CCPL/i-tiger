@@ -31,34 +31,46 @@ CONTAINS
     IF (ALLOCATED(self%kpts%k_cart)) DEALLOCATE (self%kpts%k_cart)
     IF (ALLOCATED(self%kpts%k_red)) DEALLOCATE (self%kpts%k_red)
     IF (ALLOCATED(self%v_matrix)) DEALLOCATE (self%v_matrix)
+    IF (ALLOCATED(self%win_min)) DEALLOCATE (self%win_min)
+    IF (ALLOCATED(self%ndimwin)) DEALLOCATE (self%ndimwin)
     IF (ALLOCATED(self%wannier_center_cart)) DEALLOCATE (self%wannier_center_cart)
     IF (ALLOCATED(self%wannier_spread)) DEALLOCATE (self%wannier_spread)
     IF (ALLOCATED(self%eigvec)) DEALLOCATE (self%eigvec)
     IF (ALLOCATED(self%Hq)) DEALLOCATE (self%Hq)
   END SUBROUTINE clear_w90_data
 
-  MODULE FUNCTION wannier_gauge_diag(nbnd, mat_H, v1, v2) RESULT(retval)
-    INTEGER, INTENT(IN)::nbnd
-    REAL(DP), INTENT(IN) :: mat_H(nbnd)
-    COMPLEX(DP), INTENT(IN) :: v1(nbnd), v2(nbnd)
+  MODULE FUNCTION wannier_gauge_diag(mat_H, v1, v2) RESULT(retval)
+    USE constants, ONLY: zero
+    REAL(DP), INTENT(IN) :: mat_H(:)
+    COMPLEX(DP), INTENT(IN) :: v1(:), v2(:)
     COMPLEX(DP):: retval
-    INTEGER::ibnd
-    retval = CMPLX(0.0_DP, 0.0_DP, DP)
+    INTEGER::ibnd, nbnd
+    nbnd = SIZE(v1)
+    IF (SIZE(mat_H) /= nbnd .OR. SIZE(v2) /= nbnd) THEN
+      CALL errore(1, 'wannier_gauge_diag', 'incompatible matrix and vector sizes')
+    END IF
+
+    retval = zero
     DO ibnd = 1, nbnd
       retval = retval + CONJG(v1(ibnd))*mat_H(ibnd)*v2(ibnd)
     END DO
   END FUNCTION wannier_gauge_diag
 
-  MODULE FUNCTION wannier_gauge(nbnd, mat_H, v1, v2) RESULT(retval)
-    INTEGER, INTENT(IN) :: nbnd
-    COMPLEX(DP), INTENT(IN) :: mat_H(nbnd, nbnd)
-    COMPLEX(DP), INTENT(IN) :: v1(nbnd), v2(nbnd)
+  MODULE FUNCTION wannier_gauge(mat_H, v1, v2) RESULT(retval)
+    USE constants, ONLY: zero
+    COMPLEX(DP), INTENT(IN) :: mat_H(:, :)
+    COMPLEX(DP), INTENT(IN) :: v1(:), v2(:)
     COMPLEX(DP) :: retval
-    INTEGER :: ibnd, jbnd
+    INTEGER :: ibnd, jbnd, nbnd1, nbnd2
+    nbnd1 = SIZE(v1)
+    nbnd2 = SIZE(v2)
+    IF (SIZE(mat_H, 1) /= nbnd1 .OR. SIZE(mat_H, 2) /= nbnd2) THEN
+      CALL errore(1, 'wannier_gauge', 'incompatible matrix and vector sizes')
+    END IF
 
-    retval = CMPLX(0.0_DP, 0.0_DP, DP)
-    DO ibnd = 1, nbnd
-      DO jbnd = 1, nbnd
+    retval = zero
+    DO ibnd = 1, nbnd1
+      DO jbnd = 1, nbnd2
         retval = retval + CONJG(v1(ibnd))*mat_H(ibnd, jbnd)*v2(jbnd)
       END DO
     END DO

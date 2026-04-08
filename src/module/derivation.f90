@@ -19,20 +19,21 @@ CONTAINS
     CALL derivation_q_4D(w90data, ldX, X_k, dX_k)
   END SUBROUTINE der_q
   !
-  SUBROUTINE der_R(R_vec, X_R, dX_R)
+  SUBROUTINE der_R(R_vec, X_R, dX_R, shift_cart)
     USE R_vector, ONLY: R_vec_type
     TYPE(R_vec_type), INTENT(IN)::R_vec
     COMPLEX(DP), INTENT(IN)::X_R(..)
     !< (ldX, Nw, Nw, nRpt)
     COMPLEX(DP), INTENT(OUT)::dX_R(..)
     !< (3, ldX, Nw, Nw, NRpt)
+    REAL(DP), INTENT(IN) :: shift_cart(3, Nw, Nw)
     INTEGER::ldX
     ldX = SIZE(X_R)
     IF (ldX*3 /= SIZE(dX_R)) THEN
       CALL errore(1, 'der_R', 'invalid size')
     END IF
     ldX = ldX/Nw/Nw/R_vec%nRpt
-    CALL derivation_R_4D(R_vec, ldX, X_R, dX_R)
+    CALL derivation_R_4D(R_vec, ldX, X_R, dX_R, shift_cart)
   END SUBROUTINE der_R
 END MODULE der_base
 
@@ -69,7 +70,7 @@ SUBROUTINE derivation_q_4D(w90data, ldX, X_k, dX_k)
 
 END SUBROUTINE derivation_q_4D
 
-SUBROUTINE derivation_R_4D(R_vec, ldX, X_R, dX_R)
+SUBROUTINE derivation_R_4D(R_vec, ldX, X_R, dX_R, shift_cart)
   USE kinds, ONLY: DP
   USE constants, ONLY: zero, zi
   USE system, ONLY: Nw
@@ -79,14 +80,14 @@ SUBROUTINE derivation_R_4D(R_vec, ldX, X_R, dX_R)
   INTEGER, INTENT(IN)::ldX
   COMPLEX(DP), INTENT(IN)::X_R(ldX, Nw, Nw, R_vec%nRpt)
   COMPLEX(DP), INTENT(OUT)::dX_R(3, ldX, Nw, Nw, R_vec%nRpt)
+  REAL(DP), INTENT(IN) :: shift_cart(3, Nw, Nw)
   INTEGER::iRpt, iw, jw, iuw, idx
   REAL(DP)::Rvec(3)
   !
   DO iRpt = 1, R_vec%nRpt
     DO jw = 1, Nw
       DO iw = 1, Nw
-        iuw = R_vec%shift_map_inv(iw, jw)
-        Rvec = R_vec%shift_cart(:, iuw) + R_vec%R_cart(:, iRpt)
+        Rvec = shift_cart(:, iw, jw) + R_vec%R_cart(:, iRpt)
         DO idx = 1, ldX
           dX_R(:, idx, iw, jw, iRpt) = zi*X_R(idx, iw, jw, iRpt)*Rvec(:)
         END DO
