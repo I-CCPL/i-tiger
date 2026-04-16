@@ -164,26 +164,14 @@ SUBROUTINE rotate_3d(ldX, eigvec, mat_in, mat_out)
   COMPLEX(DP), INTENT(IN)::eigvec(Nw, Nw)
   COMPLEX(DP), INTENT(IN)::mat_in(ldX, Nw, Nw)
   COMPLEX(DP), INTENT(OUT)::mat_out(ldX, Nw, Nw)
-  COMPLEX(DP)::U, UU_dag
-  INTEGER::idx, iw, jw, kw, lw
-  mat_out = zero
-  ! DO idx = 1, ldx
-  !   mat_out(idx, :, :) = MATMUL( &
-  !                        MATMUL(TRANSPOSE(CONJG(eigvec)), mat_in(idx, :, :)) &
-  !                        , eigvec)
-  ! END DO
-  DO jw = 1, Nw
-    DO iw = 1, Nw
-      DO lw = 1, Nw
-        U = eigvec(lw, jw)
-        DO kw = 1, Nw
-          UU_dag = U*CONJG(eigvec(kw, iw))
-          DO idx = 1, ldX
-            mat_out(idx, iw, jw) = mat_out(idx, iw, jw) &
-                                   + UU_dag*mat_in(idx, kw, lw)
-          END DO
-        END DO
-      END DO
-    END DO
+  COMPLEX(DP)::U_dag(Nw, Nw)
+  INTEGER::idx
+  CALL start_clock('rotate_3d')
+  U_dag = TRANSPOSE(CONJG(eigvec))
+  DO idx = 1, ldx
+    mat_out(idx, :, :) = MATMUL( &
+                         MATMUL(U_dag, mat_in(idx, :, :)) &
+                         , eigvec)
   END DO
+  CALL stop_clock('rotate_3d')
 END SUBROUTINE rotate_3d

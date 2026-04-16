@@ -27,13 +27,13 @@ CONTAINS
     CALL fft_q2R_4d(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
   END SUBROUTINE fft_q2R
   !
-  SUBROUTINE fft_R2k(R_vec, X_R, X_k, shift, AA)
+  SUBROUTINE fft_R2k(R_vec, X_R, X_k, shift_red, AA)
     TYPE(R_vec_type), INTENT(IN) :: R_vec
     COMPLEX(DP), INTENT(IN) :: X_R(..)
     !< (ldX, Nw, Nw, nRpt)
     COMPLEX(DP), INTENT(OUT) :: X_k(..)
     !< (ldX, Nw, Nw)
-    REAL(DP), INTENT(IN) :: shift(3, Nw, Nw)
+    REAL(DP), INTENT(IN) :: shift_red(3, Nw, Nw)
     LOGICAL::AA
     INTEGER::ldX, ldY
     ldY = SIZE(X_R)/Nw/Nw/R_vec%nRpt
@@ -41,7 +41,7 @@ CONTAINS
     IF (ldX /= ldY) THEN
       CALL errore(1, "fft_R2k", "invalid size")
     END IF
-    CALL fft_R2k_4d(R_vec, ldX, X_R, X_k, shift, AA)
+    CALL fft_R2k_4d(R_vec, ldX, X_R, X_k, shift_red, AA)
   END SUBROUTINE fft_R2k
 END MODULE fft_base
 
@@ -74,9 +74,9 @@ SUBROUTINE fft_q2R_4d(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
     DO ikpt = 1, w90data%kpts%nkpt
       phase = tpi*DOT_PRODUCT(w90data%kpts%k_red(:, ikpt), R_vec%R_red(:, irpt))
       exp_phase = CMPLX(COS(phase), -SIN(phase), KIND=DP)
+      fac = exp_phase*w90data%kpts%wk
       DO jw = 1, Nw
         DO iw = 1, Nw
-          fac = exp_phase*w90data%kpts%wk
 
           DO idX = 1, ldX
             X_R(idX, iw, jw, irpt) = X_R(idX, iw, jw, irpt) + X_q(idX, iw, jw, ikpt)*fac
@@ -93,9 +93,9 @@ SUBROUTINE fft_q2R_4d(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
   CALL stop_clock('fft_q2R')
 END SUBROUTINE fft_q2R_4d
 
-SUBROUTINE fft_R2k_4d(R_vec, ldX, X_R, X_k, shift, AA)
+SUBROUTINE fft_R2k_4d(R_vec, ldX, X_R, X_k, shift_red, AA)
   USE kinds, ONLY: DP
-  USE constants, ONLY: zero, tpi
+  USE constants, ONLY: zero, tpi, zi
   USE io_global, ONLY: stdout
   USE system, ONLY: Nw, cart2red_real
   USE R_vector, ONLY: R_vec_type
@@ -105,28 +105,24 @@ SUBROUTINE fft_R2k_4d(R_vec, ldX, X_R, X_k, shift, AA)
   INTEGER, INTENT(IN)::ldX
   COMPLEX(DP), INTENT(IN) :: X_R(ldX, Nw, Nw, R_vec%nRpt)
   COMPLEX(DP), INTENT(OUT) :: X_k(ldX, Nw, Nw)
-  REAL(DP), INTENT(IN) :: shift(3, Nw, Nw)
+  REAL(DP), INTENT(IN) :: shift_red(3, Nw, Nw)
   LOGICAL, INTENT(IN) :: AA
-  INTEGER::iw, jw, irpt, iuw
-  REAL(DP)::phase, shift_red(3)
-  COMPLEX(DP)::exp_phase, fac
+  INTEGER::iw, jw, irpt
+  REAL(DP)::phase
+  LOGICAL::R_zero
   !
   CALL start_clock('fft_R2k')
-  ! WRITE (stdout, '(2X, A)') '- Performing Fourier transform from R to k space...'
   X_k(:, :, :) = zero
   DO irpt = 1, R_vec%nRpt
+    R_zero = AA .AND. ALL(R_vec%R_red(:, irpt) == 0)
     DO jw = 1, Nw
       DO iw = 1, Nw
-        IF (AA .AND. ALL(R_vec%R_red(:, irpt) == 0) .AND. iw == jw) THEN
+        IF (R_zero .AND. iw == jw) THEN
           CYCLE
         END IF
-        iuw = R_vec%shift_map_inv(iw, jw)
-        CALL cart2red_real(shift(:, iw, jw), shift_red)
-        phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt) + shift_red)
-        exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
-
-        fac = exp_phase*R_vec%w_R(iw, jw, irpt)
-        X_k(:, iw, jw) = X_k(:, iw, jw) + X_R(:, iw, jw, irpt)*fac
+        phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt) + shift_red(:, iw, jw))
+        X_k(:, iw, jw) = X_k(:, iw, jw) &
+                         + X_R(:, iw, jw, irpt)*EXP(zi*phase)*R_vec%w_R(iw, jw, irpt)
       END DO
     END DO
   END DO

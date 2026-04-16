@@ -25,7 +25,7 @@ MODULE system
   END INTERFACE red2cart_real
   PRIVATE::red2cart_real_1D, red2cart_real_2D
   INTERFACE cart2red_real
-    MODULE PROCEDURE cart2red_real_1D, cart2red_real_2D
+    MODULE PROCEDURE cart2red_real_1D, cart2red_real_2D, cart2red_real_3D
   END INTERFACE cart2red_real
   PRIVATE::cart2red_real_1D, cart2red_real_2D
   !
@@ -95,6 +95,18 @@ CONTAINS
       CALL cart2red_real_1D(A_cart(:, idim), A_red(:, idim))
     END DO
   END SUBROUTINE cart2red_real_2D
+  SUBROUTINE cart2red_real_3D(A_cart, A_red, dim1, dim2)
+    !< Convert cartesian coordinates to reduced coordinates in real space
+    INTEGER, INTENT(IN) :: dim1, dim2
+    REAL(DP), INTENT(IN) :: A_cart(3, dim1, dim2)
+    REAL(DP), INTENT(OUT) :: A_red(3, dim1, dim2)
+    INTEGER :: idim1, idim2
+    DO idim1 = 1, dim1
+      DO idim2 = 1, dim2
+        CALL cart2red_real_1D(A_cart(:, idim1, idim2), A_red(:, idim1, idim2))
+      END DO
+    END DO
+  END SUBROUTINE cart2red_real_3D
   !
   SUBROUTINE red2cart_recip_1D(A_red, A_cart)
     !< Convert reduced coordinates to cartesian coordinates in reciprocal space

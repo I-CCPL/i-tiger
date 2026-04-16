@@ -1,7 +1,7 @@
 MODULE env
   USE io_global, ONLY: stdout
   IMPLICIT NONE
-  CHARACTER(LEN=12)::itg_version = 'v0.0.2'
+  CHARACTER(LEN=12)::itg_version = 'v0.0.2.1'
 CONTAINS
   SUBROUTINE env_start(date, time)
     USE mp_global, ONLY: mp_start, mp_rank, mp_root, mp_size, mp_barrier
@@ -102,9 +102,13 @@ CONTAINS
   !
   SUBROUTINE print_all_clocks()
     WRITE (stdout, '(2X,A)') 'TIMER REPORT: CPU_TIME and WALL_TIME'
+    WRITE (stdout, '(2X,A)') 'utility functions'
     CALL print_clock('read_input')
+    CALL print_clock('rotate_3d')
     CALL print_clock('fft_q2R')
     CALL print_clock('fft_R2k')
+
+    WRITE (stdout, '(2X,A)') 'main functions'
     CALL print_clock('make_q_data')
     CALL print_clock('make_R_data')
     CALL print_clock('make_k_data')
