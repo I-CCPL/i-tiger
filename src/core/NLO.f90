@@ -176,7 +176,7 @@ CONTAINS
     USE constants, ONLY: hbar_eVfs, zero, zi
     USE io_input, ONLY: dE_thr, dE_eta
     USE system, ONLY: Nw
-    USE delta_func, ONLY: dE_inv
+    USE delta_func, ONLY: dE_inv, delta_gaussian
     USE kpoints, ONLY: kpoint_type, t_iks
     TYPE(kpoint_type), INTENT(IN) :: t_kpt
     COMPLEX(DP), INTENT(IN) :: dH_bar(3, Nw, Nw)
@@ -184,19 +184,24 @@ CONTAINS
     COMPLEX(DP), INTENT(IN) :: A_bar(3, Nw, Nw)
     COMPLEX(DP), INTENT(IN) :: dA_bar(3, 3, Nw, Nw)
     COMPLEX(DP), INTENT(IN) :: v_k_H(3, Nw, Nw)
-    INTEGER::n, m, p, a, b
+    INTEGER::n, m, p, a, b, iom
     REAL(DP)::inv_hbar, eig_n, eig_m, dE_nm, w_inv(Nw, Nw), occ(Nw), fmn, E_inv(Nw, Nw), E_nm(Nw, Nw), tmp_fac(Nw, Nw)
     COMPLEX(DP)::v_bar(3, Nw, Nw), del_H_nm(3), del_bar_mn(3), dv_bar
     COMPLEX(DP)::psum, dr_mn, da_mn
     COMPLEX(DP)::gen_r(3, Nw, Nw), gen_dr_mn(3, 3)
+    REAL(DP), ALLOCATABLE::delta_E(:, :, :)
     CALL start_clock('NLO_main')
     inv_hbar = 1.0_DP/hbar_eVfs
+    ALLOCATE (delta_E(NLO_nE, Nw, Nw))
     DO n = 1, Nw
       eig_n = t_kpt%eigval(n, t_iks)
       occ(n) = occ_T0(eig_n)
       DO m = 1, Nw
         eig_m = t_kpt%eigval(m, t_iks)
         dE_nm = eig_n - eig_m
+        DO iom = 1, NLO_nE
+          delta_E(iom, n, m) = delta_gaussian(dE_nm - NLO_hw(iom), dE_eta)
+        END DO
         IF (m == n) THEN
           w_inv(n, m) = zero
           E_inv(n, m) = zero
@@ -261,25 +266,24 @@ CONTAINS
           END DO
         END DO
 
-        CALL dielectric(NLO_hw, epsilon_w, dE_nm, fmn, gen_r(:, n, m), gen_r(:, m, n))
-        CALL Joint_DOS(NLO_hw, JDOS_w, dE_nm, fmn)
-        CALL shift_current(NLO_hw, shift_w, dE_nm, fmn, gen_r(:, n, m), gen_dr_mn)
-        CALL injection_current(NLO_hw, injection_w, dE_nm, fmn, &
+        CALL dielectric(NLO_hw, epsilon_w, delta_E(:, n, m), fmn, gen_r(:, n, m), gen_r(:, m, n))
+        CALL Joint_DOS(NLO_hw, JDOS_w, delta_E(:, n, m), fmn)
+        CALL shift_current(NLO_hw, shift_w, delta_E(:, n, m), delta_E(:, m, n), fmn, gen_r(:, n, m), gen_dr_mn)
+        CALL injection_current(NLO_hw, injection_w, delta_E(:, n, m), fmn, &
                                del_H_nm, gen_r(:, n, m), gen_r(:, m, n))
       END DO
     END DO
     CALL stop_clock('NLO_main')
   END SUBROUTINE NLO_main
   !
-  SUBROUTINE dielectric(hw, epsilon_w, dE_nm, fmn, r_nm, r_mn)
+  SUBROUTINE dielectric(hw, epsilon_w, delta_Enm, fmn, r_nm, r_mn)
     USE io_input, ONLY: dE_eta
     USE delta_func, ONLY: delta_gaussian
     REAL(DP), INTENT(IN) :: hw(:)
     COMPLEX(DP), INTENT(INOUT) :: epsilon_w(6, NLO_nE)
-    REAL(DP), INTENT(IN) :: dE_nm, fmn
+    REAL(DP), INTENT(IN) :: delta_Enm(:), fmn
     COMPLEX(DP), INTENT(IN) :: r_nm(3), r_mn(3)
     INTEGER :: b, c, bc, iom
-    REAL(DP) :: delta_E
     COMPLEX(DP)::kernel_mn(6)
     DO bc = 1, 6
       b = bc2b(bc)
@@ -289,38 +293,35 @@ CONTAINS
     END DO
 
     DO iom = 1, NLO_nE
-      delta_E = delta_gaussian(dE_nm - hw(iom), dE_eta)
       epsilon_w(:, iom) = epsilon_w(:, iom) &
-                          + delta_E*kernel_mn
+                          + delta_Enm(iom)*kernel_mn
     END DO
   END SUBROUTINE dielectric
   !
-  SUBROUTINE Joint_DOS(hw, JDOS_w, dE_nm, fmn)
+  SUBROUTINE Joint_DOS(hw, JDOS_w, delta_Enm, fmn)
     USE io_input, ONLY: dE_eta
     USE delta_func, ONLY: delta_gaussian
     REAL(DP), INTENT(IN) :: hw(:)
     REAL(DP), INTENT(INOUT) :: JDOS_w(NLO_nE)
-    REAL(DP), INTENT(IN) :: dE_nm, fmn
+    REAL(DP), INTENT(IN) :: delta_Enm(:), fmn
     INTEGER :: iom
-    REAL(DP) :: delta_E
     REAL(DP) :: kernel_mn
 
     kernel_mn = fmn*fac_JDOS
     DO iom = 1, NLO_nE
-      delta_E = delta_gaussian(dE_nm - hw(iom), dE_eta)
-      JDOS_w(iom) = JDOS_w(iom) + delta_E*kernel_mn
+      JDOS_w(iom) = JDOS_w(iom) + delta_Enm(iom)*kernel_mn
     END DO
   END SUBROUTINE Joint_DOS
   !
-  SUBROUTINE shift_current(hw, shift_w, dE_nm, fmn, r_nm, dr_mn)
+  SUBROUTINE shift_current(hw, shift_w, delta_Enm, delta_Emn, fmn, r_nm, dr_mn)
     USE io_input, ONLY: NLO_eta
     USE delta_func, ONLY: delta_gaussian
     REAL(DP), INTENT(IN) :: hw(:)
     REAL(DP), INTENT(INOUT) :: shift_w(3, 6, NLO_nE)
-    REAL(DP), INTENT(IN) :: dE_nm, fmn
+    REAL(DP), INTENT(IN) :: delta_Enm(:), delta_Emn(:), fmn
     COMPLEX(DP), INTENT(IN) :: r_nm(3), dr_mn(3, 3)
     INTEGER :: a, b, c, bc, iom
-    REAL(DP) :: delta_E
+    REAL(DP) :: delta_E_local
     REAL(DP) :: kernel_mn(3, 6)
     !
     DO a = 1, 3
@@ -333,21 +334,19 @@ CONTAINS
     END DO
 
     DO iom = 1, NLO_nE
-      delta_E = delta_gaussian(dE_nm - hw(iom), NLO_eta) &
-                + delta_gaussian(dE_nm + hw(iom), NLO_eta)
-      shift_w(:, :, iom) = shift_w(:, :, iom) + delta_E*kernel_mn(:, :)
+      shift_w(:, :, iom) = shift_w(:, :, iom) &
+                           + (delta_Enm(iom) + delta_Emn(iom))*kernel_mn(:, :)
     END DO
   END SUBROUTINE shift_current
   !
-  SUBROUTINE injection_current(hw, injection_w, dE_nm, fmn, del_H_nm, r_nm, r_mn)
+  SUBROUTINE injection_current(hw, injection_w, delta_Enm, fmn, del_H_nm, r_nm, r_mn)
     USE io_input, ONLY: NLO_eta
     USE delta_func, ONLY: delta_gaussian
     REAL(DP), INTENT(IN) :: hw(:)
     REAL(DP), INTENT(INOUT) :: injection_w(3, 3, NLO_nE)
-    REAL(DP), INTENT(IN) :: dE_nm, fmn
+    REAL(DP), INTENT(IN) :: delta_Enm(:), fmn
     COMPLEX(DP), INTENT(IN) :: del_H_nm(3), r_nm(3), r_mn(3)
     INTEGER :: a, b, c, bc, iom
-    REAL(DP) :: delta_E
     REAL(DP) :: kernel_mn(3, 3)
     !
     DO a = 1, 3
@@ -361,8 +360,8 @@ CONTAINS
     END DO
 
     DO iom = 1, NLO_nE
-      delta_E = delta_gaussian(dE_nm - hw(iom), NLO_eta)
-      injection_w(:, :, iom) = injection_w(:, :, iom) + delta_E*kernel_mn(:, :)
+      injection_w(:, :, iom) = injection_w(:, :, iom) &
+                               + delta_Enm(iom)*kernel_mn(:, :)
     END DO
   END SUBROUTINE injection_current
   !
