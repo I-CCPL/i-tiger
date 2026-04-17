@@ -21,6 +21,8 @@ MODULE NLO
 
   INTEGER, PARAMETER :: bc2b(6) = (/1, 1, 2, 2, 3, 3/)
   INTEGER, PARAMETER :: bc2c(6) = (/1, 2, 2, 3, 3, 1/)
+
+  INTEGER::is_mn, is_nm, ie_mn, ie_nm
 CONTAINS
   SUBROUTINE NLO_init(t_kpt)
     USE constants, ONLY: zero, pi, zi, hbar_eVfs, &
@@ -174,7 +176,8 @@ CONTAINS
   !
   SUBROUTINE NLO_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H)
     USE constants, ONLY: hbar_eVfs, zero, zi
-    USE io_input, ONLY: dE_thr, dE_eta
+    USE io_input, ONLY: dE_thr, dE_eta, &
+                        NLO_Emin, NLO_Emax, NLO_dE, NLO_nE, NLO_eta, NLO_w_thr
     USE system, ONLY: Nw
     USE delta_func, ONLY: dE_inv, delta_gaussian
     USE kpoints, ONLY: kpoint_type, t_iks
@@ -199,7 +202,10 @@ CONTAINS
       DO m = 1, Nw
         eig_m = t_kpt%eigval(m, t_iks)
         dE_nm = eig_n - eig_m
-        delta_E(:, n, m) = delta_gaussian((dE_nm - NLO_hw(:)), dE_eta)
+
+        is_nm = MAX(INT((dE_nm - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
+        ie_nm = MIN(INT((dE_nm + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
+        delta_E(is_nm:ie_nm, n, m) = delta_gaussian((dE_nm - NLO_hw(is_nm:ie_nm)), dE_eta)
         IF (m == n) THEN
           w_inv(n, m) = zero
           E_inv(n, m) = zero
@@ -261,6 +267,11 @@ CONTAINS
                               *(v_bar(a, m, n)*E_inv(m, n) + zi*A_bar(a, m, n))
           END DO
         END DO
+        is_mn = MAX(INT((-dE_nm - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
+        ie_mn = MIN(INT((-dE_nm + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
+        is_nm = MAX(INT((dE_nm - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
+        ie_nm = MIN(INT((dE_nm + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
+
         CALL dielectric(epsilon_w, delta_E(:, n, m), fmn, gen_r(:, n, m), gen_r(:, m, n))
         CALL Joint_DOS(JDOS_w, delta_E(:, n, m), fmn)
         CALL shift_current(shift_w, delta_E(:, n, m), delta_E(:, m, n), fmn, gen_r(:, n, m), gen_dr_mn)
@@ -284,7 +295,7 @@ CONTAINS
       kernel_mn(bc) = pref*r_mn(b)*r_nm(c)
     END DO
 
-    DO iom = 1, NLO_nE
+    DO iom = is_nm, ie_nm
       epsilon_w(:, iom) = epsilon_w(:, iom) &
                           + delta_Enm(iom)*kernel_mn
     END DO
@@ -297,7 +308,7 @@ CONTAINS
     REAL(DP) :: kernel_mn
 
     kernel_mn = fmn*fac_JDOS
-    DO iom = 1, NLO_nE
+    DO iom = is_nm, ie_nm
       JDOS_w(iom) = JDOS_w(iom) + delta_Enm(iom)*kernel_mn
     END DO
   END SUBROUTINE Joint_DOS
@@ -319,9 +330,13 @@ CONTAINS
       END DO
     END DO
 
-    DO iom = 1, NLO_nE
+    DO iom = is_nm, ie_nm
       shift_w(:, :, iom) = shift_w(:, :, iom) &
-                           + (delta_Enm(iom) + delta_Emn(iom))*kernel_mn(:, :)
+                           + delta_Enm(iom)*kernel_mn(:, :)
+    END DO
+    DO iom = is_mn, ie_mn
+      shift_w(:, :, iom) = shift_w(:, :, iom) &
+                           + delta_Emn(iom)*kernel_mn(:, :)
     END DO
   END SUBROUTINE shift_current
   !
@@ -343,7 +358,7 @@ CONTAINS
       END DO
     END DO
 
-    DO iom = 1, NLO_nE
+    DO iom = is_nm, ie_nm
       injection_w(:, :, iom) = injection_w(:, :, iom) &
                                + delta_Enm(iom)*kernel_mn(:, :)
     END DO
