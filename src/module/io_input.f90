@@ -35,6 +35,8 @@ MODULE io_input
   REAL(DP)::NLO_dE = 0.0_DP
   INTEGER::NLO_nE
   REAL(DP)::NLO_eta = 0.01_DP
+  REAL(DP)::NLO_w_thr = 5.0_DP
+  !< speeding up frequency integration
   !
 CONTAINS
   SUBROUTINE read_input()
@@ -104,7 +106,7 @@ CONTAINS
   SUBROUTINE read_itg()
     ! USE system, ONLY: dim
     NAMELIST /itg/ minR_type, lBand, lOAM, lBerry, dE_thr, dE_eta, E_fermi, & ! dim &
-      lNLO, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta
+      lNLO, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) THEN
       READ (stdin, nml=itg)
@@ -117,6 +119,7 @@ CONTAINS
         WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO broadening (eV): ', NLO_eta
         WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO dE (eV): ', NLO_dE
         WRITE (stdout, '(2X, A, 1X, I0)') '- NLO E points: ', NLO_nE
+        WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO frequency threshold (eV): ', NLO_w_thr
       END IF
     END IF
     CALL mp_bcast(minR_type)
@@ -138,6 +141,7 @@ CONTAINS
       CALL mp_bcast(NLO_dE)
       CALL mp_bcast(NLO_eta)
       CALL mp_bcast(NLO_nE)
+      CALL mp_bcast(NLO_w_thr)
       IF (NLO_Emax <= NLO_Emin) &
         CALL errore(1, 'read_itg', 'NLO_Emax must be greater than NLO_Emin')
       IF (NLO_dE <= 0.0_DP) &
@@ -146,6 +150,8 @@ CONTAINS
         CALL errore(1, 'read_itg', 'NLO_nE must be positive')
       IF (NLO_eta <= 0.0_DP) &
         CALL errore(1, 'read_itg', 'NLO_eta must be positive')
+      IF (NLO_w_thr <= 0.0_DP) &
+        CALL errore(1, 'read_itg', 'NLO_w_thr must be positive')
     END IF
   END SUBROUTINE read_itg
   !
