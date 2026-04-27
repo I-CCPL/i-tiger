@@ -16,14 +16,17 @@ CONTAINS
     USE constants, ONLY: zero
     USE fft_base, ONLY: fft_q2R
     USE der_base, ONLY: der_R
-    USE io_input, ONLY: lNLO
+    USE io_input, ONLY: lNLO, convention
     USE wannier90, ONLY: lreq_mmn
     INTEGER::inb, iw, jw, ir0pt, ikpt, irpt, iuw, ideg
     REAL(DP)::center(3, Nw)
     CALL start_clock('make_R_data')
     !
-    CALL R_vec%build_ws(w90data)
-    ! CALL R_vec%build_R(w90data)
+    IF (convention == 1) THEN
+      CALL R_vec%build_ws(w90data)
+    ELSE
+      CALL R_vec%build_R(w90data)
+    END IF
     !
     ALLOCATE (H_R(Nw, Nw, R_vec%nRpt))
     CALL fft_q2R(w90data, R_vec, w90data%Hq, H_R)!, dH_R, shift)

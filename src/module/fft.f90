@@ -2,6 +2,7 @@ MODULE fft_base
   USE kinds, ONLY: DP
   USE constants, ONLY: zero, tpi
   USE io_global, ONLY: stdout
+  USE io_input, ONLY: convention
   USE system, ONLY: Nw
   USE wannier90, ONLY: w90data_type
   USE R_vector, ONLY: R_vec_type
@@ -24,7 +25,11 @@ CONTAINS
     IF (ldX /= ldY) THEN
       CALL errore(1, "fft_q2R", "invalid size")
     END IF
-    CALL fft_q2R_4d(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
+    IF (convention == 1) THEN
+      CALL fft_q2R_4d_1(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
+    ELSE
+      CALL fft_q2R_4d_2(w90data, R_vec, ldX, X_q, X_R)
+    END IF
   END SUBROUTINE fft_q2R
   !
   SUBROUTINE fft_R2k(R_vec, X_R, X_k, shift_red, AA)
@@ -41,11 +46,15 @@ CONTAINS
     IF (ldX /= ldY) THEN
       CALL errore(1, "fft_R2k", "invalid size")
     END IF
-    CALL fft_R2k_4d(R_vec, ldX, X_R, X_k, shift_red, AA)
+    IF (convention == 1) THEN
+      CALL fft_R2k_4d_1(R_vec, ldX, X_R, X_k, shift_red, AA)
+    ELSE
+      CALL fft_R2k_4d_2(R_vec, ldX, X_R, X_k)
+    END IF
   END SUBROUTINE fft_R2k
 END MODULE fft_base
 
-SUBROUTINE fft_q2R_4d(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
+SUBROUTINE fft_q2R_4d_1(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
   USE kinds, ONLY: DP
   USE constants, ONLY: zero, tpi, zi
   USE io_global, ONLY: stdout
@@ -91,9 +100,9 @@ SUBROUTINE fft_q2R_4d(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
     END DO
   END DO
   CALL stop_clock('fft_q2R')
-END SUBROUTINE fft_q2R_4d
+END SUBROUTINE fft_q2R_4d_1
 
-SUBROUTINE fft_R2k_4d(R_vec, ldX, X_R, X_k, shift_red, AA)
+SUBROUTINE fft_R2k_4d_1(R_vec, ldX, X_R, X_k, shift_red, AA)
   USE kinds, ONLY: DP
   USE constants, ONLY: zero, tpi, zi
   USE io_global, ONLY: stdout
@@ -127,4 +136,71 @@ SUBROUTINE fft_R2k_4d(R_vec, ldX, X_R, X_k, shift_red, AA)
     END DO
   END DO
   CALL stop_clock('fft_R2k')
-END SUBROUTINE fft_R2k_4d
+END SUBROUTINE fft_R2k_4d_1
+
+SUBROUTINE fft_q2R_4d_2(w90data, R_vec, ldX, X_q, X_R)
+  USE kinds, ONLY: DP
+  USE constants, ONLY: zero, tpi
+  USE io_global, ONLY: stdout
+  USE system, ONLY: Nw
+  USE wannier90, ONLY: w90data_type
+  USE R_vector, ONLY: R_vec_type
+  USE kpoints, ONLY: t_kpt
+  IMPLICIT NONE
+  TYPE(w90data_type), INTENT(IN) :: w90data
+  TYPE(R_vec_type), INTENT(IN) :: R_vec
+  INTEGER, INTENT(IN)::ldX
+  COMPLEX(DP), INTENT(IN) :: X_q(ldX, Nw, Nw, w90data%kpts%nkpt)
+  COMPLEX(DP), INTENT(OUT) :: X_R(ldX, Nw, Nw, R_vec%nRpt)
+  INTEGER::iw, jw, irpt, ikpt
+  REAL(DP)::phase
+  COMPLEX(DP)::exp_phase, fac
+  !
+  CALL start_clock('fft_q2R')
+  DO irpt = 1, R_vec%nRpt
+    X_R(:, :, :, irpt) = zero
+    DO ikpt = 1, w90data%kpts%nkpt
+      phase = -tpi*DOT_PRODUCT(w90data%kpts%k_red(:, ikpt), R_vec%R_red(:, irpt))
+      exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
+      fac = exp_phase*w90data%kpts%wk
+      DO jw = 1, Nw
+        DO iw = 1, Nw
+          X_R(:, iw, jw, irpt) = X_R(:, iw, jw, irpt) &
+                                 + X_q(:, iw, jw, ikpt)*fac*R_vec%w_R(iw, jw, irpt)
+        END DO
+      END DO
+    END DO
+  END DO
+  CALL stop_clock('fft_q2R')
+END SUBROUTINE fft_q2R_4d_2
+
+SUBROUTINE fft_R2k_4d_2(R_vec, ldX, X_R, X_k)
+  USE kinds, ONLY: DP
+  USE constants, ONLY: zero, tpi
+  USE io_global, ONLY: stdout
+  USE system, ONLY: Nw
+  USE R_vector, ONLY: R_vec_type
+  USE kpoints, ONLY: t_kpt, t_iks
+  IMPLICIT NONE
+  TYPE(R_vec_type), INTENT(IN) :: R_vec
+  INTEGER, INTENT(IN)::ldX
+  COMPLEX(DP), INTENT(IN) :: X_R(ldX, Nw, Nw, R_vec%nRpt)
+  COMPLEX(DP), INTENT(OUT) :: X_k(ldX, Nw, Nw)
+  INTEGER::iw, jw, irpt
+  REAL(DP)::phase
+  COMPLEX(DP)::exp_phase
+  !
+  CALL start_clock('fft_R2k')
+  X_k(:, :, :) = zero
+  DO irpt = 1, R_vec%nRpt
+    phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt))
+    exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
+    X_k(:, :, :) = X_k(:, :, :) + X_R(:, :, :, irpt)*exp_phase
+    ! DO jw = 1, Nw
+    !   DO iw = 1, Nw
+    !     X_k(:, iw, jw) = X_k(:, iw, jw) + X_R(:, iw, jw, irpt)*exp_phase
+    !   END DO
+    ! END DO
+  END DO
+  CALL stop_clock('fft_R2k')
+END SUBROUTINE fft_R2k_4d_2

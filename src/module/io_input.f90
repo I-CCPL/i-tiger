@@ -10,8 +10,9 @@ MODULE io_input
   LOGICAL::debug_R = .FALSE.
   LOGICAL::debug_k = .FALSE.
   !... itg
-  INTEGER::minR_type = 1
-  !< 1 for minimizing |R0+T+r_n-r_m|, 2 for minimizing |R0+T|
+  INTEGER::convention = 1
+  !< 1 for TB convention, consider degenerate R0s (build_ws)
+  !< 2 for Wannier convention, consider only the nearest R (build_R)
 
   LOGICAL::lBand = .FALSE.
   ! LOGICAL::lDOS = .FALSE.
@@ -105,7 +106,7 @@ CONTAINS
   !
   SUBROUTINE read_itg()
     ! USE system, ONLY: dim
-    NAMELIST /itg/ minR_type, lBand, lOAM, lBerry, dE_thr, dE_eta, E_fermi, & ! dim &
+    NAMELIST /itg/ convention, lBand, lOAM, lBerry, dE_thr, dE_eta, E_fermi, & ! dim &
       lNLO, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) THEN
@@ -122,7 +123,7 @@ CONTAINS
         WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO frequency threshold (eV): ', NLO_w_thr
       END IF
     END IF
-    CALL mp_bcast(minR_type)
+    CALL mp_bcast(convention)
     !
     CALL mp_bcast(lBand)
     CALL mp_bcast(lOAM)
