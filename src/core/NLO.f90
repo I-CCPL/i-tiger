@@ -179,7 +179,7 @@ CONTAINS
     USE io_input, ONLY: dE_thr, dE_eta, &
                         NLO_Emin, NLO_Emax, NLO_dE, NLO_nE, NLO_eta, NLO_w_thr
     USE system, ONLY: Nw
-    USE delta_func, ONLY: dE_inv, delta_gaussian
+    USE delta_func, ONLY: dE_inv, w1gauss
     USE kpoints, ONLY: kpoint_type, t_iks
     TYPE(kpoint_type), INTENT(IN) :: t_kpt
     COMPLEX(DP), INTENT(IN) :: dH_bar(3, Nw, Nw)
@@ -205,7 +205,7 @@ CONTAINS
 
         is_nm = MAX(INT((dE_nm - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
         ie_nm = MIN(INT((dE_nm + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
-        delta_E(is_nm:ie_nm, n, m) = delta_gaussian((dE_nm - NLO_hw(is_nm:ie_nm)), dE_eta)
+        delta_E(is_nm:ie_nm, n, m) = w1gauss(ie_nm - is_nm, (dE_nm - NLO_hw(is_nm:ie_nm)), dE_eta, 0)
         IF (m == n) THEN
           w_inv(n, m) = zero
           E_inv(n, m) = zero
