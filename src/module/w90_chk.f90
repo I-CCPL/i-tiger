@@ -1,4 +1,5 @@
 SUBMODULE(wannier90) w90_chk
+  IMPLICIT NONE
 CONTAINS
   MODULE SUBROUTINE read_w90_chk(self, chk_dum)
     !< Ref. wannier90/src/wannier90_readwrite.F90

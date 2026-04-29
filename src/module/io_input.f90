@@ -13,6 +13,8 @@ MODULE io_input
   INTEGER::convention = 1
   !< 1 for TB convention, consider degenerate R0s (build_ws)
   !< 2 for Wannier convention, consider only the nearest R (build_R)
+  CHARACTER(LEN=20)::formula = 'kubo'
+  !< 'kubo' or 'projection'
 
   LOGICAL::lBand = .FALSE.
   ! LOGICAL::lDOS = .FALSE.
@@ -22,6 +24,8 @@ MODULE io_input
   ! INTEGER::dos_Emax
   LOGICAL::lOAM = .FALSE.
   LOGICAL::lBerry = .FALSE.
+  LOGICAL::lBCD = .FALSE.
+  !< Berry Curvature Dipole
   REAL(DP)::dE_thr = 1D-8
   !< threshold for identifying degenerate states in eV
   REAL(DP)::dE_eta = 0.04
@@ -39,6 +43,9 @@ MODULE io_input
   REAL(DP)::NLO_w_thr = 5.0_DP
   !< speeding up frequency integration
   !
+  !... Wannier90 data
+  LOGICAL::lreq_mmn
+  !< whether mmn data is required based on requested calculations
 CONTAINS
   SUBROUTINE read_input()
     USE char_mod, ONLY: captital
@@ -53,6 +60,7 @@ CONTAINS
     !... Read Namelists
     CALL read_control()
     CALL read_itg()
+    lreq_mmn = (lOAM .OR. lBerry .OR. lBCD .OR. lNLO)
     w90data%prefix = TRIM(prefix)
     CALL w90data%read_files()
 
@@ -106,7 +114,8 @@ CONTAINS
   !
   SUBROUTINE read_itg()
     ! USE system, ONLY: dim
-    NAMELIST /itg/ convention, lBand, lOAM, lBerry, dE_thr, dE_eta, E_fermi, & ! dim &
+    NAMELIST /itg/ convention, lBand, lOAM, lBerry, lBCD, &
+      formula, dE_thr, dE_eta, E_fermi, & ! dim &
       lNLO, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) THEN
@@ -128,6 +137,12 @@ CONTAINS
     CALL mp_bcast(lBand)
     CALL mp_bcast(lOAM)
     CALL mp_bcast(lBerry)
+    CALL mp_bcast(lBCD)
+    CALL mp_bcast(formula)
+    IF (TRIM(formula) /= 'kubo' &
+        .AND. TRIM(formula) /= 'projection') THEN
+      CALL errore(1, 'read_itg', 'Unknown formula: "'//TRIM(formula)//'"')
+    END IF
     CALL mp_bcast(dE_thr)
     CALL mp_bcast(dE_eta)
     CALL mp_bcast(E_fermi)

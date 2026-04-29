@@ -1,4 +1,5 @@
 SUBMODULE(wannier90) w90_mmn
+  IMPLICIT NONE
 CONTAINS
   MODULE SUBROUTINE read_w90_mmn(self)
     USE mp_base, ONLY: mp_bcast

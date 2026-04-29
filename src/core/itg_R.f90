@@ -16,8 +16,7 @@ CONTAINS
     USE constants, ONLY: zero
     USE fft_base, ONLY: fft_q2R
     USE der_base, ONLY: der_R
-    USE io_input, ONLY: lNLO, convention
-    USE wannier90, ONLY: lreq_mmn
+    USE io_input, ONLY: lNLO, lreq_mmn, convention
     INTEGER::inb, iw, jw, ir0pt, ikpt, irpt, iuw, ideg
     REAL(DP)::center(3, Nw)
     CALL start_clock('make_R_data')

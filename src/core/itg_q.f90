@@ -1,5 +1,6 @@
 MODULE itg_q
-  USE wannier90, ONLY: w90data, lreq_mmn
+  USE io_input, ONLY: lreq_mmn
+  USE wannier90, ONLY: w90data
   IMPLICIT NONE
 CONTAINS
   SUBROUTINE make_q_data()

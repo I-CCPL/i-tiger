@@ -6,7 +6,6 @@ MODULE wannier90
   PRIVATE
   LOGICAL, PUBLIC::chk_w90 = .FALSE.
   LOGICAL, PUBLIC::Hq_band = .FALSE.
-  LOGICAL, PUBLIC::lreq_mmn = .FALSE.
   PUBLIC::chk_dum_type, w90data_type, w90data
 
   ! ==================================================

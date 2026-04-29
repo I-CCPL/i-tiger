@@ -1,7 +1,8 @@
 SUBMODULE(wannier90) w90_base
+  IMPLICIT NONE
 CONTAINS
   MODULE SUBROUTINE read_w90_files(self)
-    USE io_input, ONLY: lOAM, lBerry, lNLO
+    USE io_input, ONLY: lreq_mmn
     CLASS(w90data_type), INTENT(INOUT) :: self
     TYPE(chk_dum_type) :: chk_dum
     !
@@ -9,7 +10,6 @@ CONTAINS
     CALL self%read_chk(chk_dum)
     CALL self%read_eig()
 
-    lreq_mmn = (lOAM .OR. lBerry .OR. lNLO)
     IF (lreq_mmn) THEN
       CALL self%read_mmn()
     END IF

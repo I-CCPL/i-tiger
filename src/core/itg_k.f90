@@ -27,10 +27,9 @@ CONTAINS
   SUBROUTINE make_k_data()
     USE itg_R, ONLY: H_R, A_R, dH_R, dA_R, d2H_R, shift
     USE fft_base, ONLY: fft_R2k
-    USE io_input, ONLY: lOAM, lBerry, lNLO
+    USE io_input, ONLY: lOAM, lBerry, lBCD, lNLO, lreq_mmn
     USE lin_eig_H, ONLY: eig_H
     USE system, ONLY: cart2red_real
-    USE wannier90, ONLY: lreq_mmn
     USE kpoints, ONLY: t_iks, t_kpt
     USE NLO, ONLY: NLO_main
     INTEGER::iw
@@ -59,11 +58,17 @@ CONTAINS
     IF (lOAM) THEN
       CALL OAM_mod_diag(t_kpt%eigval(:, t_iks), v_k_H, L_k(:, :, t_iks))
     END IF
+
     IF (lBerry) THEN
       CALL Berry_mod(t_kpt%eigval(:, t_iks), v_k_H, O_k(:, :))
       berry_k(:, :, t_iks) = O_k(:, :)
       CALL Berry_sum(t_kpt%eigval(:, t_iks), O_k(:, :), berry(:, t_iks))
     END IF
+
+    IF (lBCD) THEN
+      ! TODO: Implement Berry curvature dipole calculation
+    END IF
+
     IF (lNLO) THEN
       CALL fft_R2k(R_vec, dA_R, dA_k_W, shift_red, .TRUE.)
       CALL t_kpt%rotate(dA_k_W, dA_bar)
@@ -78,7 +83,7 @@ CONTAINS
   !
   SUBROUTINE write_k_data()
     USE io_global, ONLY: stdout, ionode
-    USE io_input, ONLY: lBand, lOAM, lBerry, lNLO
+    USE io_input, ONLY: lBand, lOAM, lBerry, lBCD, lNLO
     USE io_output, ONLY: io_output_init, write_band, write_OAM, &
                          write_Berry, write_Berry_k
     USE NLO, ONLY: NLO_write
@@ -129,6 +134,13 @@ CONTAINS
       DEALLOCATE (berry_k_tot)
     END IF
 
+    IF (lBCD) THEN
+      ! TODO: Implement Berry curvature dipole calculation
+      IF (ionode) THEN
+      ELSE
+      END IF
+    END IF
+
     IF (lNLO) THEN
       CALL NLO_write(t_kpt)
     END IF
@@ -139,8 +151,7 @@ CONTAINS
   !
   SUBROUTINE allocate_k_data()
     USE system, ONLY: Nw
-    USE io_input, ONLY: lOAM, lBerry, lNLO
-    USE wannier90, ONLY: lreq_mmn
+    USE io_input, ONLY: lOAM, lBerry, lNLO, lreq_mmn
     USE NLO, ONLY: NLO_init
     INTEGER::i
     CALL t_kpt%divide_k()
