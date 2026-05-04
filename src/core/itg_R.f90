@@ -83,9 +83,9 @@ CONTAINS
 
       IF (lNLO) THEN
         ALLOCATE (d2H_R(Nw, Nw, R_vec%nRpt, 3, 3))
-        ALLOCATE (dA_R(Nw, Nw, R_vec%nRpt, 3, 3))
+        ! ALLOCATE (dA_R(Nw, Nw, R_vec%nRpt, 3, 3))
         CALL der_R(R_vec, dH_R, d2H_R)
-        CALL der_R(R_vec, A_R, dA_R)
+        ! CALL der_R(R_vec, A_R, dA_R)
       END IF
     END IF
     CALL write_sep_line()
