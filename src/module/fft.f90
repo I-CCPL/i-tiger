@@ -1,21 +1,26 @@
 MODULE fft_base
   USE kinds, ONLY: DP
-  USE constants, ONLY: zero, tpi
+  USE constants, ONLY: zero, tpi, zi
   USE io_global, ONLY: stdout
-  USE io_input, ONLY: convention
+  USE io_input, ONLY: FFT_conv
   USE system, ONLY: Nw
   USE wannier90, ONLY: w90data_type
   USE R_vector, ONLY: R_vec_type
   USE kpoints, ONLY: t_kpt
   IMPLICIT NONE
+  PRIVATE
   REAL(DP), ALLOCATABLE::shift_cart(:, :, :)
   REAL(DP), ALLOCATABLE::shift_red(:, :, :)
+  PUBLIC::fft_init, fft_q2R, fft_R2k, fft_R2k_vec
+  PUBLIC::fft_R2k_periodic
 CONTAINS
   SUBROUTINE fft_init(R_vec, A_R)
+    USE system, ONLY: cart2red_real
     TYPE(R_vec_type), INTENT(IN) :: R_vec
-    REAL(DP), INTENT(IN) :: A_R(Nw, Nw, R_vec%nRpt, 3)
+    COMPLEX(DP), INTENT(INOUT) :: A_R(Nw, Nw, R_vec%nRpt, 3)
     REAL(DP)::center(3, Nw)
     INTEGER::irpt, iw, jw
+    IF (TRIM(FFT_conv) /= 'atomic') RETURN
     ALLOCATE (shift_cart(3, Nw, Nw))
     ALLOCATE (shift_red(3, Nw, Nw))
     DO irpt = 1, R_vec%nRpt
@@ -27,287 +32,365 @@ CONTAINS
       END IF
     END DO
 
+    DO irpt = 1, R_vec%nRpt
+      IF (ALL(R_vec%R_red(:, irpt) == 0)) THEN
+        DO iw = 1, Nw
+          A_R(iw, iw, irpt, :) = zero
+        END DO
+        EXIT
+      END IF
+    END DO
+
     DO iw = 1, Nw
       DO jw = 1, Nw
         shift_cart(:, iw, jw) = center(:, jw) - center(:, iw)
       END DO
     END DO
-
+    CALL cart2red_real(shift_cart, shift_red, Nw, Nw)
   END SUBROUTINE fft_init
   !
-  SUBROUTINE fft_q2R(w90data, R_vec, X_q, X_R, dX_R)
+  SUBROUTINE fft_q2R(w90data, R_vec, X_q, X_R)
     TYPE(w90data_type), INTENT(IN) :: w90data
     TYPE(R_vec_type), INTENT(IN) :: R_vec
-    COMPLEX(DP), INTENT(IN) :: X_q(..)
-    !< (Nw, Nw, Nkpt, ldX)
-    COMPLEX(DP), INTENT(OUT) :: X_R(..)
-    !< (Nw, Nw, nRpt, ldX)
-    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_R(..)
-    !< (Nw, Nw, nRpt, ldX, 3)
-    INTEGER::ldX, ldY
-    ldX = SIZE(X_q)/Nw/Nw/w90data%kpts%nkpt
-    ldY = SIZE(X_R)/Nw/Nw/R_vec%nRpt
-    IF (ldX /= ldY) THEN
-      CALL errore(1, "fft_q2R", "invalid size")
-    END IF
+    COMPLEX(DP), INTENT(IN) :: X_q(:, :, :)
+    COMPLEX(DP), INTENT(OUT) :: X_R(:, :, :)
+    INTEGER::iw, jw, irpt, ikpt
+    REAL(DP)::phase, Rvec(3)
+    COMPLEX(DP)::exp_phase, fac
+
+    ! IF (ANY(SHAPE(X_q) /= [Nw, Nw, w90data%kpts%nkpt])) THEN
+    !   CALL errore(1, 'fft_q2R', 'X_q has wrong shape')
+    ! END IF
+    ! IF (ANY(SHAPE(X_R) /= [Nw, Nw, R_vec%nRpt])) THEN
+    !   CALL errore(1, 'fft_q2R', 'X_R has wrong shape')
+    ! END IF
 
     CALL start_clock('fft_q2R')
-    SELECT CASE (convention)
-    CASE (0)
-      CALL fft_q2R_4d_0(w90data, R_vec, ldX, X_q, X_R, dX_R)
-    CASE (1)
-      CALL fft_q2R_4d_1(w90data, R_vec, ldX, X_q, X_R, dX_R, shift_cart)
-    CASE (2)
-      CALL fft_q2R_4d_2(w90data, R_vec, ldX, X_q, X_R)
-    CASE default
-      CALL errore(1, 'fft_q2R', 'invalid convention')
-    END SELECT
+    X_R = zero
+    DO irpt = 1, R_vec%nRpt
+      DO ikpt = 1, w90data%kpts%nkpt
+        phase = tpi*DOT_PRODUCT(w90data%kpts%k_red(:, ikpt), R_vec%R_red(:, irpt))
+        exp_phase = EXP(-zi*phase)
+        fac = exp_phase*w90data%kpts%wk
+        DO jw = 1, Nw
+          DO iw = 1, Nw
+            X_R(iw, jw, irpt) = X_R(iw, jw, irpt) + X_q(iw, jw, ikpt)*fac
+          END DO
+        END DO
+      END DO
+    END DO
     CALL stop_clock('fft_q2R')
   END SUBROUTINE fft_q2R
-  !
-  SUBROUTINE fft_R2k(R_vec, X_R, X_k, AA)
+  ! ================================================== !
+  SUBROUTINE fft_R2k(R_vec, X_R, X_k, dX_k, d2X_k)
     TYPE(R_vec_type), INTENT(IN) :: R_vec
-    COMPLEX(DP), INTENT(IN) :: X_R(..)
-    !< (Nw, Nw, nRpt, ldX)
-    COMPLEX(DP), INTENT(OUT) :: X_k(..)
-    !< (ldX, Nw, Nw)
-    LOGICAL, INTENT(IN)::AA
-    INTEGER::ldX, ldY
-    ldY = SIZE(X_R)/Nw/Nw/R_vec%nRpt
-    ldX = SIZE(X_k)/Nw/Nw
-    IF (ldX /= ldY) THEN
-      CALL errore(1, "fft_R2k", "invalid size")
-    END IF
+    COMPLEX(DP), INTENT(IN) :: X_R(:, :, :)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(:, :)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(:, :, :)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(:, :, :, :)
+
+    ! IF (ANY(SHAPE(X_R) /= [Nw, Nw, R_vec%nRpt])) THEN
+    !   CALL errore(1, 'fft_R2k', 'X_R has wrong shape')
+    ! END IF
+    ! IF (PRESENT(X_k)) THEN
+    !   IF (ANY(SHAPE(X_k) /= [Nw, Nw])) THEN
+    !     CALL errore(1, 'fft_R2k', 'X_k has wrong shape')
+    !   END IF
+    ! END IF
+    ! IF (PRESENT(dX_k)) THEN
+    !   IF (ANY(SHAPE(dX_k) /= [Nw, Nw, 3])) THEN
+    !     CALL errore(1, 'fft_R2k', 'dX_k has wrong shape')
+    !   END IF
+    ! END IF
+    ! IF (PRESENT(d2X_k)) THEN
+    !   IF (ANY(SHAPE(d2X_k) /= [Nw, Nw, 3, 3])) THEN
+    !     CALL errore(1, 'fft_R2k', 'd2X_k has wrong shape')
+    !   END IF
+    ! END IF
 
     CALL start_clock('fft_R2k')
-    SELECT CASE (convention)
-    CASE (0)
-      CALL fft_R2k_4d_0(R_vec, ldX, X_R, X_k)
-    CASE (1)
-      CALL fft_R2k_4d_1(R_vec, ldX, X_R, X_k, shift_red, AA)
-    CASE (2)
-      CALL fft_R2k_4d_2(R_vec, ldX, X_R, X_k)
+    SELECT CASE (TRIM(FFT_conv))
+    CASE ('periodic')
+      CALL fft_R2k_periodic(R_vec, X_R, X_k, dX_k, d2X_k)
+    CASE ('atomic')
+      CALL fft_R2k_atomic(R_vec, X_R, X_k, dX_k, d2X_k)
+    CASE ('wannier')
+      CALL fft_R2k_wannier(R_vec, X_R, X_k, dX_k, d2X_k)
     CASE default
       CALL errore(1, 'fft_R2k', 'invalid convention')
     END SELECT
     CALL stop_clock('fft_R2k')
   END SUBROUTINE fft_R2k
+  ! ================================================== !
+  SUBROUTINE fft_R2k_body(R_vec, X_R, X_k, dX_k, d2X_k, &
+                          iw, jw, irpt, R_cart)
+    !< X_R FFT to X_k and k-derivatives dX_k, d2X_k
+    USE kpoints, ONLY: t_iks
+    TYPE(R_vec_type), INTENT(IN) :: R_vec
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3)
+    INTEGER, INTENT(IN)::iw, jw, irpt
+    REAL(DP)::R_cart(3)
+    INTEGER::a, b
+    REAL(DP)::phase
+    COMPLEX(DP)::exp_phase, fac
+    phase = DOT_PRODUCT(t_kpt%k_cart(:, t_iks), R_cart(:))
+    exp_phase = EXP(zi*phase)
+    fac = exp_phase*R_vec%w_R(iw, jw, irpt)
+    IF (PRESENT(X_k)) X_k(iw, jw) = X_k(iw, jw) + fac*X_R(iw, jw, irpt)
+    IF (PRESENT(dX_k)) THEN
+      dX_k(iw, jw, :) = dX_k(iw, jw, :) &
+                        + zi*R_cart(:)*fac*X_R(iw, jw, irpt)
+    END IF
+    IF (PRESENT(d2X_k)) THEN
+      DO a = 1, 3
+        DO b = 1, 3
+          d2X_k(iw, jw, a, b) = d2X_k(iw, jw, a, b) &
+                                - R_cart(a)*R_cart(b)*fac*X_R(iw, jw, irpt)
+        END DO
+      END DO
+    END IF
+  END SUBROUTINE fft_R2k_body
+  ! ================================================== !
+  SUBROUTINE fft_R2k_periodic(R_vec, X_R, X_k, dX_k, d2X_k)
+    USE kpoints, ONLY: t_iks
+    TYPE(R_vec_type), INTENT(IN) :: R_vec
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3)
+    INTEGER::iw, jw, irpt, a, b
+    REAL(DP)::phase
+    COMPLEX(DP)::exp_phase, fac
+    !
+    IF (PRESENT(X_k)) X_k(:, :) = zero
+    IF (PRESENT(dX_k)) dX_k(:, :, :) = zero
+    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :) = zero
+    DO irpt = 1, R_vec%nRpt
+      DO jw = 1, Nw
+        DO iw = 1, Nw
+          CALL fft_R2k_body(R_vec, X_R, X_k, dX_k, d2X_k, &
+                            iw, jw, irpt, R_vec%R_cart(:, irpt))
+        END DO
+      END DO
+    END DO
+  END SUBROUTINE fft_R2k_periodic
+  ! ================================================== !
+  SUBROUTINE fft_R2k_atomic(R_vec, X_R, X_k, dX_k, d2X_k)
+    USE kpoints, ONLY: t_iks
+    TYPE(R_vec_type), INTENT(IN) :: R_vec
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3)
+    INTEGER::iw, jw, irpt, a, b, c
+    REAL(DP)::phase, R_cart(3)
+    COMPLEX(DP)::exp_phase, fac
+    !
+    IF (PRESENT(X_k)) X_k(:, :) = zero
+    IF (PRESENT(dX_k)) dX_k(:, :, :) = zero
+    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :) = zero
+    DO irpt = 1, R_vec%nRpt
+      DO jw = 1, Nw
+        DO iw = 1, Nw
+          R_cart = R_vec%R_cart(:, irpt) + shift_cart(:, iw, jw)
+          CALL fft_R2k_body(R_vec, X_R, X_k, dX_k, d2X_k, &
+                            iw, jw, irpt, R_cart)
+        END DO
+      END DO
+    END DO
+  END SUBROUTINE fft_R2k_atomic
+  ! ================================================== !
+  SUBROUTINE fft_R2k_wannier(R_vec, X_R, X_k, dX_k, d2X_k)
+    USE kpoints, ONLY: t_iks
+    TYPE(R_vec_type), INTENT(IN) :: R_vec
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3)
+    INTEGER::iw, jw, irpt, a, b, c
+    REAL(DP)::phase, R_cart(3)
+    COMPLEX(DP)::exp_phase, fac
+    !
+    IF (PRESENT(X_k)) X_k(:, :) = zero
+    IF (PRESENT(dX_k)) dX_k(:, :, :) = zero
+    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :) = zero
+    DO irpt = 1, R_vec%nRpt
+      DO jw = 1, Nw
+        DO iw = 1, Nw
+          R_cart = R_vec%R_cart(:, irpt) + R_vec%shift_cart(:, iw, jw)
+          CALL fft_R2k_body(R_vec, X_R, X_k, dX_k, d2X_k, &
+                            iw, jw, irpt, R_cart)
+        END DO
+      END DO
+    END DO
+  END SUBROUTINE fft_R2k_wannier
+  ! ================================================== !
+  SUBROUTINE fft_R2k_vec(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+    !< X_R FFT to X_k and k-derivatives dX_k, d2X_k, curl_X_k, curl_dX_k
+    TYPE(R_vec_type), INTENT(IN) :: R_vec
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, 3, R_vec%nRpt)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: curl_X_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: curl_dX_k(Nw, Nw, 3, 3)
+    CALL start_clock('fft_R2k')
+    SELECT CASE (TRIM(FFT_conv))
+    CASE ('periodic')
+      CALL fft_R2k_vec_periodic(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+    CASE ('atomic')
+      CALL fft_R2k_vec_atomic(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+    CASE ('wannier')
+      CALL fft_R2k_vec_wannier(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+    CASE default
+      CALL errore(1, 'fft_R2k', 'invalid convention')
+    END SELECT
+    CALL stop_clock('fft_R2k')
+  END SUBROUTINE fft_R2k_vec
+  ! ================================================== !
+  SUBROUTINE fft_R2k_vec_body(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k, &
+                              iw, jw, irpt, R_cart)
+    USE kpoints, ONLY: t_iks
+    TYPE(R_vec_type), INTENT(IN) :: R_vec
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, 3, R_vec%nRpt)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: curl_X_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: curl_dX_k(Nw, Nw, 3, 3)
+    INTEGER, INTENT(IN) :: iw, jw, irpt
+    REAL(DP), INTENT(IN) :: R_cart(3)
+    INTEGER::a, b, c, d
+    REAL(DP)::phase
+    COMPLEX(DP)::exp_phase, fac
+    phase = DOT_PRODUCT(t_kpt%k_cart(:, t_iks), R_cart(:))
+    exp_phase = EXP(zi*phase)
+    fac = exp_phase*R_vec%w_R(iw, jw, irpt)
+    IF (PRESENT(X_k)) THEN
+      X_k(iw, jw, :) = X_k(iw, jw, :) + X_R(iw, jw, :, irpt)*fac
+    END IF
+    IF (PRESENT(dX_k)) THEN
+      DO a = 1, 3
+        dX_k(iw, jw, a, :) = dX_k(iw, jw, a, :) &
+                             + zi*R_cart(a) &
+                             *fac*X_R(iw, jw, :, irpt)
+      END DO
+    END IF
+    IF (PRESENT(d2X_k)) THEN
+      DO c = 1, 3
+        DO b = 1, 3
+          DO a = 1, 3
+            d2X_k(iw, jw, c, b, a) = d2X_k(iw, jw, c, b, a) &
+                                     - R_cart(a) &
+                                     *R_cart(b) &
+                                     *fac*X_R(iw, jw, c, irpt)
+          END DO
+        END DO
+      END DO
+    END IF
+    IF (PRESENT(curl_X_k)) THEN
+      DO c = 1, 3
+        a = MOD(c, 3) + 1
+        b = MOD(a, 3) + 1
+        curl_X_k(iw, jw, c) = curl_X_k(iw, jw, c) &
+                              + zi*fac*(R_cart(b)*X_R(iw, jw, a, irpt) &
+                                        - R_cart(a)*X_R(iw, jw, b, irpt))
+      END DO
+    END IF
+    IF (PRESENT(curl_dX_k)) THEN
+      DO c = 1, 3
+        a = MOD(c, 3) + 1
+        b = MOD(a, 3) + 1
+        DO d = 1, 3
+          curl_dX_k(iw, jw, c, d) = curl_dX_k(iw, jw, c, d) &
+                                    - R_cart(d)*fac*(R_cart(b)*X_R(iw, jw, a, irpt) &
+                                                     - R_cart(a)*X_R(iw, jw, b, irpt))
+        END DO
+      END DO
+    END IF
+  END SUBROUTINE fft_R2k_vec_body
+  ! ================================================== !
+  SUBROUTINE fft_R2k_vec_periodic(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+    TYPE(R_vec_type), INTENT(IN) :: R_vec
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, 3, R_vec%nRpt)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: curl_X_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: curl_dX_k(Nw, Nw, 3, 3)
+    INTEGER::iw, jw, irpt
+    !
+    IF (PRESENT(X_k)) X_k(:, :, :) = zero
+    IF (PRESENT(dX_k)) dX_k(:, :, :, :) = zero
+    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :, :) = zero
+    IF (PRESENT(curl_X_k)) curl_X_k(:, :, :) = zero
+    IF (PRESENT(curl_dX_k)) curl_dX_k(:, :, :, :) = zero
+    DO irpt = 1, R_vec%nRpt
+      DO jw = 1, Nw
+        DO iw = 1, Nw
+          CALL fft_R2k_vec_body(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k, &
+                                iw, jw, irpt, R_vec%R_cart(:, irpt))
+        END DO
+      END DO
+    END DO
+  END SUBROUTINE fft_R2k_vec_periodic
+  ! ================================================== !
+  SUBROUTINE fft_R2k_vec_atomic(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+    TYPE(R_vec_type), INTENT(IN) :: R_vec
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, 3, R_vec%nRpt)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: curl_X_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: curl_dX_k(Nw, Nw, 3, 3)
+    INTEGER::iw, jw, irpt
+    REAL(DP)::Rvec(3)
+    !
+    IF (PRESENT(X_k)) X_k(:, :, :) = zero
+    IF (PRESENT(dX_k)) dX_k(:, :, :, :) = zero
+    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :, :) = zero
+    IF (PRESENT(curl_X_k)) curl_X_k(:, :, :) = zero
+    IF (PRESENT(curl_dX_k)) curl_dX_k(:, :, :, :) = zero
+
+    DO irpt = 1, R_vec%nRpt
+      DO jw = 1, Nw
+        DO iw = 1, Nw
+          Rvec = R_vec%R_cart(:, irpt) + shift_cart(:, iw, jw)
+          CALL fft_R2k_vec_body(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k, &
+                                iw, jw, irpt, Rvec)
+        END DO
+      END DO
+    END DO
+  END SUBROUTINE fft_R2k_vec_atomic
+  ! ================================================== !
+  SUBROUTINE fft_R2k_vec_wannier(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+    TYPE(R_vec_type), INTENT(IN) :: R_vec
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, 3, R_vec%nRpt)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: curl_X_k(Nw, Nw, 3)
+    COMPLEX(DP), OPTIONAL, INTENT(OUT) :: curl_dX_k(Nw, Nw, 3, 3)
+    INTEGER::iw, jw, irpt
+    REAL(DP)::R_cart(3)
+    !
+    IF (PRESENT(X_k)) X_k(:, :, :) = zero
+    IF (PRESENT(dX_k)) dX_k(:, :, :, :) = zero
+    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :, :) = zero
+    IF (PRESENT(curl_X_k)) curl_X_k(:, :, :) = zero
+    IF (PRESENT(curl_dX_k)) curl_dX_k(:, :, :, :) = zero
+    DO irpt = 1, R_vec%nRpt
+      DO jw = 1, Nw
+        DO iw = 1, Nw
+          R_cart = R_vec%R_cart(:, irpt) + R_vec%shift_cart(:, iw, jw)
+          CALL fft_R2k_vec_body(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k, &
+                                iw, jw, irpt, R_cart)
+        END DO
+      END DO
+    END DO
+  END SUBROUTINE fft_R2k_vec_wannier
+  ! ================================================== !
 END MODULE fft_base
-
-SUBROUTINE fft_q2R_4d_0(w90data, R_vec, ldX, X_q, X_R, dX_R)
-  USE kinds, ONLY: DP
-  USE constants, ONLY: zero, tpi, zi
-  USE io_global, ONLY: stdout
-  USE system, ONLY: Nw
-  USE wannier90, ONLY: w90data_type
-  USE R_vector, ONLY: R_vec_type
-  USE kpoints, ONLY: t_kpt
-  IMPLICIT NONE
-  TYPE(w90data_type), INTENT(IN) :: w90data
-  TYPE(R_vec_type), INTENT(IN) :: R_vec
-  INTEGER, INTENT(IN)::ldX
-  COMPLEX(DP), INTENT(IN) :: X_q(Nw, Nw, w90data%kpts%nkpt, ldX)
-  COMPLEX(DP), INTENT(OUT) :: X_R(Nw, Nw, R_vec%nRpt, ldX)
-  COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_R(Nw, Nw, R_vec%nRpt, ldX, 3)
-  INTEGER::idX, iw, jw, irpt, ikpt
-  REAL(DP)::phase, Rvec(3)
-  COMPLEX(DP)::exp_phase, fac
-  !
-  DO irpt = 1, R_vec%nRpt
-    X_R(:, :, irpt, :) = zero
-    IF (PRESENT(dX_R)) THEN
-      dX_R(:, :, irpt, :, :) = zero
-    END IF
-    DO ikpt = 1, w90data%kpts%nkpt
-      phase = tpi*DOT_PRODUCT(w90data%kpts%k_red(:, ikpt), R_vec%R_red(:, irpt))
-      exp_phase = CMPLX(COS(phase), -SIN(phase), KIND=DP)
-      fac = exp_phase*w90data%kpts%wk
-      DO jw = 1, Nw
-        DO iw = 1, Nw
-
-          DO idX = 1, ldX
-            X_R(iw, jw, irpt, idX) = X_R(iw, jw, irpt, idX) + X_q(iw, jw, ikpt, idX)*fac
-            IF (PRESENT(dX_R)) THEN
-              dX_R(iw, jw, irpt, idX, 1:3) = dX_R(iw, jw, irpt, idX, 1:3) &
-                                             + zi*R_vec%R_cart(1:3, irpt)*X_q(iw, jw, ikpt, idX)*fac
-            END IF
-          END DO
-        END DO
-      END DO
-    END DO
-  END DO
-END SUBROUTINE fft_q2R_4d_0
-
-SUBROUTINE fft_q2R_4d_1(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
-  USE kinds, ONLY: DP
-  USE constants, ONLY: zero, tpi, zi
-  USE io_global, ONLY: stdout
-  USE system, ONLY: Nw
-  USE wannier90, ONLY: w90data_type
-  USE R_vector, ONLY: R_vec_type
-  USE kpoints, ONLY: t_kpt
-  IMPLICIT NONE
-  TYPE(w90data_type), INTENT(IN) :: w90data
-  TYPE(R_vec_type), INTENT(IN) :: R_vec
-  INTEGER, INTENT(IN)::ldX
-  COMPLEX(DP), INTENT(IN) :: X_q(Nw, Nw, w90data%kpts%nkpt, ldX)
-  COMPLEX(DP), INTENT(OUT) :: X_R(Nw, Nw, R_vec%nRpt, ldX)
-  COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_R(Nw, Nw, R_vec%nRpt, ldX, 3)
-  REAL(DP), OPTIONAL, INTENT(IN) :: shift(3, Nw, Nw)
-  INTEGER::idX, iw, jw, irpt, ikpt
-  REAL(DP)::phase, Rvec(3)
-  COMPLEX(DP)::exp_phase, fac
-  !
-  DO irpt = 1, R_vec%nRpt
-    X_R(:, :, irpt, :) = zero
-    IF (PRESENT(dX_R)) THEN
-      dX_R(:, :, irpt, :, :) = zero
-    END IF
-    DO ikpt = 1, w90data%kpts%nkpt
-      phase = tpi*DOT_PRODUCT(w90data%kpts%k_red(:, ikpt), R_vec%R_red(:, irpt))
-      exp_phase = CMPLX(COS(phase), -SIN(phase), KIND=DP)
-      fac = exp_phase*w90data%kpts%wk
-      DO jw = 1, Nw
-        DO iw = 1, Nw
-
-          DO idX = 1, ldX
-            X_R(iw, jw, irpt, idX) = X_R(iw, jw, irpt, idX) + X_q(iw, jw, ikpt, idX)*fac
-            IF (PRESENT(dX_R)) THEN
-              Rvec(:) = R_vec%R_cart(:, irpt) + shift(:, iw, jw)
-              dX_R(iw, jw, irpt, idX, 1:3) = dX_R(iw, jw, irpt, idX, 1:3) &
-                                             + zi*Rvec(1:3)*X_q(iw, jw, ikpt, idX)*fac
-            END IF
-          END DO
-        END DO
-      END DO
-    END DO
-  END DO
-END SUBROUTINE fft_q2R_4d_1
-
-SUBROUTINE fft_R2k_4d_0(R_vec, ldX, X_R, X_k)
-  USE kinds, ONLY: DP
-  USE constants, ONLY: zero, tpi, zi
-  USE io_global, ONLY: stdout
-  USE system, ONLY: Nw
-  USE R_vector, ONLY: R_vec_type
-  USE kpoints, ONLY: t_kpt, t_iks
-  IMPLICIT NONE
-  TYPE(R_vec_type), INTENT(IN) :: R_vec
-  INTEGER, INTENT(IN)::ldX
-  COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, ldX)
-  COMPLEX(DP), INTENT(OUT) :: X_k(Nw, Nw, ldX)
-  INTEGER::iw, jw, irpt
-  REAL(DP)::phase
-  COMPLEX(DP)::exp_phase, fac
-  !
-  X_k(:, :, :) = zero
-  DO irpt = 1, R_vec%nRpt
-    DO jw = 1, Nw
-      DO iw = 1, Nw
-        phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt))
-        exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
-        fac = exp_phase*R_vec%w_R(iw, jw, irpt)
-        X_k(iw, jw, :) = X_k(iw, jw, :) + X_R(iw, jw, irpt, :)*fac
-      END DO
-    END DO
-  END DO
-END SUBROUTINE fft_R2k_4d_0
-
-SUBROUTINE fft_R2k_4d_1(R_vec, ldX, X_R, X_k, shift_red, AA)
-  USE kinds, ONLY: DP
-  USE constants, ONLY: zero, tpi, zi
-  USE io_global, ONLY: stdout
-  USE system, ONLY: Nw, cart2red_real
-  USE R_vector, ONLY: R_vec_type
-  USE kpoints, ONLY: t_kpt, t_iks
-  IMPLICIT NONE
-  TYPE(R_vec_type), INTENT(IN) :: R_vec
-  INTEGER, INTENT(IN)::ldX
-  COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, ldX)
-  COMPLEX(DP), INTENT(OUT) :: X_k(Nw, Nw, ldX)
-  REAL(DP), INTENT(IN) :: shift_red(3, Nw, Nw)
-  LOGICAL, INTENT(IN) :: AA
-  INTEGER::iw, jw, irpt
-  REAL(DP)::phase
-  LOGICAL::R_zero
-  !
-  X_k(:, :, :) = zero
-  DO irpt = 1, R_vec%nRpt
-    R_zero = AA .AND. ALL(R_vec%R_red(:, irpt) == 0)
-    DO jw = 1, Nw
-      DO iw = 1, Nw
-        IF (R_zero .AND. iw == jw) THEN
-          CYCLE
-        END IF
-        phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt) + shift_red(:, iw, jw))
-        X_k(iw, jw, :) = X_k(iw, jw, :) &
-                         + X_R(iw, jw, irpt, :)*EXP(zi*phase)*R_vec%w_R(iw, jw, irpt)
-      END DO
-    END DO
-  END DO
-END SUBROUTINE fft_R2k_4d_1
-
-SUBROUTINE fft_q2R_4d_2(w90data, R_vec, ldX, X_q, X_R)
-  USE kinds, ONLY: DP
-  USE constants, ONLY: zero, tpi
-  USE io_global, ONLY: stdout
-  USE system, ONLY: Nw
-  USE wannier90, ONLY: w90data_type
-  USE R_vector, ONLY: R_vec_type
-  USE kpoints, ONLY: t_kpt
-  IMPLICIT NONE
-  TYPE(w90data_type), INTENT(IN) :: w90data
-  TYPE(R_vec_type), INTENT(IN) :: R_vec
-  INTEGER, INTENT(IN)::ldX
-  COMPLEX(DP), INTENT(IN) :: X_q(Nw, Nw, w90data%kpts%nkpt, ldX)
-  COMPLEX(DP), INTENT(OUT) :: X_R(Nw, Nw, R_vec%nRpt, ldX)
-  INTEGER::iw, jw, irpt, ikpt
-  REAL(DP)::phase
-  COMPLEX(DP)::exp_phase, fac
-  !
-  DO irpt = 1, R_vec%nRpt
-    X_R(:, :, irpt, :) = zero
-    DO ikpt = 1, w90data%kpts%nkpt
-      phase = -tpi*DOT_PRODUCT(w90data%kpts%k_red(:, ikpt), R_vec%R_red(:, irpt))
-      exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
-      fac = exp_phase*w90data%kpts%wk
-      DO jw = 1, Nw
-        DO iw = 1, Nw
-          X_R(iw, jw, irpt, :) = X_R(iw, jw, irpt, :) &
-                                 + X_q(iw, jw, ikpt, :)*fac*R_vec%w_R(iw, jw, irpt)
-        END DO
-      END DO
-    END DO
-  END DO
-END SUBROUTINE fft_q2R_4d_2
-
-SUBROUTINE fft_R2k_4d_2(R_vec, ldX, X_R, X_k)
-  USE kinds, ONLY: DP
-  USE constants, ONLY: zero, tpi
-  USE io_global, ONLY: stdout
-  USE system, ONLY: Nw, cart2red_real
-  USE R_vector, ONLY: R_vec_type
-  USE kpoints, ONLY: t_kpt, t_iks
-  IMPLICIT NONE
-  TYPE(R_vec_type), INTENT(IN) :: R_vec
-  INTEGER, INTENT(IN)::ldX
-  COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, ldX)
-  COMPLEX(DP), INTENT(OUT) :: X_k(Nw, Nw, ldX)
-  INTEGER::iw, jw, irpt, iuw
-  REAL(DP)::phase, shift_red(3)
-  COMPLEX(DP)::exp_phase
-  !
-  X_k(:, :, :) = zero
-  DO irpt = 1, R_vec%nRpt
-    DO jw = 1, Nw
-      DO iw = 1, Nw
-        iuw = R_vec%shift_map_inv(iw, jw)
-        CALL cart2red_real(R_vec%shift_cart(:, iuw), shift_red)
-        phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt) + shift_red)
-        exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
-
-        X_k(iw, jw, :) = X_k(iw, jw, :) + X_R(iw, jw, irpt, :)*exp_phase
-      END DO
-    END DO
-  END DO
-END SUBROUTINE fft_R2k_4d_2

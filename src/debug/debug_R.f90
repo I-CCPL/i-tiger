@@ -38,7 +38,7 @@ SUBROUTINE debug_R()
     DO iw = 1, Nw
       DO jw = 1, Nw
         iuw = R_vec%shift_map_inv(iw, jw)
-        WRITE (io_unit, *) R_vec%shift_cart(:, iuw)
+        WRITE (io_unit, *) R_vec%shift_cart_u(:, iuw)
       END DO
     END DO
   END DO
@@ -60,52 +60,6 @@ SUBROUTINE debug_R()
       DO iw = 1, Nw
         DO jw = 1, Nw
           WRITE (io_unit, *) A_R(iw, jw, irpt, :)
-        END DO
-      END DO
-    END DO
-    CLOSE (io_unit)
-  END IF
-
-  IF (ALLOCATED(dH_R)) THEN
-    OPEN (io_unit, file="debug_R.dH_R.dat")
-    DO irpt = 1, R_vec%nRpt
-      DO iw = 1, Nw
-        DO jw = 1, Nw
-          DO a = 1, 3
-            WRITE (io_unit, *) dH_R(iw, jw, irpt, a)
-          END DO
-        END DO
-      END DO
-    END DO
-    CLOSE (io_unit)
-  END IF
-
-  IF (ALLOCATED(d2H_R)) THEN
-    OPEN (io_unit, file="debug_R.d2H_R.dat")
-    DO irpt = 1, R_vec%nRpt
-      DO iw = 1, Nw
-        DO jw = 1, Nw
-          DO a = 1, 3
-            DO b = 1, 3
-              WRITE (io_unit, *) d2H_R(iw, jw, irpt, a, b)
-            END DO
-          END DO
-        END DO
-      END DO
-    END DO
-    CLOSE (io_unit)
-  END IF
-
-  IF (ALLOCATED(dA_R)) THEN
-    OPEN (io_unit, file="debug_R.dA_R.dat")
-    DO irpt = 1, R_vec%nRpt
-      DO iw = 1, Nw
-        DO jw = 1, Nw
-          DO a = 1, 3
-            DO b = 1, 3
-              WRITE (io_unit, *) dA_R(iw, jw, irpt, a, b)
-            END DO
-          END DO
         END DO
       END DO
     END DO

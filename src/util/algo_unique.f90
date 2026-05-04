@@ -96,10 +96,11 @@ CONTAINS
 
   !==================================================
 
-  SUBROUTINE unique_vec3_inv(v, tol, u, nu, inv)
+  SUBROUTINE unique_vec3_inv(v, Nvec, tol, u, nu, inv)
     USE kinds, ONLY: eq_vec_real
-    REAL(DP), INTENT(IN) :: v(:, :)
+    REAL(DP), INTENT(IN) :: v(3, Nvec)
     !< v: list of 3D vectors (3, Nvec)
+    INTEGER, INTENT(IN)::Nvec
     REAL(DP), INTENT(IN) :: tol
     REAL(DP), ALLOCATABLE, INTENT(OUT) :: u(:, :)
     !< unique of v (3, nu)

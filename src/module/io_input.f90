@@ -10,6 +10,8 @@ MODULE io_input
   LOGICAL::debug_R = .FALSE.
   LOGICAL::debug_k = .FALSE.
   !... itg
+  CHARACTER(LEN=8)::FFT_conv = 'atomic'
+  !< 'periodic' or 'atomic' or 'wannier' FFT convention for R2k
   INTEGER::convention = 0
   !< 0 for standard convention, consider degenerate R0s (build_ws)
   !< 1 for TB convention, consider degenerate R0s (build_ws)
@@ -122,7 +124,7 @@ CONTAINS
   !
   SUBROUTINE read_itg()
     ! USE system, ONLY: dim
-    NAMELIST /itg/ convention, lBand, lOAM, lBerry, lBCD, &
+    NAMELIST /itg/ FFT_conv, convention, lBand, lOAM, lBerry, lBCD, &
       formula, dE_thr, dE_eta, E_fermi, Ef_min, Ef_max, Ef_step, & ! dim &
       lNLO, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
@@ -139,6 +141,12 @@ CONTAINS
         WRITE (stdout, '(2X, A, 1X, I0)') '- NLO E points: ', NLO_nE
         WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO frequency threshold (eV): ', NLO_w_thr
       END IF
+    END IF
+    CALL mp_bcast(FFT_conv)
+    IF (TRIM(FFT_conv) /= 'periodic' &
+        .AND. TRIM(FFT_conv) /= 'atomic' &
+        .AND. TRIM(FFT_conv) /= 'wannier') THEN
+      CALL errore(1, 'read_itg', 'Unknown FFT convention: "'//TRIM(FFT_conv)//'"')
     END IF
     CALL mp_bcast(convention)
     !

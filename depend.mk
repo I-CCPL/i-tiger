@@ -2,7 +2,7 @@
 ./build/NLO.o : ./build/delta_funct.o ./build/io_output.o ./build/io_global.o ./build/mp_base.o ./build/kpoints.o ./build/system.o ./build/constants.o ./build/io_input.o ./build/kinds.o 
 ./build/OAM.o : ./build/system.o ./build/io_input.o ./build/constants.o ./build/kinds.o 
 ./build/io_output.o : ./build/io_input.o ./build/kpoints.o ./build/system.o ./build/io_global.o ./build/kinds.o 
-./build/itg_R.o : ./build/io_input.o ./build/derivation.o ./build/fft.o ./build/constants.o ./build/R_vector.o ./build/wannier90.o ./build/system.o ./build/kinds.o 
+./build/itg_R.o : ./build/io_input.o ./build/fft.o ./build/constants.o ./build/R_vector.o ./build/wannier90.o ./build/system.o ./build/kinds.o 
 ./build/itg_k.o : ./build/io_output.o ./build/mp_base.o ./build/io_global.o ./build/NLO.o ./build/lin_eig_H.o ./build/io_input.o ./build/fft.o ./build/constants.o ./build/kpoints.o ./build/itg_R.o ./build/system.o ./build/kinds.o 
 ./build/itg_q.o : ./build/write_matrix.o ./build/wannier90.o ./build/io_input.o 
 ./build/main.o : ./build/itg_k.o ./build/itg_R.o ./build/itg_q.o ./build/kpoints.o ./build/io_input.o ./build/env.o 
@@ -19,7 +19,6 @@
 ./build/write_matrix.o : ./build/kpoints.o ./build/system.o ./build/kinds.o 
 ./build/R_vector.o : ./build/wannier90.o ./build/constants.o ./build/algo_unique.o ./build/system.o ./build/io_global.o ./build/kinds.o 
 ./build/delta_funct.o : ./build/constants.o ./build/kinds.o 
-./build/derivation.o : ./build/constants.o ./build/R_vector.o ./build/io_input.o ./build/wannier90.o ./build/system.o ./build/kinds.o 
 ./build/fft.o : ./build/kpoints.o ./build/R_vector.o ./build/wannier90.o ./build/system.o ./build/io_input.o ./build/io_global.o ./build/constants.o ./build/kinds.o 
 ./build/grid.o : ./build/kinds.o 
 ./build/io_input.o : ./build/system.o ./build/kpoints.o ./build/wannier90.o ./build/char.o ./build/mp_base.o ./build/io_global.o ./build/kinds.o 

@@ -8,7 +8,8 @@ MODULE R_vector
   TYPE::R_vec_type
     INTEGER::nu_shift
     !< Number of unique Wannier center shifts
-    REAL(DP), ALLOCATABLE :: shift_cart(:, :)
+    REAL(DP), ALLOCATABLE :: shift_cart(:, :, :)
+    REAL(DP), ALLOCATABLE :: shift_cart_u(:, :)
     !< Unique list of Wannier center shifts in Cartesian coordinates (3, nu_shift)
     INTEGER, ALLOCATABLE:: shift_map_inv(:, :)
     !< Map from Wannier function pair (iw, jw) to shift index
@@ -46,6 +47,7 @@ CONTAINS
   SUBROUTINE clear_Rvec(self)
     CLASS(R_vec_type), INTENT(INOUT)::self
     IF (ALLOCATED(self%shift_cart)) DEALLOCATE (self%shift_cart)
+    IF (ALLOCATED(self%shift_cart_u)) DEALLOCATE (self%shift_cart_u)
     IF (ALLOCATED(self%shift_map_inv)) DEALLOCATE (self%shift_map_inv)
     IF (ALLOCATED(self%R0_red)) DEALLOCATE (self%R0_red)
     IF (ALLOCATED(self%R0_cart)) DEALLOCATE (self%R0_cart)
@@ -60,21 +62,21 @@ CONTAINS
     USE algo_unique, ONLY: unique_vec3_inv
     CLASS(R_vec_type), INTENT(INOUT) :: self
     REAL(DP), INTENT(IN) :: wannier_center_cart(3, Nw)
-    REAL(DP)::all_shift(3, Nw*Nw)
     INTEGER::shift_map_inv(Nw*Nw)
     INTEGER::iw, jw
     !
-    IF (ALLOCATED(self%shift_cart)) RETURN
+    IF (ALLOCATED(self%shift_cart_u)) RETURN
     WRITE (stdout, '(2X, A)') 'Building Wannier center shift vectors...'
     !
+    ALLOCATE (self%shift_cart(3, Nw, Nw))
     DO jw = 1, Nw
       DO iw = 1, Nw
-        all_shift(:, iw + (jw - 1)*Nw) = -wannier_center_cart(:, iw) + wannier_center_cart(:, jw)
+        self%shift_cart(:, iw, jw) = -wannier_center_cart(:, iw) + wannier_center_cart(:, jw)
       END DO
     END DO
 
     ! reduce shifts to unique ones
-    CALL unique_vec3_inv(all_shift, 1D-8, self%shift_cart, self%nu_shift, shift_map_inv)
+    CALL unique_vec3_inv(self%shift_cart(1, 1, 1), Nw*Nw, 1D-8, self%shift_cart_u, self%nu_shift, shift_map_inv)
     WRITE (stdout, '(2X, A, I0)') '- Number of unique shifts: ', self%nu_shift
 
     ALLOCATE (self%shift_map_inv(Nw, Nw))
@@ -154,7 +156,7 @@ CONTAINS
         dist_min(iuw) = 1.0D10
         DO icell = 1, ncell
           irpt = ir0pt + (icell - 1)*self%nR0pt
-          R_vector = Rvec_cart(:, irpt) + self%shift_cart(:, iuw)
+          R_vector = Rvec_cart(:, irpt) + self%shift_cart_u(:, iuw)
           R_dist = SUM(R_vector**2)
           IF (R_dist < dist_min(iuw)) THEN
             dist_min(iuw) = R_dist
@@ -169,7 +171,7 @@ CONTAINS
           iuw = self%shift_map_inv(iw, jw)
           DO icell = 1, ncell
             irpt = ir0pt + (icell - 1)*self%nR0pt
-            R_vector = Rvec_cart(:, irpt) + self%shift_cart(:, iuw)
+            R_vector = Rvec_cart(:, irpt) + self%shift_cart_u(:, iuw)
             R_dist = SUM(R_vector**2)
             IF (eq_real(R_dist, dist_min(iuw), 1D-12)) THEN
               ndegen = ndegen + 1
@@ -325,7 +327,7 @@ CONTAINS
       DO jw = 1, Nw
         DO iw = 1, Nw
           iuw = self%shift_map_inv(iw, jw)
-          dist_min = SUM((self%R0_cart(:, ir0pt) + self%shift_cart(:, iuw))**2)
+          dist_min = SUM((self%R0_cart(:, ir0pt) + self%shift_cart_u(:, iuw))**2)
           minRT(:, iuw, ir0pt) = self%R0_red(:, ir0pt)
           ndegen(iuw, ir0pt) = 0
           ! evaluate minimum distance for R0+T+r_n-r_m
@@ -336,8 +338,8 @@ CONTAINS
                 ndiff_red(2) = self%R0_red(2, ir0pt) + i2*w90data%k_grid(2)
                 ndiff_red(3) = self%R0_red(3, ir0pt) + i3*w90data%k_grid(3)
                 CALL red2cart_real(ndiff_red, ndiff_cart)
-                IF (SUM((ndiff_cart + self%shift_cart(:, iuw))**2) < dist_min) THEN
-                  dist_min = SUM((ndiff_cart + self%shift_cart(:, iuw))**2)
+                IF (SUM((ndiff_cart + self%shift_cart_u(:, iuw))**2) < dist_min) THEN
+                  dist_min = SUM((ndiff_cart + self%shift_cart_u(:, iuw))**2)
                 END IF
               END DO
             END DO
@@ -351,7 +353,7 @@ CONTAINS
                 ndiff_red(2) = self%R0_red(2, ir0pt) + i2*w90data%k_grid(2)
                 ndiff_red(3) = self%R0_red(3, ir0pt) + i3*w90data%k_grid(3)
                 CALL red2cart_real(ndiff_red, ndiff_cart)
-                IF (ABS(SQRT(SUM((ndiff_cart + self%shift_cart(:, iuw))**2)) &
+                IF (ABS(SQRT(SUM((ndiff_cart + self%shift_cart_u(:, iuw))**2)) &
                         - SQRT(dist_min)) < 1E-5) THEN
                   idx = (((i3 + cell_expand(3)) &
                           *cell_range(2) + (i2 + cell_expand(2))) &
