@@ -59,7 +59,7 @@ SUBROUTINE debug_R()
     DO irpt = 1, R_vec%nRpt
       DO iw = 1, Nw
         DO jw = 1, Nw
-          WRITE (io_unit, *) A_R(:, iw, jw, irpt)
+          WRITE (io_unit, *) A_R(iw, jw, irpt, :)
         END DO
       END DO
     END DO
@@ -72,7 +72,7 @@ SUBROUTINE debug_R()
       DO iw = 1, Nw
         DO jw = 1, Nw
           DO a = 1, 3
-            WRITE (io_unit, *) dH_R(a, iw, jw, irpt)
+            WRITE (io_unit, *) dH_R(iw, jw, irpt, a)
           END DO
         END DO
       END DO
@@ -87,7 +87,7 @@ SUBROUTINE debug_R()
         DO jw = 1, Nw
           DO a = 1, 3
             DO b = 1, 3
-              WRITE (io_unit, *) d2H_R(b, a, iw, jw, irpt)
+              WRITE (io_unit, *) d2H_R(iw, jw, irpt, a, b)
             END DO
           END DO
         END DO
@@ -103,7 +103,7 @@ SUBROUTINE debug_R()
         DO jw = 1, Nw
           DO a = 1, 3
             DO b = 1, 3
-              WRITE (io_unit, *) dA_R(b, a, iw, jw, irpt)
+              WRITE (io_unit, *) dA_R(iw, jw, irpt, a, b)
             END DO
           END DO
         END DO

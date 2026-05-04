@@ -35,17 +35,17 @@ CONTAINS
     CALL fft_q2R(w90data, R_vec, w90data%Hq, H_R)!, dH_R, shift)
 
     IF (lreq_mmn) THEN
-      ALLOCATE (A_R(3, Nw, Nw, R_vec%nRpt))
+      ALLOCATE (A_R(Nw, Nw, R_vec%nRpt, 3))
       A_R = zero
       CALL fft_q2R(w90data, R_vec, w90data%Aq(:, :, :, :), A_R)
       ! CALL enforce_Hemiticity_R(A_R_b, A_R)
 
-      ALLOCATE (dH_R(3, Nw, Nw, R_vec%nRpt))
+      ALLOCATE (dH_R(Nw, Nw, R_vec%nRpt, 3))
       dH_R = zero
       CALL der_R(R_vec, H_R, dH_R)
 
-      ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
-      ALLOCATE (O_R(3, Nw, Nw, R_vec%nRpt))
+      ALLOCATE (dA_R(Nw, Nw, R_vec%nRpt, 3, 3))
+      ALLOCATE (O_R(Nw, Nw, R_vec%nRpt, 3))
       CALL der_R(R_vec, A_R, dA_R)
       DO irpt = 1, R_vec%nRpt
         DO iw = 1, Nw
@@ -53,17 +53,17 @@ CONTAINS
             DO c = 1, 3
               a = MOD(c, 3) + 1
               b = MOD(a, 3) + 1
-              O_R(c, iw, jw, irpt) = dA_R(a, b, iw, jw, irpt) - dA_R(b, a, iw, jw, irpt)
+              O_R(iw, jw, irpt, c) = dA_R(iw, jw, irpt, b, a) - dA_R(iw, jw, irpt, a, b)
             END DO
           END DO
         END DO
       END DO
 
       IF (lBCD) THEN
-        ALLOCATE (d2H_R(3, 3, Nw, Nw, R_vec%nRpt))
-        ! ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
-        ! ALLOCATE (O_R(3, Nw, Nw, R_vec%nRpt))
-        ALLOCATE (dO_R(3, 3, Nw, Nw, R_vec%nRpt))
+        ALLOCATE (d2H_R(Nw, Nw, R_vec%nRpt, 3, 3))
+        ! ALLOCATE (dA_R(Nw, Nw, R_vec%nRpt, 3, 3))
+        ! ALLOCATE (O_R(Nw, Nw, R_vec%nRpt, 3))
+        ALLOCATE (dO_R(Nw, Nw, R_vec%nRpt, 3, 3))
         CALL der_R(R_vec, dH_R, d2H_R)
         ! CALL der_R(R_vec, A_R, dA_R, shift)
 
@@ -73,7 +73,7 @@ CONTAINS
         !       DO c = 1, 3
         !         a = MOD(c, 3) + 1
         !         b = MOD(a, 3) + 1
-        !         O_R(c, iw, jw, irpt) = dA_R(a, b, iw, jw, irpt) - dA_R(b, a, iw, jw, irpt)
+        !         O_R(iw, jw, irpt, c) = dA_R(iw, jw, irpt, b, a) - dA_R(iw, jw, irpt, a, b)
         !       END DO
         !     END DO
         !   END DO
@@ -82,8 +82,8 @@ CONTAINS
       END IF
 
       IF (lNLO) THEN
-        ALLOCATE (d2H_R(3, 3, Nw, Nw, R_vec%nRpt))
-        ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
+        ALLOCATE (d2H_R(Nw, Nw, R_vec%nRpt, 3, 3))
+        ALLOCATE (dA_R(Nw, Nw, R_vec%nRpt, 3, 3))
         CALL der_R(R_vec, dH_R, d2H_R)
         CALL der_R(R_vec, A_R, dA_R)
       END IF
@@ -111,8 +111,8 @@ CONTAINS
         DO jw = 1, Nw
           DO iw = 1, Nw
             ! Enforce Hermiticity. mat_out = (mat_in + mat_in^dagger)/2
-            mat_out(:, iw, jw, irpt) = mat_out(:, iw, jw, irpt) + &
-                                       (mat_in(:, iw, jw, irpt) + CONJG(mat_in(:, jw, iw, jrpt)))/2
+            mat_out(iw, jw, irpt, :) = mat_out(iw, jw, irpt, :) + &
+                                       (mat_in(iw, jw, irpt, :) + CONJG(mat_in(jw, iw, jrpt, :)))/2
           END DO
         END DO
       END DO

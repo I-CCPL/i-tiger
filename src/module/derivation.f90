@@ -24,9 +24,9 @@ CONTAINS
     USE R_vector, ONLY: R_vec_type
     TYPE(R_vec_type), INTENT(IN)::R_vec
     COMPLEX(DP), INTENT(IN)::X_R(..)
-    !< (ldX, Nw, Nw, nRpt)
+    !< (Nw, Nw, nRpt, ldX)
     COMPLEX(DP), INTENT(OUT)::dX_R(..)
-    !< (3, ldX, Nw, Nw, NRpt)
+    !< (Nw, Nw, NRpt, ldX, 3)
     ! REAL(DP), INTENT(IN) :: shift_cart(3, Nw, Nw)
     INTEGER::ldX
     ldX = SIZE(X_R)
@@ -88,14 +88,14 @@ SUBROUTINE derivation_R_4D_0(R_vec, ldX, X_R, dX_R)
   IMPLICIT NONE
   TYPE(R_vec_type), INTENT(IN)::R_vec
   INTEGER, INTENT(IN)::ldX
-  COMPLEX(DP), INTENT(IN)::X_R(ldX, Nw, Nw, R_vec%nRpt)
-  COMPLEX(DP), INTENT(OUT)::dX_R(3, ldX, Nw, Nw, R_vec%nRpt)
+  COMPLEX(DP), INTENT(IN)::X_R(Nw, Nw, R_vec%nRpt, ldX)
+  COMPLEX(DP), INTENT(OUT)::dX_R(Nw, Nw, R_vec%nRpt, ldX, 3)
   INTEGER::iRpt, iw, jw, iuw, idx
   DO iRpt = 1, R_vec%nRpt
     DO jw = 1, Nw
       DO iw = 1, Nw
         DO idx = 1, ldX
-          dX_R(:, idx, iw, jw, iRpt) = zi*X_R(idx, iw, jw, iRpt)*R_vec%R_cart(:, iRpt)
+          dX_R(iw, jw, iRpt, idx, :) = zi*X_R(iw, jw, iRpt, idx)*R_vec%R_cart(:, iRpt)
         END DO
       END DO
     END DO
@@ -110,8 +110,8 @@ SUBROUTINE derivation_R_4D_1(R_vec, ldX, X_R, dX_R, shift_cart)
   IMPLICIT NONE
   TYPE(R_vec_type), INTENT(IN)::R_vec
   INTEGER, INTENT(IN)::ldX
-  COMPLEX(DP), INTENT(IN)::X_R(ldX, Nw, Nw, R_vec%nRpt)
-  COMPLEX(DP), INTENT(OUT)::dX_R(3, ldX, Nw, Nw, R_vec%nRpt)
+  COMPLEX(DP), INTENT(IN)::X_R(Nw, Nw, R_vec%nRpt, ldX)
+  COMPLEX(DP), INTENT(OUT)::dX_R(Nw, Nw, R_vec%nRpt, ldX, 3)
   REAL(DP), INTENT(IN) :: shift_cart(3, Nw, Nw)
   INTEGER::iRpt, iw, jw, iuw, idx
   REAL(DP)::Rvec(3)
@@ -121,7 +121,7 @@ SUBROUTINE derivation_R_4D_1(R_vec, ldX, X_R, dX_R, shift_cart)
       DO iw = 1, Nw
         Rvec = shift_cart(:, iw, jw) + R_vec%R_cart(:, iRpt)
         DO idx = 1, ldX
-          dX_R(:, idx, iw, jw, iRpt) = zi*X_R(idx, iw, jw, iRpt)*Rvec(:)
+          dX_R(iw, jw, iRpt, idx, :) = zi*X_R(iw, jw, iRpt, idx)*Rvec(:)
         END DO
       END DO
     END DO
@@ -136,8 +136,8 @@ SUBROUTINE derivation_R_4D_2(R_vec, ldX, X_R, dX_R)
   IMPLICIT NONE
   TYPE(R_vec_type), INTENT(IN)::R_vec
   INTEGER, INTENT(IN)::ldX
-  COMPLEX(DP), INTENT(IN)::X_R(ldX, Nw, Nw, R_vec%nRpt)
-  COMPLEX(DP), INTENT(OUT)::dX_R(3, ldX, Nw, Nw, R_vec%nRpt)
+  COMPLEX(DP), INTENT(IN)::X_R(Nw, Nw, R_vec%nRpt, ldX)
+  COMPLEX(DP), INTENT(OUT)::dX_R(Nw, Nw, R_vec%nRpt, ldX, 3)
   INTEGER::iRpt, iw, jw, iuw, idx
   REAL(DP)::Rvec(3)
   !
@@ -147,10 +147,9 @@ SUBROUTINE derivation_R_4D_2(R_vec, ldX, X_R, dX_R)
         iuw = R_vec%shift_map_inv(iw, jw)
         Rvec = R_vec%shift_cart(:, iuw) + R_vec%R_cart(:, iRpt)
         DO idx = 1, ldX
-          dX_R(:, idx, iw, jw, iRpt) = zi*X_R(idx, iw, jw, iRpt)*Rvec(:)
+          dX_R(iw, jw, iRpt, idx, :) = zi*X_R(iw, jw, iRpt, idx)*Rvec(:)
         END DO
       END DO
     END DO
   END DO
 END SUBROUTINE derivation_R_4D_2
-
