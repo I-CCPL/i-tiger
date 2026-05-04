@@ -25,11 +25,19 @@ CONTAINS
     IF (ldX /= ldY) THEN
       CALL errore(1, "fft_q2R", "invalid size")
     END IF
-    IF (convention == 1) THEN
+
+    CALL start_clock('fft_q2R')
+    SELECT CASE (convention)
+    CASE (0)
+      CALL fft_q2R_4d_0(w90data, R_vec, ldX, X_q, X_R, dX_R)
+    CASE (1)
       CALL fft_q2R_4d_1(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
-    ELSE
+    CASE (2)
       CALL fft_q2R_4d_2(w90data, R_vec, ldX, X_q, X_R)
-    END IF
+    CASE default
+      CALL errore(1, 'fft_q2R', 'invalid convention')
+    END SELECT
+    CALL stop_clock('fft_q2R')
   END SUBROUTINE fft_q2R
   !
   SUBROUTINE fft_R2k(R_vec, X_R, X_k, shift_red, AA)
@@ -46,13 +54,65 @@ CONTAINS
     IF (ldX /= ldY) THEN
       CALL errore(1, "fft_R2k", "invalid size")
     END IF
-    IF (convention == 1) THEN
+
+    CALL start_clock('fft_R2k')
+    SELECT CASE (convention)
+    CASE (0)
+      CALL fft_R2k_4d_0(R_vec, ldX, X_R, X_k)
+    CASE (1)
       CALL fft_R2k_4d_1(R_vec, ldX, X_R, X_k, shift_red, AA)
-    ELSE
+    CASE (2)
       CALL fft_R2k_4d_2(R_vec, ldX, X_R, X_k)
-    END IF
+    CASE default
+      CALL errore(1, 'fft_R2k', 'invalid convention')
+    END SELECT
+    CALL stop_clock('fft_R2k')
   END SUBROUTINE fft_R2k
 END MODULE fft_base
+
+SUBROUTINE fft_q2R_4d_0(w90data, R_vec, ldX, X_q, X_R, dX_R)
+  USE kinds, ONLY: DP
+  USE constants, ONLY: zero, tpi, zi
+  USE io_global, ONLY: stdout
+  USE system, ONLY: Nw
+  USE wannier90, ONLY: w90data_type
+  USE R_vector, ONLY: R_vec_type
+  USE kpoints, ONLY: t_kpt
+  IMPLICIT NONE
+  TYPE(w90data_type), INTENT(IN) :: w90data
+  TYPE(R_vec_type), INTENT(IN) :: R_vec
+  INTEGER, INTENT(IN)::ldX
+  COMPLEX(DP), INTENT(IN) :: X_q(ldX, Nw, Nw, w90data%kpts%nkpt)
+  COMPLEX(DP), INTENT(OUT) :: X_R(ldX, Nw, Nw, R_vec%nRpt)
+  COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_R(3, ldX, Nw, Nw, R_vec%nRpt)
+  INTEGER::idX, iw, jw, irpt, ikpt
+  REAL(DP)::phase, Rvec(3)
+  COMPLEX(DP)::exp_phase, fac
+  !
+  DO irpt = 1, R_vec%nRpt
+    X_R(:, :, :, irpt) = zero
+    IF (PRESENT(dX_R)) THEN
+      dX_R(:, :, :, :, irpt) = zero
+    END IF
+    DO ikpt = 1, w90data%kpts%nkpt
+      phase = tpi*DOT_PRODUCT(w90data%kpts%k_red(:, ikpt), R_vec%R_red(:, irpt))
+      exp_phase = CMPLX(COS(phase), -SIN(phase), KIND=DP)
+      fac = exp_phase*w90data%kpts%wk
+      DO jw = 1, Nw
+        DO iw = 1, Nw
+
+          DO idX = 1, ldX
+            X_R(idX, iw, jw, irpt) = X_R(idX, iw, jw, irpt) + X_q(idX, iw, jw, ikpt)*fac
+            IF (PRESENT(dX_R)) THEN
+              dX_R(1:3, idX, iw, jw, irpt) = dX_R(1:3, idX, iw, jw, irpt) &
+                                             + zi*R_vec%R_cart(1:3, irpt)*X_q(idX, iw, jw, ikpt)*fac
+            END IF
+          END DO
+        END DO
+      END DO
+    END DO
+  END DO
+END SUBROUTINE fft_q2R_4d_0
 
 SUBROUTINE fft_q2R_4d_1(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
   USE kinds, ONLY: DP
@@ -74,7 +134,6 @@ SUBROUTINE fft_q2R_4d_1(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
   REAL(DP)::phase, Rvec(3)
   COMPLEX(DP)::exp_phase, fac
   !
-  CALL start_clock('fft_q2R')
   DO irpt = 1, R_vec%nRpt
     X_R(:, :, :, irpt) = zero
     IF (PRESENT(dX_R)) THEN
@@ -99,8 +158,36 @@ SUBROUTINE fft_q2R_4d_1(w90data, R_vec, ldX, X_q, X_R, dX_R, shift)
       END DO
     END DO
   END DO
-  CALL stop_clock('fft_q2R')
 END SUBROUTINE fft_q2R_4d_1
+
+SUBROUTINE fft_R2k_4d_0(R_vec, ldX, X_R, X_k)
+  USE kinds, ONLY: DP
+  USE constants, ONLY: zero, tpi, zi
+  USE io_global, ONLY: stdout
+  USE system, ONLY: Nw
+  USE R_vector, ONLY: R_vec_type
+  USE kpoints, ONLY: t_kpt, t_iks
+  IMPLICIT NONE
+  TYPE(R_vec_type), INTENT(IN) :: R_vec
+  INTEGER, INTENT(IN)::ldX
+  COMPLEX(DP), INTENT(IN) :: X_R(ldX, Nw, Nw, R_vec%nRpt)
+  COMPLEX(DP), INTENT(OUT) :: X_k(ldX, Nw, Nw)
+  INTEGER::iw, jw, irpt
+  REAL(DP)::phase
+  COMPLEX(DP)::exp_phase, fac
+  !
+  X_k(:, :, :) = zero
+  DO irpt = 1, R_vec%nRpt
+    DO jw = 1, Nw
+      DO iw = 1, Nw
+        phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt))
+        exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
+        fac = exp_phase*R_vec%w_R(iw, jw, irpt)
+        X_k(:, iw, jw) = X_k(:, iw, jw) + X_R(:, iw, jw, irpt)*fac
+      END DO
+    END DO
+  END DO
+END SUBROUTINE fft_R2k_4d_0
 
 SUBROUTINE fft_R2k_4d_1(R_vec, ldX, X_R, X_k, shift_red, AA)
   USE kinds, ONLY: DP
@@ -120,7 +207,6 @@ SUBROUTINE fft_R2k_4d_1(R_vec, ldX, X_R, X_k, shift_red, AA)
   REAL(DP)::phase
   LOGICAL::R_zero
   !
-  CALL start_clock('fft_R2k')
   X_k(:, :, :) = zero
   DO irpt = 1, R_vec%nRpt
     R_zero = AA .AND. ALL(R_vec%R_red(:, irpt) == 0)
@@ -135,7 +221,6 @@ SUBROUTINE fft_R2k_4d_1(R_vec, ldX, X_R, X_k, shift_red, AA)
       END DO
     END DO
   END DO
-  CALL stop_clock('fft_R2k')
 END SUBROUTINE fft_R2k_4d_1
 
 SUBROUTINE fft_q2R_4d_2(w90data, R_vec, ldX, X_q, X_R)
@@ -156,7 +241,6 @@ SUBROUTINE fft_q2R_4d_2(w90data, R_vec, ldX, X_q, X_R)
   REAL(DP)::phase
   COMPLEX(DP)::exp_phase, fac
   !
-  CALL start_clock('fft_q2R')
   DO irpt = 1, R_vec%nRpt
     X_R(:, :, :, irpt) = zero
     DO ikpt = 1, w90data%kpts%nkpt
@@ -171,14 +255,13 @@ SUBROUTINE fft_q2R_4d_2(w90data, R_vec, ldX, X_q, X_R)
       END DO
     END DO
   END DO
-  CALL stop_clock('fft_q2R')
 END SUBROUTINE fft_q2R_4d_2
 
 SUBROUTINE fft_R2k_4d_2(R_vec, ldX, X_R, X_k)
   USE kinds, ONLY: DP
   USE constants, ONLY: zero, tpi
   USE io_global, ONLY: stdout
-  USE system, ONLY: Nw
+  USE system, ONLY: Nw, cart2red_real
   USE R_vector, ONLY: R_vec_type
   USE kpoints, ONLY: t_kpt, t_iks
   IMPLICIT NONE
@@ -186,21 +269,21 @@ SUBROUTINE fft_R2k_4d_2(R_vec, ldX, X_R, X_k)
   INTEGER, INTENT(IN)::ldX
   COMPLEX(DP), INTENT(IN) :: X_R(ldX, Nw, Nw, R_vec%nRpt)
   COMPLEX(DP), INTENT(OUT) :: X_k(ldX, Nw, Nw)
-  INTEGER::iw, jw, irpt
-  REAL(DP)::phase
+  INTEGER::iw, jw, irpt, iuw
+  REAL(DP)::phase, shift_red(3)
   COMPLEX(DP)::exp_phase
   !
-  CALL start_clock('fft_R2k')
   X_k(:, :, :) = zero
   DO irpt = 1, R_vec%nRpt
-    phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt))
-    exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
-    X_k(:, :, :) = X_k(:, :, :) + X_R(:, :, :, irpt)*exp_phase
-    ! DO jw = 1, Nw
-    !   DO iw = 1, Nw
-    !     X_k(:, iw, jw) = X_k(:, iw, jw) + X_R(:, iw, jw, irpt)*exp_phase
-    !   END DO
-    ! END DO
+    DO jw = 1, Nw
+      DO iw = 1, Nw
+        iuw = R_vec%shift_map_inv(iw, jw)
+        CALL cart2red_real(R_vec%shift_cart(:, iuw), shift_red)
+        phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt) + shift_red)
+        exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
+
+        X_k(:, iw, jw) = X_k(:, iw, jw) + X_R(:, iw, jw, irpt)*exp_phase
+      END DO
+    END DO
   END DO
-  CALL stop_clock('fft_R2k')
 END SUBROUTINE fft_R2k_4d_2

@@ -33,10 +33,10 @@ CONTAINS
     REAL(DP), INTENT(IN)::eigval(Nw, t_kpt%nktot)
     INTEGER::io_unit, ikpt, iw
     IF (.NOT. ionode) RETURN
+    CALL writing_info('band structure', fname)
     !
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file=fname)
-    CALL writing_info('band structure', fname)
     WRITE (io_unit, '("#", A)') 'k_pos, eigenvalue (eV)'
 
     DO iw = 1, Nw
@@ -53,10 +53,10 @@ CONTAINS
     REAL(DP), INTENT(IN) :: L_k(3, Nw, t_kpt%nktot)
     INTEGER :: io_unit, ikpt, iw
     IF (.NOT. ionode) RETURN
+    CALL writing_info('OAM', fname)
     !
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file=fname)
-    CALL writing_info('OAM', fname)
     WRITE (io_unit, '("#", A)') 'k_pos, OAM (hbar)'
 
     DO iw = 1, Nw
@@ -73,10 +73,10 @@ CONTAINS
     REAL(DP), INTENT(IN) :: O_k(3, t_kpt%nktot)
     INTEGER :: io_unit, ikpt
     IF (.NOT. ionode) RETURN
+    CALL writing_info('Berry curvature', fname)
     !
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file=fname)
-    CALL writing_info('Berry curvature', fname)
     WRITE (io_unit, '("#", A)') 'k_pos, Berry  (Ang^2)'
 
     DO ikpt = 1, t_kpt%nktot
@@ -91,10 +91,10 @@ CONTAINS
     REAL(DP), INTENT(IN) :: berry_k(3, Nw, t_kpt%nktot)
     INTEGER :: io_unit, ikpt, iw
     IF (.NOT. ionode) RETURN
+    CALL writing_info('Berry curvature', fname)
     !
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file=fname)
-    CALL writing_info('Berry curvature', fname)
     WRITE (io_unit, '("#", A)') 'k_pos, Berry  (arb.)'
 
     DO iw = 1, Nw
@@ -107,5 +107,23 @@ CONTAINS
     CLOSE (io_unit)
   END SUBROUTINE write_Berry_k
   !
+  SUBROUTINE write_BCD(fname, BCD)
+    USE io_input, ONLY: Ef_min, Ef_max, Ef_step, Ef_nE
+    CHARACTER(LEN=*), INTENT(IN) :: fname
+    REAL(DP), INTENT(IN) :: BCD(3, 3, Ef_nE)
+    INTEGER :: io_unit, ief
+    REAL(DP)::Ef_val
+    IF (.NOT. ionode) RETURN
+    CALL writing_info('BCD', fname)
+    !
+    io_unit = get_free_unit()
+    OPEN (unit=io_unit, file=fname)
+    WRITE (io_unit, '("#", A)') 'Ef, xx, xy, xz, yx, yy, yz, zx, zy, zz'
 
+    DO ief = 1, Ef_nE
+      Ef_val = Ef_min + (ief - 1)*Ef_step
+      WRITE (io_unit, '(ES15.6, 9(1X, ES15.6))') Ef_val, BCD(:, :, ief)
+    END DO
+    CLOSE (io_unit)
+  END SUBROUTINE write_BCD
 END MODULE io_output

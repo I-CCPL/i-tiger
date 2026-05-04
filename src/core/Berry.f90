@@ -1,5 +1,6 @@
 SUBROUTINE Berry_mod(eigval, v_k, O_k)
-  USE constants, ONLY: DP, hbar_eVfs
+  USE kinds, ONLY: DP
+  USE constants, ONLY: hbar_eVfs
   USE system, ONLY: Nw
   USE io_input, ONLY: dE_thr
   IMPLICIT NONE
@@ -24,7 +25,7 @@ SUBROUTINE Berry_mod(eigval, v_k, O_k)
 END SUBROUTINE Berry_mod
 
 SUBROUTINE Berry_sum(eigval, O_k, berry)
-  USE constants, ONLY: DP
+  USE kinds, ONLY: DP
   USE io_input, ONLY: E_fermi
   USE system, ONLY: Nw
   IMPLICIT NONE
@@ -40,3 +41,45 @@ SUBROUTINE Berry_sum(eigval, O_k, berry)
     END DO
   END DO
 END SUBROUTINE Berry_sum
+
+SUBROUTINE Berry_proj(eigval, O_bar, A_bar, dH_bar, berry)
+  USE kinds, ONLY: DP
+  USE constants, ONLY: zero, zi
+  USE io_input, ONLY: dE_thr, E_fermi
+  USE system, ONLY: Nw
+  IMPLICIT NONE
+  REAL(DP), INTENT(IN)::eigval(Nw)
+  COMPLEX(DP), INTENT(IN)::O_bar(3, Nw, Nw)
+  COMPLEX(DP), INTENT(IN)::A_bar(3, Nw, Nw)
+  COMPLEX(DP), INTENT(IN)::dH_bar(3, Nw, Nw)
+  REAL(DP), INTENT(OUT)::berry(3)
+  COMPLEX(DP):: D_val(3, Nw, Nw), sum_val(3)
+  INTEGER::m, n, a, b, c
+  DO m = 1, Nw
+    DO n = 1, Nw
+      IF (ABS(eigval(m) - eigval(n)) <= dE_thr) THEN
+        D_val(:, m, n) = 0.0_DP
+      ELSE
+        D_val(:, m, n) = dH_bar(:, m, n)/(eigval(n) - eigval(m))
+      END IF
+    END DO
+  END DO
+
+  berry = 0.0_DP
+  DO n = 1, Nw
+    IF (eigval(n) > E_fermi) CYCLE
+    sum_val = zero
+    DO m = 1, Nw
+      IF (eigval(m) < E_fermi) CYCLE
+      DO c = 1, 3
+        a = MOD(c, 3) + 1
+        b = MOD(a, 3) + 1
+        sum_val(c) = sum_val(c) &
+                     + D_val(a, n, m)*A_bar(b, m, n) &
+                     - D_val(b, n, m)*A_bar(a, m, n) &
+                     + zi*D_val(a, n, m)*D_val(b, m, n)
+      END DO
+    END DO
+    berry = berry + REAL(O_bar(:, n, n) - 2*sum_val, DP)
+  END DO
+END SUBROUTINE Berry_proj

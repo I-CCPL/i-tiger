@@ -10,22 +10,28 @@ MODULE itg_R
   COMPLEX(DP), ALLOCATABLE::A_R(:, :, :, :), A_R_b(:, :, :, :)
   COMPLEX(DP), ALLOCATABLE::dA_R(:, :, :, :, :)
   COMPLEX(DP), ALLOCATABLE::d2H_R(:, :, :, :, :)
+  COMPLEX(DP), ALLOCATABLE::O_R(:, :, :, :), dO_R(:, :, :, :, :)
   REAL(DP), ALLOCATABLE::shift(:, :, :)
 CONTAINS
   SUBROUTINE make_R_data()
     USE constants, ONLY: zero
     USE fft_base, ONLY: fft_q2R
     USE der_base, ONLY: der_R
-    USE io_input, ONLY: lNLO, lreq_mmn, convention
-    INTEGER::inb, iw, jw, ir0pt, ikpt, irpt, iuw, ideg
+    USE io_input, ONLY: lBCD, lNLO, lreq_mmn, convention
+    INTEGER::inb, iw, jw, ir0pt, ikpt, irpt, iuw, ideg, a, b, c
     REAL(DP)::center(3, Nw)
     CALL start_clock('make_R_data')
     !
-    IF (convention == 1) THEN
+    SELECT CASE (convention)
+    CASE (0)
       CALL R_vec%build_ws(w90data)
-    ELSE
+    CASE (1)
+      CALL R_vec%build_ws(w90data)
+    CASE (2)
       CALL R_vec%build_R(w90data)
-    END IF
+    CASE default
+      CALL errore(1, 'make_R_data', 'invalid convention')
+    END SELECT
     !
     ALLOCATE (H_R(Nw, Nw, R_vec%nRpt))
     CALL fft_q2R(w90data, R_vec, w90data%Hq, H_R)!, dH_R, shift)
@@ -54,6 +60,44 @@ CONTAINS
       ALLOCATE (dH_R(3, Nw, Nw, R_vec%nRpt))
       dH_R = zero
       CALL der_R(R_vec, H_R, dH_R, shift)
+
+      ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
+      ALLOCATE (O_R(3, Nw, Nw, R_vec%nRpt))
+      CALL der_R(R_vec, A_R, dA_R, shift)
+      DO irpt = 1, R_vec%nRpt
+        DO iw = 1, Nw
+          DO jw = 1, Nw
+            DO c = 1, 3
+              a = MOD(c, 3) + 1
+              b = MOD(a, 3) + 1
+              O_R(c, iw, jw, irpt) = dA_R(a, b, iw, jw, irpt) - dA_R(b, a, iw, jw, irpt)
+            END DO
+          END DO
+        END DO
+      END DO
+
+      IF (lBCD) THEN
+        ALLOCATE (d2H_R(3, 3, Nw, Nw, R_vec%nRpt))
+        ! ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
+        ! ALLOCATE (O_R(3, Nw, Nw, R_vec%nRpt))
+        ALLOCATE (dO_R(3, 3, Nw, Nw, R_vec%nRpt))
+        CALL der_R(R_vec, dH_R, d2H_R, shift)
+        ! CALL der_R(R_vec, A_R, dA_R, shift)
+
+        ! DO irpt = 1, R_vec%nRpt
+        !   DO iw = 1, Nw
+        !     DO jw = 1, Nw
+        !       DO c = 1, 3
+        !         a = MOD(c, 3) + 1
+        !         b = MOD(a, 3) + 1
+        !         O_R(c, iw, jw, irpt) = dA_R(a, b, iw, jw, irpt) - dA_R(b, a, iw, jw, irpt)
+        !       END DO
+        !     END DO
+        !   END DO
+        ! END DO
+        CALL der_R(R_vec, O_R, dO_R, shift)
+      END IF
+
       IF (lNLO) THEN
         ALLOCATE (d2H_R(3, 3, Nw, Nw, R_vec%nRpt))
         ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
@@ -99,5 +143,7 @@ CONTAINS
     IF (ALLOCATED(A_R)) DEALLOCATE (A_R)
     IF (ALLOCATED(d2H_R)) DEALLOCATE (d2H_R)
     IF (ALLOCATED(A_R_b)) DEALLOCATE (A_R_b)
+    IF (ALLOCATED(O_R)) DEALLOCATE (O_R)
+    IF (ALLOCATED(dO_R)) DEALLOCATE (dO_R)
   END SUBROUTINE clear_R_data
 END MODULE itg_R

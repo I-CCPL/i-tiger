@@ -54,53 +54,61 @@ SUBROUTINE debug_R()
   END DO
   CLOSE (io_unit)
 
-  OPEN (io_unit, file="debug_R.A_R.dat")
-  DO irpt = 1, R_vec%nRpt
-    DO iw = 1, Nw
-      DO jw = 1, Nw
-        WRITE (io_unit, *) A_R(:, iw, jw, irpt)
-      END DO
-    END DO
-  END DO
-  CLOSE (io_unit)
-
-  OPEN (io_unit, file="debug_R.dH_R.dat")
-  DO irpt = 1, R_vec%nRpt
-    DO iw = 1, Nw
-      DO jw = 1, Nw
-        DO a = 1, 3
-          WRITE (io_unit, *) dH_R(a, iw, jw, irpt)
+  IF (ALLOCATED(A_R)) THEN
+    OPEN (io_unit, file="debug_R.A_R.dat")
+    DO irpt = 1, R_vec%nRpt
+      DO iw = 1, Nw
+        DO jw = 1, Nw
+          WRITE (io_unit, *) A_R(:, iw, jw, irpt)
         END DO
       END DO
     END DO
-  END DO
-  CLOSE (io_unit)
+    CLOSE (io_unit)
+  END IF
 
-  OPEN (io_unit, file="debug_R.d2H_R.dat")
-  DO irpt = 1, R_vec%nRpt
-    DO iw = 1, Nw
-      DO jw = 1, Nw
-        DO a = 1, 3
-          DO b = 1, 3
-            WRITE (io_unit, *) d2H_R(b, a, iw, jw, irpt)
+  IF (ALLOCATED(dH_R)) THEN
+    OPEN (io_unit, file="debug_R.dH_R.dat")
+    DO irpt = 1, R_vec%nRpt
+      DO iw = 1, Nw
+        DO jw = 1, Nw
+          DO a = 1, 3
+            WRITE (io_unit, *) dH_R(a, iw, jw, irpt)
           END DO
         END DO
       END DO
     END DO
-  END DO
-  CLOSE (io_unit)
+    CLOSE (io_unit)
+  END IF
 
-  OPEN (io_unit, file="debug_R.dA_R.dat")
-  DO irpt = 1, R_vec%nRpt
-    DO iw = 1, Nw
-      DO jw = 1, Nw
-        DO a = 1, 3
-          DO b = 1, 3
-            WRITE (io_unit, *) dA_R(b, a, iw, jw, irpt)
+  IF (ALLOCATED(d2H_R)) THEN
+    OPEN (io_unit, file="debug_R.d2H_R.dat")
+    DO irpt = 1, R_vec%nRpt
+      DO iw = 1, Nw
+        DO jw = 1, Nw
+          DO a = 1, 3
+            DO b = 1, 3
+              WRITE (io_unit, *) d2H_R(b, a, iw, jw, irpt)
+            END DO
           END DO
         END DO
       END DO
     END DO
-  END DO
-  CLOSE (io_unit)
+    CLOSE (io_unit)
+  END IF
+
+  IF (ALLOCATED(dA_R)) THEN
+    OPEN (io_unit, file="debug_R.dA_R.dat")
+    DO irpt = 1, R_vec%nRpt
+      DO iw = 1, Nw
+        DO jw = 1, Nw
+          DO a = 1, 3
+            DO b = 1, 3
+              WRITE (io_unit, *) dA_R(b, a, iw, jw, irpt)
+            END DO
+          END DO
+        END DO
+      END DO
+    END DO
+    CLOSE (io_unit)
+  END IF
 END SUBROUTINE debug_R

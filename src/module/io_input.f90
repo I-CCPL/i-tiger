@@ -1,5 +1,5 @@
 MODULE io_input
-  USE kinds, ONLY: DP
+  USE kinds, ONLY: DP, inf_DP
   USE io_global, ONLY: stdin, stdout, ionode
   USE mp_base, ONLY: mp_bcast
   IMPLICIT NONE
@@ -10,7 +10,8 @@ MODULE io_input
   LOGICAL::debug_R = .FALSE.
   LOGICAL::debug_k = .FALSE.
   !... itg
-  INTEGER::convention = 1
+  INTEGER::convention = 0
+  !< 0 for standard convention, consider degenerate R0s (build_ws)
   !< 1 for TB convention, consider degenerate R0s (build_ws)
   !< 2 for Wannier convention, consider only the nearest R (build_R)
   CHARACTER(LEN=20)::formula = 'kubo'
@@ -31,6 +32,13 @@ MODULE io_input
   REAL(DP)::dE_eta = 0.04
   !< broadening parameter for 1/dE
   REAL(DP)::E_fermi = 0.0_DP
+  !< Now use for occupation number.
+
+  REAL(DP)::Ef_min = inf_DP
+  REAL(DP)::Ef_max = -inf_DP
+  REAL(DP)::Ef_step = -1.0_DP
+  INTEGER::Ef_nE
+  !< Fermi energy range for BCD calculation.
 
   !... Nonlinear optics calculation parameters
   !... Frequency: eV units from input
@@ -115,7 +123,7 @@ CONTAINS
   SUBROUTINE read_itg()
     ! USE system, ONLY: dim
     NAMELIST /itg/ convention, lBand, lOAM, lBerry, lBCD, &
-      formula, dE_thr, dE_eta, E_fermi, & ! dim &
+      formula, dE_thr, dE_eta, E_fermi, Ef_min, Ef_max, Ef_step, & ! dim &
       lNLO, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) THEN
@@ -146,6 +154,18 @@ CONTAINS
     CALL mp_bcast(dE_thr)
     CALL mp_bcast(dE_eta)
     CALL mp_bcast(E_fermi)
+    CALL mp_bcast(Ef_min)
+    CALL mp_bcast(Ef_max)
+    CALL mp_bcast(Ef_step)
+    IF (lBCD) THEN
+      IF (Ef_min > Ef_max) THEN
+        CALL errore(1, 'read_itg', 'Ef_max >= Ef_min required.')
+      END IF
+      IF (Ef_step <= 0.0_DP) THEN
+        CALL errore(1, 'read_itg', 'Ef_step > 0 required.')
+      END IF
+      Ef_nE = CEILING((Ef_max - Ef_min)/Ef_step) + 1
+    END IF
     ! CALL mp_bcast(dim)
     ! IF (dim < 1 .OR. dim > 3) THEN
     !   CALL errore(1, 'read_itg', 'dimensionality must be 1, 2, or 3')

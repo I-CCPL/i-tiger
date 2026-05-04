@@ -4,6 +4,7 @@ CONTAINS
   MODULE SUBROUTINE read_w90_chk(self, chk_dum)
     !< Ref. wannier90/src/wannier90_readwrite.F90
     USE kinds, ONLY: DP
+    USE constants, ONLY: zero
     USE io_global, ONLY: check_file
     USE mp_base, ONLY: mp_bcast
     USE system, ONLY: Nw, cell_setup, real_lattice, recip_lattice, &
@@ -101,6 +102,7 @@ CONTAINS
         DO ikpt = 1, self%kpts%nkpt
           DO j = 1, Nw
             ndw = self%ndimwin(ikpt)
+            self%v_matrix(:, j, ikpt) = zero
             DO i = 1, Nw
               DO m = 1, ndw
                 self%v_matrix(m, j, ikpt) = self%v_matrix(m, j, ikpt) &

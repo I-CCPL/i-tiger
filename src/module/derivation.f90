@@ -34,11 +34,16 @@ CONTAINS
       CALL errore(1, 'der_R', 'invalid size')
     END IF
     ldX = ldX/Nw/Nw/R_vec%nRpt
-    IF (convention == 1) THEN
+    SELECT CASE (convention)
+    CASE (0)
+      CALL derivation_R_4D_0(R_vec, ldX, X_R, dX_R)
+    CASE (1)
       CALL derivation_R_4D_1(R_vec, ldX, X_R, dX_R, shift_cart)
-    ELSE
+    CASE (2)
       CALL derivation_R_4D_2(R_vec, ldX, X_R, dX_R)
-    END IF
+    CASE default
+      CALL errore(1, 'der_R', 'invalid convention')
+    END SELECT
   END SUBROUTINE der_R
 END MODULE der_base
 
@@ -74,6 +79,28 @@ SUBROUTINE derivation_q_4D(w90data, ldX, X_k, dX_k)
   END DO
 
 END SUBROUTINE derivation_q_4D
+
+SUBROUTINE derivation_R_4D_0(R_vec, ldX, X_R, dX_R)
+  USE kinds, ONLY: DP
+  USE constants, ONLY: zero, zi
+  USE system, ONLY: Nw
+  USE R_vector, ONLY: R_vec_type
+  IMPLICIT NONE
+  TYPE(R_vec_type), INTENT(IN)::R_vec
+  INTEGER, INTENT(IN)::ldX
+  COMPLEX(DP), INTENT(IN)::X_R(ldX, Nw, Nw, R_vec%nRpt)
+  COMPLEX(DP), INTENT(OUT)::dX_R(3, ldX, Nw, Nw, R_vec%nRpt)
+  INTEGER::iRpt, iw, jw, iuw, idx
+  DO iRpt = 1, R_vec%nRpt
+    DO jw = 1, Nw
+      DO iw = 1, Nw
+        DO idx = 1, ldX
+          dX_R(:, idx, iw, jw, iRpt) = zi*X_R(idx, iw, jw, iRpt)*R_vec%R_cart(:, iRpt)
+        END DO
+      END DO
+    END DO
+  END DO
+END SUBROUTINE derivation_R_4D_0
 
 SUBROUTINE derivation_R_4D_1(R_vec, ldX, X_R, dX_R, shift_cart)
   USE kinds, ONLY: DP

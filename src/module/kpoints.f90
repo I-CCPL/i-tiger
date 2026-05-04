@@ -73,6 +73,9 @@ CONTAINS
 
     nktot = SUM(nkpps(1:npath - 1)) + 1
     !< Total number of k-points along the path (including the last point)
+    IF (ALLOCATED(self%k_cart)) THEN
+      CALL errore(1, 'build_kpath', 'k-points are already allocated.')
+    END IF
     ALLOCATE (self%k_cart(3, nktot))
     ALLOCATE (self%k_red(3, nktot))
 
@@ -111,6 +114,9 @@ CONTAINS
     END IF
 
     nktot = nk1*nk2*nk3
+    IF (ALLOCATED(self%k_cart)) THEN
+      CALL errore(1, 'build_kmesh', 'k-points are already allocated.')
+    END IF
     ALLOCATE (self%k_cart(3, nktot))
     ALLOCATE (self%k_red(3, nktot))
     ikpt = 0

@@ -10,22 +10,32 @@ MODULE itg_k
   !< Berry connection (3, Nw, Nw)
   COMPLEX(DP), ALLOCATABLE::dA_k_W(:, :, :, :), dA_bar(:, :, :, :)
   !< Derivative of Berry connection (3, 3, Nw, Nw)
+  COMPLEX(DP), ALLOCATABLE::O_k_W(:, :, :), O_bar(:, :, :)
+  !< Berry curvature / Curl of Berry connection (3, Nw, Nw)
+  COMPLEX(DP), ALLOCATABLE::dO_k_W(:, :, :, :), dO_bar(:, :, :, :)
+  !< Derivative of Berry curvature (3, 3, Nw, Nw)
+
   COMPLEX(DP), ALLOCATABLE::dH_k_W(:, :, :), dH_bar(:, :, :)
   !< Derivative of Hamiltonian (3, Nw, Nw)
   COMPLEX(DP), ALLOCATABLE::d2H_k_W(:, :, :, :), d2H_bar(:, :, :, :)
   !< Second derivative of Hamiltonian (3, 3, Nw, Nw)
   COMPLEX(DP), ALLOCATABLE::v_k_H(:, :, :)
   !< Velocity matrix (3, Nw, Nw)
+
   REAL(DP), ALLOCATABLE::L_k(:, :, :)
   !< OAM matrix (3, Nw, nkpt)
   REAL(DP), ALLOCATABLE::O_k(:, :)
   !< Berry curvature matrix (3, Nw)
+  REAL(DP), ALLOCATABLE::BCD_sea(:, :, :)
+  !< Berry curvature dipole (3, 3, NLO_nE)
   REAL(DP), ALLOCATABLE::berry(:, :)
   REAL(DP), ALLOCATABLE::berry_k(:, :, :)
   !< Berry curvature (3, nkpt)
 CONTAINS
   SUBROUTINE make_k_data()
-    USE itg_R, ONLY: H_R, A_R, dH_R, dA_R, d2H_R, shift
+    USE constants, ONLY: zi
+    USE itg_R, ONLY: H_R, A_R, dH_R, dA_R, d2H_R, shift, &
+                     O_R, dO_R
     USE fft_base, ONLY: fft_R2k
     USE io_input, ONLY: lOAM, lBerry, lBCD, lNLO, lreq_mmn
     USE lin_eig_H, ONLY: eig_H
@@ -60,13 +70,44 @@ CONTAINS
     END IF
 
     IF (lBerry) THEN
-      CALL Berry_mod(t_kpt%eigval(:, t_iks), v_k_H, O_k(:, :))
-      berry_k(:, :, t_iks) = O_k(:, :)
-      CALL Berry_sum(t_kpt%eigval(:, t_iks), O_k(:, :), berry(:, t_iks))
+      ! CALL Berry_mod(t_kpt%eigval(:, t_iks), v_k_H, O_k(:, :))
+      ! berry_k(:, :, t_iks) = O_k(:, :)
+      ! CALL Berry_sum(t_kpt%eigval(:, t_iks), O_k(:, :), berry(:, t_iks))
+      IF (.NOT. ALLOCATED(O_k_W)) THEN
+        ALLOCATE (O_k_W(3, Nw, Nw))
+      END IF
+      IF (.NOT. ALLOCATED(O_bar)) THEN
+        ALLOCATE (O_bar(3, Nw, Nw))
+      END IF
+
+      CALL fft_R2k(R_vec, O_R, O_k_W, shift_red, .TRUE.)
+      CALL t_kpt%rotate(O_k_W, O_bar)
+      CALL Berry_proj(t_kpt%eigval(:, t_iks), O_bar, A_bar, dH_bar, berry(:, t_iks))
     END IF
 
     IF (lBCD) THEN
-      ! TODO: Implement Berry curvature dipole calculation
+      !... Fermi surface
+      ! CALL fft_R2k(R_vec, dA_R, dA_k_W, shift_red, .TRUE.)
+      ! DO c = 1, 3
+      !   a = MOD(c, 3) + 1
+      !   b = MOD(a, 3) + 1
+      !   curl_A_k_W(c, :, :) = dA_k_W(a, b, :, :) - dA_k_W(b, a, :, :)
+      ! END DO
+      ! CALL t_kpt%rotate(curl_A_k_W, curl_A_bar)
+
+      !... Fermi sea
+      CALL fft_R2k(R_vec, dA_R, dA_k_W, shift_red, .TRUE.)
+      CALL t_kpt%rotate(dA_k_W, dA_bar)
+
+      CALL fft_R2k(R_vec, d2H_R, d2H_k_W, shift_red, .FALSE.)
+      CALL t_kpt%rotate(d2H_k_W, d2H_bar)
+
+      CALL fft_R2k(R_vec, O_R, O_k_W, shift_red, .TRUE.)
+      CALL t_kpt%rotate(O_k_W, O_bar)
+      CALL fft_R2k(R_vec, dO_R, dO_k_W, shift_red, .TRUE.)
+      CALL t_kpt%rotate(dO_k_W, dO_bar)
+
+      CALL compute_BCD_sea(t_kpt%eigval(:, t_iks), dH_bar, d2H_bar, A_bar, dA_bar, dO_bar, BCD_sea)
     END IF
 
     IF (lNLO) THEN
@@ -83,9 +124,11 @@ CONTAINS
   !
   SUBROUTINE write_k_data()
     USE io_global, ONLY: stdout, ionode
-    USE io_input, ONLY: lBand, lOAM, lBerry, lBCD, lNLO
+    USE mp_base, ONLY: mp_sum
+    USE io_input, ONLY: lBand, lOAM, lBerry, lBCD, lNLO, &
+                        Ef_nE
     USE io_output, ONLY: io_output_init, write_band, write_OAM, &
-                         write_Berry, write_Berry_k
+                         write_Berry, write_Berry_k, write_BCD
     USE NLO, ONLY: NLO_write
     REAL(DP), ALLOCATABLE::eigval(:, :)
     REAL(DP), ALLOCATABLE::L_k_tot(:, :, :)
@@ -135,10 +178,8 @@ CONTAINS
     END IF
 
     IF (lBCD) THEN
-      ! TODO: Implement Berry curvature dipole calculation
-      IF (ionode) THEN
-      ELSE
-      END IF
+      CALL mp_sum(BCD_sea)
+      CALL write_BCD('itg.BCD.sea.dat', BCD_sea)
     END IF
 
     IF (lNLO) THEN
@@ -151,13 +192,15 @@ CONTAINS
   !
   SUBROUTINE allocate_k_data()
     USE system, ONLY: Nw
-    USE io_input, ONLY: lOAM, lBerry, lNLO, lreq_mmn
+    USE io_input, ONLY: lOAM, lBerry, lBCD, lNLO, lreq_mmn, &
+                        Ef_nE
     USE NLO, ONLY: NLO_init
     INTEGER::i
     CALL t_kpt%divide_k()
     ALLOCATE (t_kpt%H_k(Nw, Nw))
     ALLOCATE (t_kpt%eigval(Nw, t_kpt%nkpt))
     ALLOCATE (t_kpt%eigvec(Nw, Nw))
+    t_kpt%eigval = 0.0_DP
 
     IF (lreq_mmn) THEN
       ALLOCATE (A_k_W(3, Nw, Nw))
@@ -166,6 +209,27 @@ CONTAINS
       ALLOCATE (dH_bar(3, Nw, Nw))
       ALLOCATE (v_k_H(3, Nw, Nw))
     END IF
+
+    IF (lOAM) THEN
+      ALLOCATE (L_k(3, Nw, t_kpt%nkpt))
+      L_k = 0.0_DP
+    END IF
+    IF (lBerry) THEN
+      ALLOCATE (O_k(3, Nw))
+      ALLOCATE (berry(3, t_kpt%nkpt))
+      ALLOCATE (berry_k(3, Nw, t_kpt%nkpt))
+    END IF
+    IF (lBCD) THEN
+      ALLOCATE (dA_k_W(3, 3, Nw, Nw))
+      ALLOCATE (dA_bar(3, 3, Nw, Nw))
+      ALLOCATE (d2H_k_W(3, 3, Nw, Nw))
+      ALLOCATE (d2H_bar(3, 3, Nw, Nw))
+      ALLOCATE (O_k_W(3, Nw, Nw))
+      ALLOCATE (O_bar(3, Nw, Nw))
+      ALLOCATE (dO_k_W(3, 3, Nw, Nw))
+      ALLOCATE (dO_bar(3, 3, Nw, Nw))
+      ALLOCATE (BCD_sea(3, 3, Ef_nE))
+    END IF
     IF (lNLO) THEN
       ALLOCATE (dA_k_W(3, 3, Nw, Nw))
       ALLOCATE (dA_bar(3, 3, Nw, Nw))
@@ -173,13 +237,6 @@ CONTAINS
       ALLOCATE (d2H_bar(3, 3, Nw, Nw))
       CALL NLO_init(t_kpt)
     END IF
-
-    IF (lOAM) ALLOCATE (L_k(3, Nw, t_kpt%nkpt))
-    IF (lBerry) ALLOCATE (O_k(3, Nw))
-    IF (lBerry) ALLOCATE (berry(3, t_kpt%nkpt))
-    IF (lBerry) ALLOCATE (berry_k(3, Nw, t_kpt%nkpt))
-    IF (ALLOCATED(L_k)) L_k = 0.0_DP
-    t_kpt%eigval = 0.0_DP
   END SUBROUTINE allocate_k_data
   !
   SUBROUTINE clear_k_data()
@@ -191,6 +248,7 @@ CONTAINS
     IF (ALLOCATED(v_k_H)) DEALLOCATE (v_k_H)
     IF (ALLOCATED(L_k)) DEALLOCATE (L_k)
     IF (ALLOCATED(O_k)) DEALLOCATE (O_k)
+    IF (ALLOCATED(BCD_sea)) DEALLOCATE (BCD_sea)
     IF (ALLOCATED(berry)) DEALLOCATE (berry)
     IF (ALLOCATED(berry_k)) DEALLOCATE (berry_k)
     CALL NLO_clear()
