@@ -195,7 +195,7 @@ SUBROUTINE fft_R2k_4d_0(R_vec, ldX, X_R, X_k)
   TYPE(R_vec_type), INTENT(IN) :: R_vec
   INTEGER, INTENT(IN)::ldX
   COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, ldX)
-  COMPLEX(DP), INTENT(OUT) :: X_k(ldX, Nw, Nw)
+  COMPLEX(DP), INTENT(OUT) :: X_k(Nw, Nw, ldX)
   INTEGER::iw, jw, irpt
   REAL(DP)::phase
   COMPLEX(DP)::exp_phase, fac
@@ -207,7 +207,7 @@ SUBROUTINE fft_R2k_4d_0(R_vec, ldX, X_R, X_k)
         phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt))
         exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
         fac = exp_phase*R_vec%w_R(iw, jw, irpt)
-        X_k(:, iw, jw) = X_k(:, iw, jw) + X_R(iw, jw, irpt, :)*fac
+        X_k(iw, jw, :) = X_k(iw, jw, :) + X_R(iw, jw, irpt, :)*fac
       END DO
     END DO
   END DO
@@ -224,7 +224,7 @@ SUBROUTINE fft_R2k_4d_1(R_vec, ldX, X_R, X_k, shift_red, AA)
   TYPE(R_vec_type), INTENT(IN) :: R_vec
   INTEGER, INTENT(IN)::ldX
   COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, ldX)
-  COMPLEX(DP), INTENT(OUT) :: X_k(ldX, Nw, Nw)
+  COMPLEX(DP), INTENT(OUT) :: X_k(Nw, Nw, ldX)
   REAL(DP), INTENT(IN) :: shift_red(3, Nw, Nw)
   LOGICAL, INTENT(IN) :: AA
   INTEGER::iw, jw, irpt
@@ -240,7 +240,7 @@ SUBROUTINE fft_R2k_4d_1(R_vec, ldX, X_R, X_k, shift_red, AA)
           CYCLE
         END IF
         phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt) + shift_red(:, iw, jw))
-        X_k(:, iw, jw) = X_k(:, iw, jw) &
+        X_k(iw, jw, :) = X_k(iw, jw, :) &
                          + X_R(iw, jw, irpt, :)*EXP(zi*phase)*R_vec%w_R(iw, jw, irpt)
       END DO
     END DO
@@ -292,7 +292,7 @@ SUBROUTINE fft_R2k_4d_2(R_vec, ldX, X_R, X_k)
   TYPE(R_vec_type), INTENT(IN) :: R_vec
   INTEGER, INTENT(IN)::ldX
   COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, ldX)
-  COMPLEX(DP), INTENT(OUT) :: X_k(ldX, Nw, Nw)
+  COMPLEX(DP), INTENT(OUT) :: X_k(Nw, Nw, ldX)
   INTEGER::iw, jw, irpt, iuw
   REAL(DP)::phase, shift_red(3)
   COMPLEX(DP)::exp_phase
@@ -306,7 +306,7 @@ SUBROUTINE fft_R2k_4d_2(R_vec, ldX, X_R, X_k)
         phase = tpi*DOT_PRODUCT(t_kpt%k_red(:, t_iks), R_vec%R_red(:, irpt) + shift_red)
         exp_phase = CMPLX(COS(phase), SIN(phase), KIND=DP)
 
-        X_k(:, iw, jw) = X_k(:, iw, jw) + X_R(iw, jw, irpt, :)*exp_phase
+        X_k(iw, jw, :) = X_k(iw, jw, :) + X_R(iw, jw, irpt, :)*exp_phase
       END DO
     END DO
   END DO
