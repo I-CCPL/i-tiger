@@ -34,22 +34,19 @@ MODULE itg_k
 CONTAINS
   SUBROUTINE make_k_data()
     USE constants, ONLY: zi
-    USE itg_R, ONLY: H_R, A_R, dH_R, dA_R, d2H_R, shift, &
+    USE itg_R, ONLY: H_R, A_R, dH_R, dA_R, d2H_R, &
                      O_R, dO_R
     USE fft_base, ONLY: fft_R2k
     USE io_input, ONLY: lOAM, lBerry, lBCD, lNLO, lreq_mmn
     USE lin_eig_H, ONLY: eig_H
-    USE system, ONLY: cart2red_real
     USE kpoints, ONLY: t_iks, t_kpt
     USE NLO, ONLY: NLO_main
     INTEGER::iw
-    REAL(DP)::shift_red(3, Nw, Nw)
-    CALL cart2red_real(shift, shift_red, Nw, Nw)
 
     CALL start_clock('make_k_data')
 
     ! Eigenvalues and eigenvectors
-    CALL fft_R2k(R_vec, H_R, t_kpt%H_k(:, :), shift_red, .FALSE.)
+    CALL fft_R2k(R_vec, H_R, t_kpt%H_k(:, :), .FALSE.)
     DO iw = 1, Nw
       t_kpt%H_k(iw, iw) = REAL(t_kpt%H_k(iw, iw), DP)
     END DO
@@ -57,10 +54,10 @@ CONTAINS
 
     IF (lreq_mmn) THEN
       ! Derivative of Hamiltonian
-      CALL fft_R2k(R_vec, dH_R, dH_k_W, shift_red, .FALSE.)
+      CALL fft_R2k(R_vec, dH_R, dH_k_W, .FALSE.)
       CALL t_kpt%rotate(dH_k_W, dH_bar)
       ! Berry connection
-      CALL fft_R2k(R_vec, A_R, A_k_W, shift_red, .TRUE.)
+      CALL fft_R2k(R_vec, A_R, A_k_W, .TRUE.)
       CALL t_kpt%rotate(A_k_W, A_bar)
       CALL velocity(A_bar, dH_bar, v_k_H)
     END IF
@@ -80,7 +77,7 @@ CONTAINS
         ALLOCATE (O_bar(3, Nw, Nw))
       END IF
 
-      CALL fft_R2k(R_vec, O_R, O_k_W, shift_red, .TRUE.)
+      CALL fft_R2k(R_vec, O_R, O_k_W, .TRUE.)
       CALL t_kpt%rotate(O_k_W, O_bar)
       CALL Berry_proj(t_kpt%eigval(:, t_iks), O_bar, A_bar, dH_bar, berry(:, t_iks))
     END IF
@@ -96,25 +93,25 @@ CONTAINS
       ! CALL t_kpt%rotate(curl_A_k_W, curl_A_bar)
 
       !... Fermi sea
-      CALL fft_R2k(R_vec, dA_R, dA_k_W, shift_red, .TRUE.)
+      CALL fft_R2k(R_vec, dA_R, dA_k_W, .TRUE.)
       CALL t_kpt%rotate(dA_k_W, dA_bar)
 
-      CALL fft_R2k(R_vec, d2H_R, d2H_k_W, shift_red, .FALSE.)
+      CALL fft_R2k(R_vec, d2H_R, d2H_k_W, .FALSE.)
       CALL t_kpt%rotate(d2H_k_W, d2H_bar)
 
-      CALL fft_R2k(R_vec, O_R, O_k_W, shift_red, .TRUE.)
+      CALL fft_R2k(R_vec, O_R, O_k_W, .TRUE.)
       CALL t_kpt%rotate(O_k_W, O_bar)
-      CALL fft_R2k(R_vec, dO_R, dO_k_W, shift_red, .TRUE.)
+      CALL fft_R2k(R_vec, dO_R, dO_k_W, .TRUE.)
       CALL t_kpt%rotate(dO_k_W, dO_bar)
 
       CALL compute_BCD_sea(t_kpt%eigval(:, t_iks), dH_bar, d2H_bar, A_bar, dA_bar, dO_bar, BCD_sea)
     END IF
 
     IF (lNLO) THEN
-      CALL fft_R2k(R_vec, dA_R, dA_k_W, shift_red, .TRUE.)
+      CALL fft_R2k(R_vec, dA_R, dA_k_W, .TRUE.)
       CALL t_kpt%rotate(dA_k_W, dA_bar)
 
-      CALL fft_R2k(R_vec, d2H_R, d2H_k_W, shift_red, .FALSE.)
+      CALL fft_R2k(R_vec, d2H_R, d2H_k_W, .FALSE.)
       CALL t_kpt%rotate(d2H_k_W, d2H_bar)
 
       CALL NLO_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H)

@@ -82,7 +82,7 @@ MODULE wannier90
     REAL(DP), ALLOCATABLE::wb(:)
     !< weight of b vector (nnb)
     COMPLEX(DP), ALLOCATABLE :: Aq(:, :, :, :)
-    !< (3, Nw, Nw, nkpt)
+    !< (Nw, Nw, nkpt, 3)
   CONTAINS
     PROCEDURE::clear => clear_w90_data
     PROCEDURE::read_files => read_w90_files

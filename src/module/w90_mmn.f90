@@ -212,11 +212,11 @@ CONTAINS
     INTEGER::ikpt, inb, jnb, iknb, ibnd, jbnd, iw, jw, ipol
     INTEGER::ndw1, ndw2, mw1, mw2
     REAL(DP)::b_cart(3)
-    COMPLEX(DP)::M_W, A_qb(3, Nw, Nw)
+    COMPLEX(DP)::M_W, A_qb(Nw, Nw, 3)
     !< overlap matrix in Wannier gauge
     !
     WRITE (stdout, '(2X, A)') 'Building A(q)...'
-    ALLOCATE (self%Aq(3, Nw, Nw, self%kpts%nkpt))
+    ALLOCATE (self%Aq(Nw, Nw, self%kpts%nkpt, 3))
     IF (ionode) THEN
       DO ikpt = 1, self%kpts%nkpt
         ndw1 = self%ndimwin(ikpt)
@@ -232,14 +232,14 @@ CONTAINS
             DO iw = 1, Nw
               M_W = wannier_gauge(self%overlap(mw1:mw1 + ndw1 - 1, mw2:mw2 + ndw2 - 1, inb, ikpt), &
                                   self%v_matrix(1:ndw1, iw, ikpt), self%v_matrix(1:ndw2, jw, iknb))
-              A_qb(:, iw, jw) = A_qb(:, iw, jw) + zi*self%wb(jnb)*M_W*b_cart(:)
+              A_qb(iw, jw, :) = A_qb(iw, jw, :) + zi*self%wb(jnb)*M_W*b_cart(:)
             END DO
           END DO
         END DO
 
         !... Enforce Hermicity
         DO ipol = 1, 3
-          self%Aq(ipol, :, :, ikpt) = 0.5_DP*(A_qb(ipol, :, :) + CONJG(TRANSPOSE(A_qb(ipol, :, :))))
+          self%Aq(:, :, ikpt, ipol) = 0.5_DP*(A_qb(:, :, ipol) + CONJG(TRANSPOSE(A_qb(:, :, ipol))))
         END DO
       END DO
     END IF

@@ -1,4 +1,3 @@
-./build/BCD.o : ./build/system.o ./build/io_input.o ./build/constants.o ./build/kinds.o 
 ./build/Berry.o : ./build/io_input.o ./build/system.o ./build/constants.o ./build/kinds.o 
 ./build/NLO.o : ./build/delta_funct.o ./build/io_output.o ./build/io_global.o ./build/mp_base.o ./build/kpoints.o ./build/system.o ./build/constants.o ./build/io_input.o ./build/kinds.o 
 ./build/OAM.o : ./build/system.o ./build/io_input.o ./build/constants.o ./build/kinds.o 

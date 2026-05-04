@@ -19,7 +19,7 @@ CONTAINS
     CALL derivation_q_4D(w90data, ldX, X_k, dX_k)
   END SUBROUTINE der_q
   !
-  SUBROUTINE der_R(R_vec, X_R, dX_R, shift_cart)
+  SUBROUTINE der_R(R_vec, X_R, dX_R)!, shift_cart)
     USE io_input, ONLY: convention
     USE R_vector, ONLY: R_vec_type
     TYPE(R_vec_type), INTENT(IN)::R_vec
@@ -27,7 +27,7 @@ CONTAINS
     !< (ldX, Nw, Nw, nRpt)
     COMPLEX(DP), INTENT(OUT)::dX_R(..)
     !< (3, ldX, Nw, Nw, NRpt)
-    REAL(DP), INTENT(IN) :: shift_cart(3, Nw, Nw)
+    ! REAL(DP), INTENT(IN) :: shift_cart(3, Nw, Nw)
     INTEGER::ldX
     ldX = SIZE(X_R)
     IF (ldX*3 /= SIZE(dX_R)) THEN
@@ -38,7 +38,7 @@ CONTAINS
     CASE (0)
       CALL derivation_R_4D_0(R_vec, ldX, X_R, dX_R)
     CASE (1)
-      CALL derivation_R_4D_1(R_vec, ldX, X_R, dX_R, shift_cart)
+      CALL derivation_R_4D_1(R_vec, ldX, X_R, dX_R)!, shift_cart)
     CASE (2)
       CALL derivation_R_4D_2(R_vec, ldX, X_R, dX_R)
     CASE default

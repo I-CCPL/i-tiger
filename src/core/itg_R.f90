@@ -11,15 +11,13 @@ MODULE itg_R
   COMPLEX(DP), ALLOCATABLE::dA_R(:, :, :, :, :)
   COMPLEX(DP), ALLOCATABLE::d2H_R(:, :, :, :, :)
   COMPLEX(DP), ALLOCATABLE::O_R(:, :, :, :), dO_R(:, :, :, :, :)
-  REAL(DP), ALLOCATABLE::shift(:, :, :)
 CONTAINS
   SUBROUTINE make_R_data()
     USE constants, ONLY: zero
     USE fft_base, ONLY: fft_q2R
     USE der_base, ONLY: der_R
     USE io_input, ONLY: lBCD, lNLO, lreq_mmn, convention
-    INTEGER::inb, iw, jw, ir0pt, ikpt, irpt, iuw, ideg, a, b, c
-    REAL(DP)::center(3, Nw)
+    INTEGER::iw, jw, irpt, a, b, c
     CALL start_clock('make_R_data')
     !
     SELECT CASE (convention)
@@ -41,29 +39,14 @@ CONTAINS
       A_R = zero
       CALL fft_q2R(w90data, R_vec, w90data%Aq(:, :, :, :), A_R)
       ! CALL enforce_Hemiticity_R(A_R_b, A_R)
-      DO irpt = 1, R_vec%nRpt
-        IF (ALL(R_vec%R_red(:, irpt) == 0)) THEN
-          DO iw = 1, Nw
-            center(:, iw) = DBLE(A_R(:, iw, iw, irpt))
-          END DO
-          EXIT
-        END IF
-      END DO
-
-      ALLOCATE (shift(3, Nw, Nw))
-      DO iw = 1, Nw
-        DO jw = 1, Nw
-          shift(:, iw, jw) = center(:, jw) - center(:, iw)
-        END DO
-      END DO
 
       ALLOCATE (dH_R(3, Nw, Nw, R_vec%nRpt))
       dH_R = zero
-      CALL der_R(R_vec, H_R, dH_R, shift)
+      CALL der_R(R_vec, H_R, dH_R)
 
       ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
       ALLOCATE (O_R(3, Nw, Nw, R_vec%nRpt))
-      CALL der_R(R_vec, A_R, dA_R, shift)
+      CALL der_R(R_vec, A_R, dA_R)
       DO irpt = 1, R_vec%nRpt
         DO iw = 1, Nw
           DO jw = 1, Nw
@@ -81,7 +64,7 @@ CONTAINS
         ! ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
         ! ALLOCATE (O_R(3, Nw, Nw, R_vec%nRpt))
         ALLOCATE (dO_R(3, 3, Nw, Nw, R_vec%nRpt))
-        CALL der_R(R_vec, dH_R, d2H_R, shift)
+        CALL der_R(R_vec, dH_R, d2H_R)
         ! CALL der_R(R_vec, A_R, dA_R, shift)
 
         ! DO irpt = 1, R_vec%nRpt
@@ -95,14 +78,14 @@ CONTAINS
         !     END DO
         !   END DO
         ! END DO
-        CALL der_R(R_vec, O_R, dO_R, shift)
+        CALL der_R(R_vec, O_R, dO_R)
       END IF
 
       IF (lNLO) THEN
         ALLOCATE (d2H_R(3, 3, Nw, Nw, R_vec%nRpt))
         ALLOCATE (dA_R(3, 3, Nw, Nw, R_vec%nRpt))
-        CALL der_R(R_vec, dH_R, d2H_R, shift)
-        CALL der_R(R_vec, A_R, dA_R, shift)
+        CALL der_R(R_vec, dH_R, d2H_R)
+        CALL der_R(R_vec, A_R, dA_R)
       END IF
     END IF
     CALL write_sep_line()

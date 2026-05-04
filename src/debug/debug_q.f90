@@ -97,7 +97,7 @@ SUBROUTINE debug_q()
     DO m = 1, Nw
       DO n = 1, Nw
         DO a = 1, 3
-          WRITE (io_unit, *) w90data%Aq(a, m, n, ikpt)
+          WRITE (io_unit, *) w90data%Aq(m, n, ikpt, a)
         END DO
       END DO
     END DO
