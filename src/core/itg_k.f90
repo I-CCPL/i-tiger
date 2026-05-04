@@ -211,7 +211,7 @@ CONTAINS
     END IF
     IF (lBerry) THEN
       ALLOCATE (O_k(Nw, 3))
-      ALLOCATE (berry(Nw, t_kpt%nkpt))
+      ALLOCATE (berry(3, t_kpt%nkpt))
       ALLOCATE (berry_k(Nw, 3, t_kpt%nkpt))
     END IF
     IF (lBCD) THEN

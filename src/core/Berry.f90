@@ -11,7 +11,7 @@ SUBROUTINE Berry_mod(eigval, v_k, O_k)
   REAL(DP)::denom, factor
   factor = -2.0_DP*(hbar_eVfs**2)
   DO iw1 = 1, Nw
-    O_k(:, iw1) = 0.0_DP
+    O_k(iw1, :) = 0.0_DP
     DO iw2 = 1, Nw
       denom = eigval(iw1) - eigval(iw2)
       IF (ABS(denom) <= dE_thr) CYCLE
