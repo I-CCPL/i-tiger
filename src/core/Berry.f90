@@ -5,8 +5,8 @@ SUBROUTINE Berry_mod(eigval, v_k, O_k)
   USE io_input, ONLY: dE_thr
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)
-  COMPLEX(DP), INTENT(IN)::v_k(3, Nw, Nw)
-  REAL(DP), INTENT(OUT)::O_k(3, Nw)
+  COMPLEX(DP), INTENT(IN)::v_k(Nw, Nw, 3)
+  REAL(DP), INTENT(OUT)::O_k(Nw, 3)
   INTEGER::iw1, iw2, ipol, jpol, kpol
   REAL(DP)::denom, factor
   factor = -2.0_DP*(hbar_eVfs**2)
@@ -18,7 +18,7 @@ SUBROUTINE Berry_mod(eigval, v_k, O_k)
       DO kpol = 1, 3
         ipol = MOD(kpol, 3) + 1
         jpol = MOD(kpol + 1, 3) + 1
-        O_k(kpol, iw1) = O_k(kpol, iw1) + factor*DIMAG(v_k(ipol, iw1, iw2)*v_k(jpol, iw2, iw1)/(denom**2))
+        O_k(iw1, kpol) = O_k(iw1, kpol) + factor*DIMAG(v_k(iw1, iw2, ipol)*v_k(iw2, iw1, jpol)/(denom**2))
       END DO
     END DO
   END DO
@@ -30,15 +30,13 @@ SUBROUTINE Berry_sum(eigval, O_k, berry)
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)
-  REAL(DP), INTENT(IN)::O_k(3, Nw)
+  REAL(DP), INTENT(IN)::O_k(Nw, 3)
   REAL(DP), INTENT(OUT)::berry(3)
   INTEGER::iw, ipol
   berry = 0.0_DP
   DO iw = 1, Nw
     IF (eigval(iw) > E_fermi) CYCLE
-    DO ipol = 1, 3
-      berry(ipol) = berry(ipol) + O_k(ipol, iw)
-    END DO
+    berry(:) = berry(:) + O_k(iw, :)
   END DO
 END SUBROUTINE Berry_sum
 
@@ -49,18 +47,18 @@ SUBROUTINE Berry_proj(eigval, O_bar, A_bar, dH_bar, berry)
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)
-  COMPLEX(DP), INTENT(IN)::O_bar(3, Nw, Nw)
-  COMPLEX(DP), INTENT(IN)::A_bar(3, Nw, Nw)
-  COMPLEX(DP), INTENT(IN)::dH_bar(3, Nw, Nw)
+  COMPLEX(DP), INTENT(IN)::O_bar(Nw, Nw, 3)
+  COMPLEX(DP), INTENT(IN)::A_bar(Nw, Nw, 3)
+  COMPLEX(DP), INTENT(IN)::dH_bar(Nw, Nw, 3)
   REAL(DP), INTENT(OUT)::berry(3)
-  COMPLEX(DP):: D_val(3, Nw, Nw), sum_val(3)
+  COMPLEX(DP):: D_val(Nw, Nw, 3), sum_val(3)
   INTEGER::m, n, a, b, c
   DO m = 1, Nw
     DO n = 1, Nw
       IF (ABS(eigval(m) - eigval(n)) <= dE_thr) THEN
-        D_val(:, m, n) = 0.0_DP
+        D_val(m, n, :) = 0.0_DP
       ELSE
-        D_val(:, m, n) = dH_bar(:, m, n)/(eigval(n) - eigval(m))
+        D_val(m, n, :) = dH_bar(m, n, :)/(eigval(n) - eigval(m))
       END IF
     END DO
   END DO
@@ -75,11 +73,11 @@ SUBROUTINE Berry_proj(eigval, O_bar, A_bar, dH_bar, berry)
         a = MOD(c, 3) + 1
         b = MOD(a, 3) + 1
         sum_val(c) = sum_val(c) &
-                     + D_val(a, n, m)*A_bar(b, m, n) &
-                     - D_val(b, n, m)*A_bar(a, m, n) &
-                     + zi*D_val(a, n, m)*D_val(b, m, n)
+                     + D_val(n, m, a)*A_bar(m, n, b) &
+                     - D_val(n, m, b)*A_bar(m, n, a) &
+                     + zi*D_val(n, m, a)*D_val(m, n, b)
       END DO
     END DO
-    berry = berry + REAL(O_bar(:, n, n) - 2*sum_val, DP)
+    berry = berry + REAL(O_bar(n, n, :) - 2*sum_val, DP)
   END DO
 END SUBROUTINE Berry_proj

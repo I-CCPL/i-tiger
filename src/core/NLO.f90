@@ -182,16 +182,16 @@ CONTAINS
     USE delta_func, ONLY: dE_inv, w1gauss
     USE kpoints, ONLY: kpoint_type, t_iks
     TYPE(kpoint_type), INTENT(IN) :: t_kpt
-    COMPLEX(DP), INTENT(IN) :: dH_bar(3, Nw, Nw)
-    COMPLEX(DP), INTENT(IN) :: d2H_bar(3, 3, Nw, Nw)
-    COMPLEX(DP), INTENT(IN) :: A_bar(3, Nw, Nw)
-    COMPLEX(DP), INTENT(IN) :: dA_bar(3, 3, Nw, Nw)
-    COMPLEX(DP), INTENT(IN) :: v_k_H(3, Nw, Nw)
+    COMPLEX(DP), INTENT(IN) :: dH_bar(Nw, Nw, 3)
+    COMPLEX(DP), INTENT(IN) :: d2H_bar(Nw, Nw, 3, 3)
+    COMPLEX(DP), INTENT(IN) :: A_bar(Nw, Nw, 3)
+    COMPLEX(DP), INTENT(IN) :: dA_bar(Nw, Nw, 3, 3)
+    COMPLEX(DP), INTENT(IN) :: v_k_H(Nw, Nw, 3)
     INTEGER::n, m, p, a, b, iom
     REAL(DP)::inv_hbar, eig_n, eig_m, dE_nm, w_inv(Nw, Nw), occ(Nw), fmn, E_inv(Nw, Nw)
-    COMPLEX(DP)::v_bar(3, Nw, Nw), del_H_nm(3), del_bar_mn(3), dv_bar
+    COMPLEX(DP)::v_bar(Nw, Nw, 3), del_H_nm(3), del_bar_mn(3), dv_bar
     COMPLEX(DP)::psum, dr_mn, da_mn
-    COMPLEX(DP)::gen_r(3, Nw, Nw), gen_dr_mn(3, 3)
+    COMPLEX(DP)::gen_r(Nw, Nw, 3), gen_dr_mn(3, 3)
     REAL(DP), ALLOCATABLE::delta_E(:, :, :)
     CALL start_clock('NLO_main')
     inv_hbar = 1.0_DP/hbar_eVfs
@@ -214,9 +214,9 @@ CONTAINS
           E_inv(n, m) = 1.0_DP/dE_nm*hbar_eVfs
         END IF
 
-        v_bar(:, n, m) = dH_bar(:, n, m)*inv_hbar
+        v_bar(n, m, :) = dH_bar(n, m, :)*inv_hbar
         ! PRB 97, 245143 (2018) Eq. (22)
-        gen_r(:, n, m) = -zi*v_bar(:, n, m)*E_inv(n, m) + A_bar(:, n, m)
+        gen_r(n, m, :) = -zi*v_bar(n, m, :)*E_inv(n, m) + A_bar(n, m, :)
       END DO
     END DO
 
@@ -231,22 +231,22 @@ CONTAINS
         dE_nm = eig_n - eig_m
         ! IF (ABS(dE_nm) <= dE_thr) CYCLE
 
-        del_bar_mn = (dH_bar(:, m, m) - dH_bar(:, n, n))*inv_hbar
-        del_H_nm = v_k_H(:, n, n) - v_k_H(:, m, m)
+        del_bar_mn = (dH_bar(m, m, :) - dH_bar(n, n, :))*inv_hbar
+        del_H_nm = v_k_H(n, n, :) - v_k_H(m, m, :)
         DO a = 1, 3
           DO b = 1, 3
             psum = zero
-            dv_bar = d2H_bar(b, a, m, n)*inv_hbar
+            dv_bar = d2H_bar(m, n, b, a)*inv_hbar
             DO p = 1, Nw
               IF (p == m .OR. p == n) CYCLE
               psum = psum &
-                     + (v_bar(a, m, p)*v_bar(b, p, n))*w_inv(p, n) &
-                     - (v_bar(b, m, p)*v_bar(a, p, n))*w_inv(m, p)
+                     + (v_bar(m, p, a)*v_bar(p, n, b))*w_inv(p, n) &
+                     - (v_bar(m, p, b)*v_bar(p, n, a))*w_inv(m, p)
             END DO
             dr_mn = zi*E_inv(m, n) &
                     *( &
-                    (v_bar(a, m, n)*del_bar_mn(b) &
-                     + v_bar(b, m, n)*del_bar_mn(a))*E_inv(m, n) &
+                    (v_bar(m, n, a)*del_bar_mn(b) &
+                     + v_bar(m, n, b)*del_bar_mn(a))*E_inv(m, n) &
                     - dv_bar &
                     + psum &
                     )
@@ -255,16 +255,16 @@ CONTAINS
             DO p = 1, Nw
               IF (p == m .OR. p == n) CYCLE
               psum = psum &
-                     + (v_bar(b, m, p)*A_bar(a, p, n))*w_inv(m, p) &
-                     - (A_bar(a, m, p)*v_bar(b, p, n))*w_inv(p, n)
+                     + (v_bar(m, p, b)*A_bar(p, n, a))*w_inv(m, p) &
+                     - (A_bar(m, p, a)*v_bar(p, n, b))*w_inv(p, n)
             END DO
-            da_mn = dA_bar(b, a, m, n) &
-                    - (A_bar(a, m, m) - A_bar(a, n, n))*v_bar(b, m, n)*E_inv(m, n) &
+            da_mn = dA_bar(m, n, a, b) &
+                    - (A_bar(m, m, a) - A_bar(n, n, a))*v_bar(m, n, b)*E_inv(m, n) &
                     + psum
             ! PRB 97, 245143 (2018) Eq. (36)
             gen_dr_mn(b, a) = dr_mn + da_mn &
-                              - (A_bar(b, m, m) - A_bar(b, n, n)) &
-                              *(v_bar(a, m, n)*E_inv(m, n) + zi*A_bar(a, m, n))
+                              - (A_bar(m, m, b) - A_bar(n, n, b)) &
+                              *(v_bar(m, n, a)*E_inv(m, n) + zi*A_bar(m, n, a))
           END DO
         END DO
         is_mn = MAX(INT((-dE_nm - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
@@ -272,11 +272,11 @@ CONTAINS
         is_nm = MAX(INT((dE_nm - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
         ie_nm = MIN(INT((dE_nm + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
 
-        CALL dielectric(epsilon_w, delta_E(:, n, m), fmn, gen_r(:, n, m), gen_r(:, m, n))
+        CALL dielectric(epsilon_w, delta_E(:, n, m), fmn, gen_r(n, m, :), gen_r(m, n, :))
         CALL Joint_DOS(JDOS_w, delta_E(:, n, m), fmn)
-        CALL shift_current(shift_w, delta_E(:, n, m), delta_E(:, m, n), fmn, gen_r(:, n, m), gen_dr_mn)
+        CALL shift_current(shift_w, delta_E(:, n, m), delta_E(:, m, n), fmn, gen_r(n, m, :), gen_dr_mn)
         CALL injection_current(injection_w, delta_E(:, n, m), fmn, &
-                               del_H_nm, gen_r(:, n, m), gen_r(:, m, n))
+                               del_H_nm, gen_r(n, m, :), gen_r(m, n, :))
       END DO
     END DO
     CALL stop_clock('NLO_main')

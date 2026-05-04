@@ -7,30 +7,30 @@ MODULE itg_k
   !... X_bar = U^+ X U
   !... X_k_H = X_bar only for Gauge-covariant X
   COMPLEX(DP), ALLOCATABLE::A_k_W(:, :, :), A_bar(:, :, :)
-  !< Berry connection (3, Nw, Nw)
+  !< Berry connection (Nw, Nw, 3)
   COMPLEX(DP), ALLOCATABLE::dA_k_W(:, :, :, :), dA_bar(:, :, :, :)
-  !< Derivative of Berry connection (3, 3, Nw, Nw)
+  !< Derivative of Berry connection (Nw, Nw, 3, 3)
   COMPLEX(DP), ALLOCATABLE::O_k_W(:, :, :), O_bar(:, :, :)
-  !< Berry curvature / Curl of Berry connection (3, Nw, Nw)
+  !< Berry curvature / Curl of Berry connection (Nw, Nw, 3)
   COMPLEX(DP), ALLOCATABLE::dO_k_W(:, :, :, :), dO_bar(:, :, :, :)
-  !< Derivative of Berry curvature (3, 3, Nw, Nw)
+  !< Derivative of Berry curvature (Nw, Nw, 3, 3)
 
   COMPLEX(DP), ALLOCATABLE::dH_k_W(:, :, :), dH_bar(:, :, :)
-  !< Derivative of Hamiltonian (3, Nw, Nw)
+  !< Derivative of Hamiltonian (Nw, Nw, 3)
   COMPLEX(DP), ALLOCATABLE::d2H_k_W(:, :, :, :), d2H_bar(:, :, :, :)
-  !< Second derivative of Hamiltonian (3, 3, Nw, Nw)
+  !< Second derivative of Hamiltonian (Nw, Nw, 3, 3)
   COMPLEX(DP), ALLOCATABLE::v_k_H(:, :, :)
-  !< Velocity matrix (3, Nw, Nw)
+  !< Velocity matrix (Nw, Nw, 3)
 
   REAL(DP), ALLOCATABLE::L_k(:, :, :)
-  !< OAM matrix (3, Nw, nkpt)
+  !< OAM matrix (Nw, 3, nkpt)
   REAL(DP), ALLOCATABLE::O_k(:, :)
-  !< Berry curvature matrix (3, Nw)
+  !< Berry curvature matrix (Nw, 3)
   REAL(DP), ALLOCATABLE::BCD_sea(:, :, :)
   !< Berry curvature dipole (3, 3, NLO_nE)
   REAL(DP), ALLOCATABLE::berry(:, :)
   REAL(DP), ALLOCATABLE::berry_k(:, :, :)
-  !< Berry curvature (3, nkpt)
+  !< Berry curvature (Nw, 3)
 CONTAINS
   SUBROUTINE make_k_data()
     USE constants, ONLY: zi
@@ -71,10 +71,10 @@ CONTAINS
       ! berry_k(:, :, t_iks) = O_k(:, :)
       ! CALL Berry_sum(t_kpt%eigval(:, t_iks), O_k(:, :), berry(:, t_iks))
       IF (.NOT. ALLOCATED(O_k_W)) THEN
-        ALLOCATE (O_k_W(3, Nw, Nw))
+        ALLOCATE (O_k_W(Nw, Nw, 3))
       END IF
       IF (.NOT. ALLOCATED(O_bar)) THEN
-        ALLOCATE (O_bar(3, Nw, Nw))
+        ALLOCATE (O_bar(Nw, Nw, 3))
       END IF
 
       CALL fft_R2k(R_vec, O_R, O_k_W, .TRUE.)
@@ -88,7 +88,7 @@ CONTAINS
       ! DO c = 1, 3
       !   a = MOD(c, 3) + 1
       !   b = MOD(a, 3) + 1
-      !   curl_A_k_W(c, :, :) = dA_k_W(a, b, :, :) - dA_k_W(b, a, :, :)
+      !   curl_A_k_W(:, :, c) = dA_k_W(:, :, b, a) - dA_k_W(:, :, a, b)
       ! END DO
       ! CALL t_kpt%rotate(curl_A_k_W, curl_A_bar)
 
@@ -149,11 +149,11 @@ CONTAINS
 
     IF (lOAM) THEN
       IF (ionode) THEN
-        ALLOCATE (L_k_tot(3, Nw, t_kpt%nktot))
+        ALLOCATE (L_k_tot(Nw, 3, t_kpt%nktot))
       ELSE
         ALLOCATE (L_k_tot(0, 0, 0))
       END IF
-      CALL t_kpt%gather(3*Nw, L_k, L_k_tot)
+      CALL t_kpt%gather(Nw*3, L_k, L_k_tot)
       CALL write_OAM('itg.OAM.dat', L_k_tot)
       DEALLOCATE (L_k_tot)
     END IF
@@ -161,13 +161,13 @@ CONTAINS
     IF (lBerry) THEN
       IF (ionode) THEN
         ALLOCATE (berry_tot(3, t_kpt%nktot))
-        ALLOCATE (berry_k_tot(3, Nw, t_kpt%nktot))
+        ALLOCATE (berry_k_tot(Nw, 3, t_kpt%nktot))
       ELSE
         ALLOCATE (berry_tot(0, 0))
         ALLOCATE (berry_k_tot(0, 0, 0))
       END IF
       CALL t_kpt%gather(3, berry, berry_tot)
-      CALL t_kpt%gather(3*Nw, berry_k, berry_k_tot)
+      CALL t_kpt%gather(Nw*3, berry_k, berry_k_tot)
       CALL write_Berry('itg.Berry.dat', berry_tot)
       CALL write_Berry_k('itg.Berry_k.dat', berry_k_tot)
       DEALLOCATE (berry_tot)
@@ -200,38 +200,38 @@ CONTAINS
     t_kpt%eigval = 0.0_DP
 
     IF (lreq_mmn) THEN
-      ALLOCATE (A_k_W(3, Nw, Nw))
-      ALLOCATE (A_bar(3, Nw, Nw))
-      ALLOCATE (dH_k_W(3, Nw, Nw))
-      ALLOCATE (dH_bar(3, Nw, Nw))
-      ALLOCATE (v_k_H(3, Nw, Nw))
+      ALLOCATE (A_k_W(Nw, Nw, 3))
+      ALLOCATE (A_bar(Nw, Nw, 3))
+      ALLOCATE (dH_k_W(Nw, Nw, 3))
+      ALLOCATE (dH_bar(Nw, Nw, 3))
+      ALLOCATE (v_k_H(Nw, Nw, 3))
     END IF
 
     IF (lOAM) THEN
-      ALLOCATE (L_k(3, Nw, t_kpt%nkpt))
+      ALLOCATE (L_k(Nw, 3, t_kpt%nkpt))
       L_k = 0.0_DP
     END IF
     IF (lBerry) THEN
-      ALLOCATE (O_k(3, Nw))
-      ALLOCATE (berry(3, t_kpt%nkpt))
-      ALLOCATE (berry_k(3, Nw, t_kpt%nkpt))
+      ALLOCATE (O_k(Nw, 3))
+      ALLOCATE (berry(Nw, t_kpt%nkpt))
+      ALLOCATE (berry_k(Nw, 3, t_kpt%nkpt))
     END IF
     IF (lBCD) THEN
-      ALLOCATE (dA_k_W(3, 3, Nw, Nw))
-      ALLOCATE (dA_bar(3, 3, Nw, Nw))
-      ALLOCATE (d2H_k_W(3, 3, Nw, Nw))
-      ALLOCATE (d2H_bar(3, 3, Nw, Nw))
-      ALLOCATE (O_k_W(3, Nw, Nw))
-      ALLOCATE (O_bar(3, Nw, Nw))
-      ALLOCATE (dO_k_W(3, 3, Nw, Nw))
-      ALLOCATE (dO_bar(3, 3, Nw, Nw))
+      ALLOCATE (dA_k_W(Nw, Nw, 3, 3))
+      ALLOCATE (dA_bar(Nw, Nw, 3, 3))
+      ALLOCATE (d2H_k_W(Nw, Nw, 3, 3))
+      ALLOCATE (d2H_bar(Nw, Nw, 3, 3))
+      ALLOCATE (O_k_W(Nw, Nw, 3))
+      ALLOCATE (O_bar(Nw, Nw, 3))
+      ALLOCATE (dO_k_W(Nw, Nw, 3, 3))
+      ALLOCATE (dO_bar(Nw, Nw, 3, 3))
       ALLOCATE (BCD_sea(3, 3, Ef_nE))
     END IF
     IF (lNLO) THEN
-      ALLOCATE (dA_k_W(3, 3, Nw, Nw))
-      ALLOCATE (dA_bar(3, 3, Nw, Nw))
-      ALLOCATE (d2H_k_W(3, 3, Nw, Nw))
-      ALLOCATE (d2H_bar(3, 3, Nw, Nw))
+      ALLOCATE (dA_k_W(Nw, Nw, 3, 3))
+      ALLOCATE (dA_bar(Nw, Nw, 3, 3))
+      ALLOCATE (d2H_k_W(Nw, Nw, 3, 3))
+      ALLOCATE (d2H_bar(Nw, Nw, 3, 3))
       CALL NLO_init(t_kpt)
     END IF
   END SUBROUTINE allocate_k_data

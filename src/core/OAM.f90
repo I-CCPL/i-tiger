@@ -6,14 +6,14 @@ SUBROUTINE OAM_mod(eigval, v_k, L_k)
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)
-  COMPLEX(DP), INTENT(IN)::v_k(3, Nw, Nw)
-  COMPLEX(DP), INTENT(OUT)::L_k(3, Nw, Nw)
+  COMPLEX(DP), INTENT(IN)::v_k(Nw, Nw, 3)
+  COMPLEX(DP), INTENT(OUT)::L_k(Nw, Nw, 3)
   REAL(DP)::dE_mk, dE_nk, factor
   INTEGER::iw, jw, kw, ipol, jpol, kpol
   !
   factor = -zi*m_e/2
   DO jw = 1, Nw
-    L_k(:, :, jw) = zero
+    L_k(:, jw, :) = zero
     DO kw = 1, Nw
       dE_mk = eigval(jw) - eigval(kw)
       IF (ABS(dE_mk) < dE_thr) CYCLE
@@ -23,9 +23,9 @@ SUBROUTINE OAM_mod(eigval, v_k, L_k)
         DO kpol = 1, 3
           ipol = MOD(kpol, 3) + 1
           jpol = MOD(kpol + 1, 3) + 1
-          L_k(kpol, iw, jw) = L_k(kpol, iw, jw) &
-                              + factor*(v_k(ipol, iw, kw)*v_k(jpol, kw, jw) - &
-                                        v_k(jpol, iw, kw)*v_k(ipol, kw, jw)) &
+          L_k(iw, jw, kpol) = L_k(iw, jw, kpol) &
+                              + factor*(v_k(iw, kw, ipol)*v_k(kw, jw, jpol) - &
+                                        v_k(iw, kw, jpol)*v_k(kw, jw, ipol)) &
                               *(1/dE_nk + 1/dE_mk)
         END DO
       END DO
@@ -41,8 +41,8 @@ SUBROUTINE OAM_mod_diag(eigval, v_k, L_k)
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)
-  COMPLEX(DP), INTENT(IN)::v_k(3, Nw, Nw)
-  REAL(DP), INTENT(OUT)::L_k(3, Nw)
+  COMPLEX(DP), INTENT(IN)::v_k(Nw, Nw, 3)
+  REAL(DP), INTENT(OUT)::L_k(Nw, 3)
   INTEGER::iw, kw, ipol, jpol, kpol
   REAL(DP)::factor, dE_mk
   !
@@ -56,8 +56,8 @@ SUBROUTINE OAM_mod_diag(eigval, v_k, L_k)
         ipol = MOD(kpol, 3) + 1
         jpol = MOD(kpol + 1, 3) + 1
         L_k(kpol, iw) = L_k(kpol, iw) &
-                        + factor*AIMAG(v_k(ipol, iw, kw)*v_k(jpol, kw, iw) - &
-                                       v_k(jpol, iw, kw)*v_k(ipol, kw, iw)) &
+                        + factor*AIMAG(v_k(iw, kw, ipol)*v_k(kw, iw, jpol) - &
+                                       v_k(iw, kw, jpol)*v_k(kw, iw, ipol)) &
                         /dE_mk
       END DO
     END DO

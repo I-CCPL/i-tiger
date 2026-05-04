@@ -50,7 +50,7 @@ CONTAINS
   !
   SUBROUTINE write_OAM(fname, L_k)
     CHARACTER(LEN=*), INTENT(IN) :: fname
-    REAL(DP), INTENT(IN) :: L_k(3, Nw, t_kpt%nktot)
+    REAL(DP), INTENT(IN) :: L_k(Nw, 3, t_kpt%nktot)
     INTEGER :: io_unit, ikpt, iw
     IF (.NOT. ionode) RETURN
     CALL writing_info('OAM', fname)
@@ -61,7 +61,7 @@ CONTAINS
 
     DO iw = 1, Nw
       DO ikpt = 1, t_kpt%nktot
-        WRITE (io_unit, '(F10.4, 3(1X, ES11.4))') k_pos(ikpt), L_k(:, iw, ikpt)
+        WRITE (io_unit, '(F10.4, 3(1X, ES11.4))') k_pos(ikpt), L_k(iw, :, ikpt)
       END DO
       WRITE (io_unit, *) ! blank line
     END DO
@@ -88,7 +88,7 @@ CONTAINS
   !
   SUBROUTINE write_Berry_k(fname, berry_k)
     CHARACTER(LEN=*), INTENT(IN) :: fname
-    REAL(DP), INTENT(IN) :: berry_k(3, Nw, t_kpt%nktot)
+    REAL(DP), INTENT(IN) :: berry_k(Nw, 3, t_kpt%nktot)
     INTEGER :: io_unit, ikpt, iw
     IF (.NOT. ionode) RETURN
     CALL writing_info('Berry curvature', fname)
@@ -99,7 +99,7 @@ CONTAINS
 
     DO iw = 1, Nw
       DO ikpt = 1, t_kpt%nktot
-        WRITE (io_unit, '(F10.4, 3(1X, ES12.4E3))') k_pos(ikpt), berry_k(:, iw, ikpt)
+        WRITE (io_unit, '(F10.4, 3(1X, ES12.4E3))') k_pos(ikpt), berry_k(iw, :, ikpt)
       END DO
       WRITE (io_unit, *) ! blank line
     END DO
@@ -110,7 +110,7 @@ CONTAINS
   SUBROUTINE write_BCD(fname, BCD)
     USE io_input, ONLY: Ef_min, Ef_max, Ef_step, Ef_nE
     CHARACTER(LEN=*), INTENT(IN) :: fname
-    REAL(DP), INTENT(IN) :: BCD(3, 3, Ef_nE)
+    REAL(DP), INTENT(IN) :: BCD(Ef_nE, 3, 3)
     INTEGER :: io_unit, ief
     REAL(DP)::Ef_val
     IF (.NOT. ionode) RETURN
@@ -122,7 +122,7 @@ CONTAINS
 
     DO ief = 1, Ef_nE
       Ef_val = Ef_min + (ief - 1)*Ef_step
-      WRITE (io_unit, '(ES15.6, 9(1X, ES15.6))') Ef_val, BCD(:, :, ief)
+      WRITE (io_unit, '(ES15.6, 9(1X, ES15.6))') Ef_val, BCD(ief, :, :)
     END DO
     CLOSE (io_unit)
   END SUBROUTINE write_BCD

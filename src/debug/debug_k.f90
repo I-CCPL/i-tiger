@@ -48,7 +48,7 @@ SUBROUTINE debug_k()
       DO m = 1, Nw
         DO n = 1, Nw
           DO a = 1, 3
-            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, A_k_W(a, m, n)
+            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, A_k_W(m, n, a)
           END DO
         END DO
       END DO
@@ -63,7 +63,7 @@ SUBROUTINE debug_k()
       DO m = 1, Nw
         DO n = 1, Nw
           DO a = 1, 3
-            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, A_bar(a, m, n)
+            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, A_bar(m, n, a)
           END DO
         END DO
       END DO
@@ -78,7 +78,7 @@ SUBROUTINE debug_k()
       DO m = 1, Nw
         DO n = 1, Nw
           DO a = 1, 3
-            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, dH_k_W(a, m, n)
+            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, dH_k_W(m, n, a)
           END DO
         END DO
       END DO
@@ -93,7 +93,7 @@ SUBROUTINE debug_k()
       DO m = 1, Nw
         DO n = 1, Nw
           DO a = 1, 3
-            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, dH_bar(a, m, n)
+            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, dH_bar(m, n, a)
           END DO
         END DO
       END DO
@@ -108,7 +108,7 @@ SUBROUTINE debug_k()
       DO m = 1, Nw
         DO n = 1, Nw
           DO a = 1, 3
-            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, v_k_H(a, m, n)
+            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, v_k_H(m, n, a)
           END DO
         END DO
       END DO
@@ -124,7 +124,7 @@ SUBROUTINE debug_k()
         DO n = 1, Nw
           DO a = 1, 3
             DO b = 1, 3
-              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, dA_k_W(a, b, m, n)
+              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, dA_k_W(m, n, a, b)
             END DO
           END DO
         END DO
@@ -141,7 +141,7 @@ SUBROUTINE debug_k()
         DO n = 1, Nw
           DO a = 1, 3
             DO b = 1, 3
-              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, dA_bar(a, b, m, n)
+              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, dA_bar(m, n, b, a)
             END DO
           END DO
         END DO
@@ -158,7 +158,7 @@ SUBROUTINE debug_k()
         DO n = 1, Nw
           DO a = 1, 3
             DO b = 1, 3
-              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, d2H_k_W(a, b, m, n)
+              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, d2H_k_W(m, n, b, a)
             END DO
           END DO
         END DO
@@ -175,7 +175,7 @@ SUBROUTINE debug_k()
         DO n = 1, Nw
           DO a = 1, 3
             DO b = 1, 3
-              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, d2H_bar(a, b, m, n)
+              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, d2H_bar(m, n, b, a)
             END DO
           END DO
         END DO

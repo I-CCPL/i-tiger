@@ -168,15 +168,15 @@ SUBROUTINE rotate_3d(ldX, eigvec, mat_in, mat_out)
   IMPLICIT NONE
   INTEGER, INTENT(IN)::ldX
   COMPLEX(DP), INTENT(IN)::eigvec(Nw, Nw)
-  COMPLEX(DP), INTENT(IN)::mat_in(ldX, Nw, Nw)
-  COMPLEX(DP), INTENT(OUT)::mat_out(ldX, Nw, Nw)
+  COMPLEX(DP), INTENT(IN)::mat_in(Nw, Nw, ldX)
+  COMPLEX(DP), INTENT(OUT)::mat_out(Nw, Nw, ldX)
   COMPLEX(DP)::U_dag(Nw, Nw)
   INTEGER::idx
   CALL start_clock('rotate_3d')
   U_dag = TRANSPOSE(CONJG(eigvec))
   DO idx = 1, ldx
-    mat_out(idx, :, :) = MATMUL( &
-                         MATMUL(U_dag, mat_in(idx, :, :)) &
+    mat_out(:, :, idx) = MATMUL( &
+                         MATMUL(U_dag, mat_in(:, :, idx)) &
                          , eigvec)
   END DO
   CALL stop_clock('rotate_3d')
