@@ -22,7 +22,7 @@ PROGRAM main
   CALL clear_q_data()
   CALL bcast_R_data()
   !
-  WRITE (stdout, '(2X, A)') '- Building data in k space...'
+  WRITE (stdout, '(2X, A)') 'Building data in k space...'
   CALL allocate_k_data()
   DO t_iks = 1, t_kpt%nkpt
     CALL print_k_info(t_iks, t_kpt%nkpt)

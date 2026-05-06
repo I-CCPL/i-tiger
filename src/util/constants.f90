@@ -6,9 +6,10 @@ MODULE constants
   REAL(DP), PARAMETER::tpi = 2.0_DP*pi !< 2*pi
   REAL(DP), PARAMETER::sq_pi = SQRT(pi) !< sqrt(pi)
   REAL(DP), PARAMETER :: sq_tpi = SQRT(tpi) !< sqrt(2pi)
-  COMPLEX(DP), PARAMETER::zero = CMPLX(0.0_DP, 0.0_DP, DP)
-  COMPLEX(DP), PARAMETER::zi = CMPLX(0.0_DP, 1.0_DP, DP) !< imaginary unit
-  COMPLEX(DP), PARAMETER :: pi2zi = (0.0_DP, 2.0_DP)*pi !< 2pi*(zi)
+
+  COMPLEX(DP), PARAMETER::cmplx_0 = CMPLX(0.0_DP, 0.0_DP, DP)
+  COMPLEX(DP), PARAMETER::cmplx_1 = CMPLX(1.0_DP, 0.0_DP, DP)
+  COMPLEX(DP), PARAMETER::cmplx_i = CMPLX(0.0_DP, 1.0_DP, DP)
 
   INTEGER, PARAMETER::vec_0(3) = (/0, 0, 0/)
   !< (0, 0, 0) vector

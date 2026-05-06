@@ -25,7 +25,7 @@ MODULE NLO
   INTEGER::is_mn, is_nm, ie_mn, ie_nm
 CONTAINS
   SUBROUTINE NLO_init(t_kpt)
-    USE constants, ONLY: zero, pi, zi, hbar_eVfs, &
+    USE constants, ONLY: cmplx_0, pi, cmplx_i, hbar_eVfs, &
                          e_chg_au, e_chg_si, FS2SEC, epsilon_0
     USE io_input, ONLY: NLO_Emin, NLO_dE
     USE system, ONLY: V_cell_3D
@@ -46,7 +46,7 @@ CONTAINS
         NLO_hw(i) = NLO_Emin + REAL(i - 1, DP)*NLO_dE
       END DO
     END IF
-    epsilon_w = zero
+    epsilon_w = cmplx_0
     JDOS_w = 0.0_DP
     shift_w = 0.0_DP
     injection_w = 0.0_DP
@@ -54,7 +54,7 @@ CONTAINS
     !... dielectric function
     !> [e/V * 1/fs/Ang^3 * Ang*V/e] units
     !> kernel is [fs*Ang^2] units, so overall [1] units
-    fac_dielec = zi*pi*e_chg_au**2/(hbar_eVfs*V_cell_3D) &
+    fac_dielec = cmplx_i*pi*e_chg_au**2/(hbar_eVfs*V_cell_3D) &
                  /epsilon_0*t_kpt%wk
 
     !... JDOS
@@ -65,7 +65,7 @@ CONTAINS
     !... shift current
     !> [e/fs * 1/V^2 * 1/fs/Ang^3] units
     !> kernel is [fs*Ang^3] units, so overall [e/fs * 1/V^2]
-    fac_shift = -zi*pi*(e_chg_au**3)/(4.0_DP*(hbar_eVfs**2)*V_cell_3D) &
+    fac_shift = -cmplx_i*pi*(e_chg_au**3)/(4.0_DP*(hbar_eVfs**2)*V_cell_3D) &
                 *t_kpt%wk
     !> [e/fs] to [microA] units
     fac_shift = fac_shift &
@@ -175,7 +175,7 @@ CONTAINS
   END SUBROUTINE NLO_write
   !
   SUBROUTINE NLO_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H)
-    USE constants, ONLY: hbar_eVfs, zero, zi
+    USE constants, ONLY: hbar_eVfs, cmplx_0, cmplx_i
     USE io_input, ONLY: dE_thr, dE_eta, &
                         NLO_Emin, NLO_Emax, NLO_dE, NLO_nE, NLO_eta, NLO_w_thr
     USE system, ONLY: Nw
@@ -207,8 +207,8 @@ CONTAINS
         ie_nm = MIN(INT((dE_nm + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
         delta_E(is_nm:ie_nm, n, m) = w1gauss(ie_nm - is_nm, (dE_nm - NLO_hw(is_nm:ie_nm)), NLO_eta, 0)
         IF (m == n) THEN
-          w_inv(n, m) = zero
-          E_inv(n, m) = zero
+          w_inv(n, m) = cmplx_0
+          E_inv(n, m) = cmplx_0
         ELSE
           w_inv(n, m) = dE_inv(dE_nm, dE_eta)*hbar_eVfs
           E_inv(n, m) = 1.0_DP/dE_nm*hbar_eVfs
@@ -216,7 +216,7 @@ CONTAINS
 
         v_bar(n, m, :) = dH_bar(n, m, :)*inv_hbar
         ! PRB 97, 245143 (2018) Eq. (22)
-        gen_r(n, m, :) = -zi*v_bar(n, m, :)*E_inv(n, m) + A_bar(n, m, :)
+        gen_r(n, m, :) = -cmplx_i*v_bar(n, m, :)*E_inv(n, m) + A_bar(n, m, :)
       END DO
     END DO
 
@@ -235,7 +235,7 @@ CONTAINS
         del_H_nm = v_k_H(n, n, :) - v_k_H(m, m, :)
         DO a = 1, 3
           DO b = 1, 3
-            psum = zero
+            psum = cmplx_0
             dv_bar = d2H_bar(m, n, b, a)*inv_hbar
             DO p = 1, Nw
               IF (p == m .OR. p == n) CYCLE
@@ -243,7 +243,7 @@ CONTAINS
                      + (v_bar(m, p, a)*v_bar(p, n, b))*w_inv(p, n) &
                      - (v_bar(m, p, b)*v_bar(p, n, a))*w_inv(m, p)
             END DO
-            dr_mn = zi*E_inv(m, n) &
+            dr_mn = cmplx_i*E_inv(m, n) &
                     *( &
                     (v_bar(m, n, a)*del_bar_mn(b) &
                      + v_bar(m, n, b)*del_bar_mn(a))*E_inv(m, n) &
@@ -251,7 +251,7 @@ CONTAINS
                     + psum &
                     )
 
-            psum = zero
+            psum = cmplx_0
             DO p = 1, Nw
               IF (p == m .OR. p == n) CYCLE
               psum = psum &
@@ -264,7 +264,7 @@ CONTAINS
             ! PRB 97, 245143 (2018) Eq. (36)
             gen_dr_mn(b, a) = dr_mn + da_mn &
                               - (A_bar(m, m, b) - A_bar(n, n, b)) &
-                              *(v_bar(m, n, a)*E_inv(m, n) + zi*A_bar(m, n, a))
+                              *(v_bar(m, n, a)*E_inv(m, n) + cmplx_i*A_bar(m, n, a))
           END DO
         END DO
         is_mn = MAX(INT((-dE_nm - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)

@@ -163,7 +163,7 @@ END MODULE kpoints
 
 SUBROUTINE rotate_3d(ldX, eigvec, mat_in, mat_out)
   USE kinds, ONLY: DP
-  USE constants, ONLY: zero
+  USE constants, ONLY: cmplx_0
   USE system, ONLY: Nw
   IMPLICIT NONE
   INTEGER, INTENT(IN)::ldX

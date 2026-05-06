@@ -1,7 +1,7 @@
 SUBROUTINE OAM_mod(eigval, v_k, L_k)
   !< OAM [hbar]
   USE kinds, ONLY: DP
-  USE constants, ONLY: zero, zi, m_e
+  USE constants, ONLY: cmplx_0, cmplx_i, m_e
   USE io_input, ONLY: dE_thr
   USE system, ONLY: Nw
   IMPLICIT NONE
@@ -11,9 +11,9 @@ SUBROUTINE OAM_mod(eigval, v_k, L_k)
   REAL(DP)::dE_mk, dE_nk, factor
   INTEGER::iw, jw, kw, ipol, jpol, kpol
   !
-  factor = -zi*m_e/2
+  factor = -cmplx_i*m_e/2
   DO jw = 1, Nw
-    L_k(:, jw, :) = zero
+    L_k(:, jw, :) = cmplx_0
     DO kw = 1, Nw
       dE_mk = eigval(jw) - eigval(kw)
       IF (ABS(dE_mk) < dE_thr) CYCLE
@@ -36,7 +36,7 @@ END SUBROUTINE OAM_mod
 SUBROUTINE OAM_mod_diag(eigval, v_k, L_k)
   !< OAM [hbar] for diagonal elements
   USE kinds, ONLY: DP
-  USE constants, ONLY: zero, zi, m_e
+  USE constants, ONLY: cmplx_0, cmplx_i, m_e
   USE io_input, ONLY: dE_thr
   USE system, ONLY: Nw
   IMPLICIT NONE

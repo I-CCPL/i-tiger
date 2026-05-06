@@ -40,7 +40,7 @@ CONTAINS
   END SUBROUTINE clear_w90_data
 
   MODULE FUNCTION wannier_gauge_diag(mat_H, v1, v2) RESULT(retval)
-    USE constants, ONLY: zero
+    USE constants, ONLY: cmplx_0
     REAL(DP), INTENT(IN) :: mat_H(:)
     COMPLEX(DP), INTENT(IN) :: v1(:), v2(:)
     COMPLEX(DP):: retval
@@ -50,14 +50,14 @@ CONTAINS
       CALL errore(1, 'wannier_gauge_diag', 'incompatible matrix and vector sizes')
     END IF
 
-    retval = zero
+    retval = cmplx_0
     DO ibnd = 1, nbnd
       retval = retval + CONJG(v1(ibnd))*mat_H(ibnd)*v2(ibnd)
     END DO
   END FUNCTION wannier_gauge_diag
 
   MODULE FUNCTION wannier_gauge(mat_H, v1, v2) RESULT(retval)
-    USE constants, ONLY: zero
+    USE constants, ONLY: cmplx_0
     COMPLEX(DP), INTENT(IN) :: mat_H(:, :)
     COMPLEX(DP), INTENT(IN) :: v1(:), v2(:)
     COMPLEX(DP) :: retval
@@ -68,7 +68,7 @@ CONTAINS
       CALL errore(1, 'wannier_gauge', 'incompatible matrix and vector sizes')
     END IF
 
-    retval = zero
+    retval = cmplx_0
     DO ibnd = 1, nbnd1
       DO jbnd = 1, nbnd2
         retval = retval + CONJG(v1(ibnd))*mat_H(ibnd, jbnd)*v2(jbnd)

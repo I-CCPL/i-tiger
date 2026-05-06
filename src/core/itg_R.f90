@@ -9,7 +9,7 @@ MODULE itg_R
   COMPLEX(DP), ALLOCATABLE::H_R(:, :, :), A_R(:, :, :, :)
 CONTAINS
   SUBROUTINE make_R_data()
-    USE constants, ONLY: zero
+    USE constants, ONLY: cmplx_0
     USE fft_base, ONLY: fft_q2R, fft_init
     USE io_global, ONLY: ionode, stdout
     USE io_input, ONLY: lBCD, lNLO, lreq_mmn, convention
@@ -73,7 +73,7 @@ CONTAINS
   !
   SUBROUTINE enforce_Hemiticity_R(mat_in, mat_out)
     USE kinds, ONLY: DP, eq_vec_real
-    USE constants, ONLY: zero
+    USE constants, ONLY: cmplx_0
     COMPLEX(DP), INTENT(IN)::mat_in(:, :, :, :)
     COMPLEX(DP), INTENT(OUT)::mat_out(:, :, :, :)
     INTEGER::iw, jw, irpt, jrpt

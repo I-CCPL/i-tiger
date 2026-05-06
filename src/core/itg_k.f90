@@ -33,7 +33,7 @@ MODULE itg_k
   !< Berry curvature (Nw, 3)
 CONTAINS
   SUBROUTINE make_k_data()
-    USE constants, ONLY: zi
+    USE constants, ONLY: cmplx_i
     USE itg_R, ONLY: H_R, A_R
     USE fft_base, ONLY: fft_R2k_periodic, fft_R2k_vec
     USE io_input, ONLY: lOAM, lBerry, lBCD, lNLO, lreq_mmn

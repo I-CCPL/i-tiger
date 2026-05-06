@@ -91,7 +91,7 @@ CONTAINS
 
   SUBROUTINE eig_zhpevx(ld_cH, mat, eig, rot)
     USE kinds, ONLY: DP
-    USE constants, ONLY: zero
+    USE constants, ONLY: cmplx_0
 
     INTEGER, INTENT(in) :: ld_cH
     COMPLEX(kind=dp), INTENT(in) :: mat(ld_cH, ld_cH)
@@ -108,7 +108,7 @@ CONTAINS
         mat_pack(i + ((j - 1)*j)/2) = mat(i, j)
       END DO
     END DO
-    rot = zero; eig = 0.0_DP; cwork = zero; rwork = 0.0_DP; iwork = 0
+    rot = cmplx_0; eig = 0.0_DP; cwork = cmplx_0; rwork = 0.0_DP; iwork = 0
     CALL ZHPEVX('V', 'A', 'U', ld_cH, mat_pack, 0.0_DP, 0.0_DP, 0, 0, -1.0_DP, &
                 nfound, eig(1), rot, ld_cH, cwork, rwork, iwork, ifail, info)
     CALL errore(info, 'eig_H', 'zhpevx failed')

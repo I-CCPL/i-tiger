@@ -70,7 +70,7 @@ CONTAINS
     INTEGER::iw, jw
     !
     IF (ALLOCATED(self%shift_cart_u)) RETURN
-    WRITE (stdout, '(2X, A)') 'Building Wannier center shift vectors...'
+    WRITE (stdout, '(2X, A)') '- Building Wannier center shift vectors...'
     !
     ALLOCATE (self%shift_cart(3, Nw, Nw))
     DO jw = 1, Nw

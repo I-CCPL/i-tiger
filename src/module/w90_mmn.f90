@@ -215,7 +215,7 @@ CONTAINS
 
   MODULE SUBROUTINE build_w90_Aq(self)
     !< Build A(q) in Wannier gauge
-    USE constants, ONLY: zi
+    USE constants, ONLY: cmplx_i
     USE system, ONLY: Nw, red2cart_recip
     CLASS(w90data_type), INTENT(INOUT) :: self
     INTEGER::ikpt, inb, jnb, iknb, ibnd, jbnd, iw, jw, ipol
@@ -241,7 +241,7 @@ CONTAINS
             DO iw = 1, Nw
               M_W = wannier_gauge(self%overlap(mw1:mw1 + ndw1 - 1, mw2:mw2 + ndw2 - 1, inb, ikpt), &
                                   self%v_matrix(1:ndw1, iw, ikpt), self%v_matrix(1:ndw2, jw, iknb))
-              A_qb(iw, jw, :) = A_qb(iw, jw, :) + zi*self%wb(jnb)*M_W*b_cart(:)
+              A_qb(iw, jw, :) = A_qb(iw, jw, :) + cmplx_i*self%wb(jnb)*M_W*b_cart(:)
             END DO
           END DO
         END DO

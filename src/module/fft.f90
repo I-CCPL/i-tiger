@@ -1,6 +1,6 @@
 MODULE fft_base
   USE kinds, ONLY: DP
-  USE constants, ONLY: zero, tpi, zi
+  USE constants, ONLY: cmplx_0, tpi, cmplx_i
   USE io_global, ONLY: stdout
   USE io_input, ONLY: FFT_conv
   USE system, ONLY: Nw
@@ -35,7 +35,7 @@ CONTAINS
     DO irpt = 1, R_vec%nRpt
       IF (ALL(R_vec%R_red(:, irpt) == 0)) THEN
         DO iw = 1, Nw
-          A_R(iw, iw, irpt, :) = zero
+          A_R(iw, iw, irpt, :) = cmplx_0
         END DO
         EXIT
       END IF
@@ -66,11 +66,11 @@ CONTAINS
     ! END IF
 
     CALL start_clock('fft_q2R')
-    X_R = zero
+    X_R = cmplx_0
     DO irpt = 1, R_vec%nRpt
       DO ikpt = 1, w90data%kpts%nkpt
         phase = tpi*DOT_PRODUCT(w90data%kpts%k_red(:, ikpt), R_vec%R_red(:, irpt))
-        exp_phase = EXP(-zi*phase)
+        exp_phase = EXP(-cmplx_i*phase)
         fac = exp_phase*w90data%kpts%wk
         DO jw = 1, Nw
           DO iw = 1, Nw
@@ -137,12 +137,12 @@ CONTAINS
     REAL(DP)::phase
     COMPLEX(DP)::exp_phase, fac
     phase = DOT_PRODUCT(t_kpt%k_cart(:, t_iks), R_cart(:))
-    exp_phase = EXP(zi*phase)
+    exp_phase = EXP(cmplx_i*phase)
     fac = exp_phase*R_vec%w_R(iw, jw, irpt)
     IF (PRESENT(X_k)) X_k(iw, jw) = X_k(iw, jw) + fac*X_R(iw, jw, irpt)
     IF (PRESENT(dX_k)) THEN
       dX_k(iw, jw, :) = dX_k(iw, jw, :) &
-                        + zi*R_cart(:)*fac*X_R(iw, jw, irpt)
+                        + cmplx_i*R_cart(:)*fac*X_R(iw, jw, irpt)
     END IF
     IF (PRESENT(d2X_k)) THEN
       DO a = 1, 3
@@ -165,9 +165,9 @@ CONTAINS
     REAL(DP)::phase
     COMPLEX(DP)::exp_phase, fac
     !
-    IF (PRESENT(X_k)) X_k(:, :) = zero
-    IF (PRESENT(dX_k)) dX_k(:, :, :) = zero
-    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :) = zero
+    IF (PRESENT(X_k)) X_k(:, :) = cmplx_0
+    IF (PRESENT(dX_k)) dX_k(:, :, :) = cmplx_0
+    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :) = cmplx_0
     DO irpt = 1, R_vec%nRpt
       DO jw = 1, Nw
         DO iw = 1, Nw
@@ -189,9 +189,9 @@ CONTAINS
     REAL(DP)::phase, R_cart(3)
     COMPLEX(DP)::exp_phase, fac
     !
-    IF (PRESENT(X_k)) X_k(:, :) = zero
-    IF (PRESENT(dX_k)) dX_k(:, :, :) = zero
-    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :) = zero
+    IF (PRESENT(X_k)) X_k(:, :) = cmplx_0
+    IF (PRESENT(dX_k)) dX_k(:, :, :) = cmplx_0
+    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :) = cmplx_0
     DO irpt = 1, R_vec%nRpt
       DO jw = 1, Nw
         DO iw = 1, Nw
@@ -214,9 +214,9 @@ CONTAINS
     REAL(DP)::phase, R_cart(3)
     COMPLEX(DP)::exp_phase, fac
     !
-    IF (PRESENT(X_k)) X_k(:, :) = zero
-    IF (PRESENT(dX_k)) dX_k(:, :, :) = zero
-    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :) = zero
+    IF (PRESENT(X_k)) X_k(:, :) = cmplx_0
+    IF (PRESENT(dX_k)) dX_k(:, :, :) = cmplx_0
+    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :) = cmplx_0
     DO irpt = 1, R_vec%nRpt
       DO jw = 1, Nw
         DO iw = 1, Nw
@@ -267,7 +267,7 @@ CONTAINS
     REAL(DP)::phase
     COMPLEX(DP)::exp_phase, fac
     phase = DOT_PRODUCT(t_kpt%k_cart(:, t_iks), R_cart(:))
-    exp_phase = EXP(zi*phase)
+    exp_phase = EXP(cmplx_i*phase)
     fac = exp_phase*R_vec%w_R(iw, jw, irpt)
     IF (PRESENT(X_k)) THEN
       X_k(iw, jw, :) = X_k(iw, jw, :) + X_R(iw, jw, irpt, :)*fac
@@ -275,7 +275,7 @@ CONTAINS
     IF (PRESENT(dX_k)) THEN
       DO a = 1, 3
         dX_k(iw, jw, a, :) = dX_k(iw, jw, a, :) &
-                             + zi*R_cart(a) &
+                             + cmplx_i*R_cart(a) &
                              *fac*X_R(iw, jw, irpt, :)
       END DO
     END IF
@@ -296,8 +296,8 @@ CONTAINS
         a = MOD(c, 3) + 1
         b = MOD(a, 3) + 1
         curl_X_k(iw, jw, c) = curl_X_k(iw, jw, c) &
-                              + zi*fac*(R_cart(a)*X_R(iw, jw, irpt, b) &
-                                        - R_cart(b)*X_R(iw, jw, irpt, a))
+                              + cmplx_i*fac*(R_cart(a)*X_R(iw, jw, irpt, b) &
+                                             - R_cart(b)*X_R(iw, jw, irpt, a))
       END DO
     END IF
     IF (PRESENT(curl_dX_k)) THEN
@@ -323,11 +323,11 @@ CONTAINS
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: curl_dX_k(Nw, Nw, 3, 3)
     INTEGER::iw, jw, irpt
     !
-    IF (PRESENT(X_k)) X_k(:, :, :) = zero
-    IF (PRESENT(dX_k)) dX_k(:, :, :, :) = zero
-    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :, :) = zero
-    IF (PRESENT(curl_X_k)) curl_X_k(:, :, :) = zero
-    IF (PRESENT(curl_dX_k)) curl_dX_k(:, :, :, :) = zero
+    IF (PRESENT(X_k)) X_k(:, :, :) = cmplx_0
+    IF (PRESENT(dX_k)) dX_k(:, :, :, :) = cmplx_0
+    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :, :) = cmplx_0
+    IF (PRESENT(curl_X_k)) curl_X_k(:, :, :) = cmplx_0
+    IF (PRESENT(curl_dX_k)) curl_dX_k(:, :, :, :) = cmplx_0
     DO irpt = 1, R_vec%nRpt
       DO jw = 1, Nw
         DO iw = 1, Nw
@@ -349,11 +349,11 @@ CONTAINS
     INTEGER::iw, jw, irpt
     REAL(DP)::Rvec(3)
     !
-    IF (PRESENT(X_k)) X_k(:, :, :) = zero
-    IF (PRESENT(dX_k)) dX_k(:, :, :, :) = zero
-    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :, :) = zero
-    IF (PRESENT(curl_X_k)) curl_X_k(:, :, :) = zero
-    IF (PRESENT(curl_dX_k)) curl_dX_k(:, :, :, :) = zero
+    IF (PRESENT(X_k)) X_k(:, :, :) = cmplx_0
+    IF (PRESENT(dX_k)) dX_k(:, :, :, :) = cmplx_0
+    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :, :) = cmplx_0
+    IF (PRESENT(curl_X_k)) curl_X_k(:, :, :) = cmplx_0
+    IF (PRESENT(curl_dX_k)) curl_dX_k(:, :, :, :) = cmplx_0
 
     DO irpt = 1, R_vec%nRpt
       DO jw = 1, Nw
@@ -377,11 +377,11 @@ CONTAINS
     INTEGER::iw, jw, irpt
     REAL(DP)::R_cart(3)
     !
-    IF (PRESENT(X_k)) X_k(:, :, :) = zero
-    IF (PRESENT(dX_k)) dX_k(:, :, :, :) = zero
-    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :, :) = zero
-    IF (PRESENT(curl_X_k)) curl_X_k(:, :, :) = zero
-    IF (PRESENT(curl_dX_k)) curl_dX_k(:, :, :, :) = zero
+    IF (PRESENT(X_k)) X_k(:, :, :) = cmplx_0
+    IF (PRESENT(dX_k)) dX_k(:, :, :, :) = cmplx_0
+    IF (PRESENT(d2X_k)) d2X_k(:, :, :, :, :) = cmplx_0
+    IF (PRESENT(curl_X_k)) curl_X_k(:, :, :) = cmplx_0
+    IF (PRESENT(curl_dX_k)) curl_dX_k(:, :, :, :) = cmplx_0
     DO irpt = 1, R_vec%nRpt
       DO jw = 1, Nw
         DO iw = 1, Nw
