@@ -9,7 +9,7 @@
 ./build/itg_f.o : ./build/io_output.o ./build/mp_base.o ./build/io_global.o ./build/NLO.o ./build/system.o ./build/kpoints.o ./build/itg_R.o ./build/itg_k.o ./build/f_params.o ./build/kinds.o 
 ./build/itg_k.o : ./build/NLO.o ./build/lin_eig_H.o ./build/f_params.o ./build/fft.o ./build/constants.o ./build/kpoints.o ./build/itg_R.o ./build/system.o ./build/kinds.o 
 ./build/itg_q.o : ./build/itg_R.o ./build/write_matrix.o ./build/io_global.o ./build/wannier90.o 
-./build/main.o : ./build/itg_f.o ./build/itg_k.o ./build/itg_R.o ./build/itg_q.o ./build/kpoints.o ./build/io_input.o ./build/io_global.o ./build/env.o 
+./build/main.o : ./build/itg_f.o ./build/itg_k.o ./build/itg_R.o ./build/itg_q.o ./build/fft.o ./build/kpoints.o ./build/io_input.o ./build/io_global.o ./build/env.o 
 ./build/velocity.o : ./build/f_params.o ./build/fft.o ./build/kpoints.o ./build/R_vector.o ./build/system.o ./build/constants.o ./build/kinds.o 
 ./build/check_Hermicity.o : ./build/system.o ./build/io_global.o ./build/kinds.o 
 ./build/check_nan.o : ./build/kinds.o 

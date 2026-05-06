@@ -3,8 +3,9 @@ PROGRAM main
   USE io_global, ONLY: stdout
   USE io_input, ONLY: read_input
   USE kpoints, ONLY: t_kpt, t_iks
+  USE fft_base, ONLY: fft_init
   USE itg_q, ONLY: make_q, clear_q, bcast_q
-  USE itg_R, ONLY: make_R, clear_R, bcast_R
+  USE itg_R, ONLY: make_R, clear_R, bcast_R, R_vec, R_data
   USE itg_k, ONLY: allocate_k, make_k, clear_k
   USE itg_f, ONLY: allocate_f, clear_f, make_f, write_f
   IMPLICIT NONE
@@ -21,6 +22,7 @@ PROGRAM main
   CALL debug_R()
   CALL clear_q()
   CALL bcast_R()
+  CALL fft_init(R_vec, R_data%mA_R)
   !
   WRITE (stdout, '(2X, A)') 'Building data in k space...'
   CALL t_kpt%divide_k()

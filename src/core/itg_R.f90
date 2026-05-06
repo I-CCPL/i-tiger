@@ -23,7 +23,7 @@ CONTAINS
   !
   SUBROUTINE make_R()
     USE constants, ONLY: cmplx_0
-    USE fft_base, ONLY: fft_q2R, fft_init
+    USE fft_base, ONLY: fft_q2R
     USE io_global, ONLY: ionode, stdout
     USE f_params, ONLY: lBCD, lNLO, convention
     INTEGER::a
@@ -53,7 +53,6 @@ CONTAINS
       END DO
       ! CALL enforce_Hemiticity_R(R_data%mA_R_b, R_data%mA_R)
     END IF
-    CALL fft_init(R_vec, R_data%mA_R)
     CALL write_sep_line()
     CALL stop_clock('make_R')
   END SUBROUTINE make_R
