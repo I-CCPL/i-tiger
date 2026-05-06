@@ -163,7 +163,7 @@ CONTAINS
     REAL(DP)::herm_abs_max, h_abs_max, herm_rel
     COMPLEX(DP), ALLOCATABLE::Hq(:, :, :)
     !
-    WRITE (stdout, '(2X, A)') 'Building H(q) in Wannier gauge...'
+    WRITE (stdout, '(2X, A)') '- Building H(q) in Wannier gauge...'
     ALLOCATE (Hq(Nw, Nw, self%kpts%nkpt))
     ALLOCATE (self%Hq(Nw, Nw, self%kpts%nkpt))
     !
@@ -197,6 +197,5 @@ CONTAINS
       END DO
       CALL write_band('itg.Hq.dat', self%eigval)
     END IF
-    CALL write_sep_line()
   END SUBROUTINE build_w90_Hq
 END SUBMODULE w90_chk

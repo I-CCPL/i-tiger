@@ -112,7 +112,7 @@ CONTAINS
 
     CALL self%build_shift(w90data%wannier_center_cart)
 
-    WRITE (stdout, '(2X, A)') 'Building R vectors for Fourier transform...'
+    WRITE (stdout, '(2X, A)') '- Building R vectors for Fourier transform...'
     ! Build T vectors
     cell_range(:) = 2*cell_expand(:) + 1
     ncell = PRODUCT(cell_range)
@@ -214,8 +214,6 @@ CONTAINS
     IF (ALLOCATED(Rvec_cart)) DEALLOCATE (Rvec_cart)
     IF (ALLOCATED(w_R)) DEALLOCATE (w_R)
     IF (ALLOCATED(bRvec_selected)) DEALLOCATE (bRvec_selected)
-
-    CALL write_sep_line()
   END SUBROUTINE build_Rvecs
   SUBROUTINE build_ws(self, w90data)
     USE io_global, ONLY: stdout

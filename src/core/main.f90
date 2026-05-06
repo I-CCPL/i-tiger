@@ -1,5 +1,6 @@
 PROGRAM main
   USE env, ONLY: env_start, env_end, print_k_info
+  USE io_global, ONLY: stdout
   USE io_input, ONLY: read_input
   USE kpoints, ONLY: t_kpt, t_iks
   USE itg_q, ONLY: make_q_data, clear_q_data
@@ -18,6 +19,7 @@ PROGRAM main
   CALL debug_R()
   CALL clear_q_data()
   !
+  WRITE (stdout, '(2X, A)') '- Building data in k space...'
   CALL allocate_k_data()
   DO t_iks = 1, t_kpt%nkpt
     CALL print_k_info(t_iks, t_kpt%nkpt)
@@ -25,6 +27,7 @@ PROGRAM main
     CALL debug_k()
   END DO
   CALL print_k_info(t_iks, t_kpt%nkpt)
+  CALL write_sep_line()
 
   CALL clear_R_data()
   CALL write_k_data()

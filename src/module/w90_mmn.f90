@@ -78,7 +78,7 @@ CONTAINS
     CHARACTER(LEN=256) :: msg
 
     !... Build bvec_red
-    WRITE (stdout, '(2X, A)') 'Building b vectors...'
+    WRITE (stdout, '(2X, A)') '- Building b vectors...'
     ALLOCATE (bvec_red(3, self%nnb))
     ALLOCATE (bvec_length(self%nnb))
     ALLOCATE (bvec_sort_index(self%nnb))
@@ -200,7 +200,6 @@ CONTAINS
       inb = inb + inb_shell
     END DO
     DEALLOCATE (A, U, S, VT, work, w_shell)
-    CALL write_sep_line()
   END SUBROUTINE build_w90_bvec
 
   MODULE SUBROUTINE build_w90_Aq(self)

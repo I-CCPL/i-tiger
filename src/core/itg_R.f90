@@ -11,9 +11,11 @@ CONTAINS
   SUBROUTINE make_R_data()
     USE constants, ONLY: zero
     USE fft_base, ONLY: fft_q2R, fft_init
+    USE io_global, ONLY: stdout
     USE io_input, ONLY: lBCD, lNLO, lreq_mmn, convention
     INTEGER::a
     CALL start_clock('make_R_data')
+    WRITE (stdout, '(2X, A)') 'Building data in R space...'
     !
     SELECT CASE (convention)
     CASE (0)

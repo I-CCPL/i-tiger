@@ -4,8 +4,10 @@ MODULE itg_q
   IMPLICIT NONE
 CONTAINS
   SUBROUTINE make_q_data()
+    USE io_global, ONLY: stdout
     USE debug_data, ONLY: write_matrix
     CALL start_clock('make_q_data')
+    WRITE (stdout, '(2X, A)') 'Building data in q space...'
     !
     CALL w90data%build_Hq()
     ! CALL write_matrix('H_q.itg', w90data%Hq, w90data%kpts%nkpt, 1)
@@ -14,6 +16,7 @@ CONTAINS
       CALL w90data%build_Aq()
     END IF
     !
+    CALL write_sep_line()
     CALL stop_clock('make_q_data')
   END SUBROUTINE make_q_data
   !
