@@ -215,45 +215,49 @@ CONTAINS
 
   MODULE SUBROUTINE build_w90_Aq(self)
     !< Build A(q) in Wannier gauge
-    USE constants, ONLY: cmplx_i
+    USE constants, ONLY: cmplx_0, cmplx_1, cmplx_i
     USE system, ONLY: Nw, red2cart_recip
     CLASS(w90data_type), INTENT(INOUT) :: self
-    INTEGER::ikpt, inb, jnb, iknb, ibnd, jbnd, iw, jw, ipol
+    INTEGER::ikpt, inb, jnb, iknb, ipol
     INTEGER::ndw1, ndw2, mw1, mw2
     REAL(DP)::b_cart(3)
-    COMPLEX(DP)::M_W, A_qb(Nw, Nw, 3)
+    COMPLEX(DP)::M_W(Nw, Nw), A_qb(Nw, Nw, 3)
+    COMPLEX(DP), ALLOCATABLE::tmp(:, :)
     !< overlap matrix in Wannier gauge
     !
-    WRITE (stdout, '(2X, A)') 'Building A(q)...'
+    WRITE (stdout, '(2X, A)') '- Building A(q)...'
     ALLOCATE (self%Aq(Nw, Nw, self%kpts%nkpt, 3))
-    IF (ionode) THEN
-      DO ikpt = 1, self%kpts%nkpt
-        ndw1 = self%ndimwin(ikpt)
-        mw1 = self%win_min(ikpt)
-        A_qb(:, :, :) = 0.0_DP
-        DO inb = 1, self%nnb
-          iknb = self%neighbour_k(inb, ikpt)
-          jnb = self%bvec_index(inb, ikpt)
-          ndw2 = self%ndimwin(iknb)
-          mw2 = self%win_min(iknb)
-          CALL red2cart_recip(self%bvec_red(:, jnb), b_cart)
-          DO jw = 1, Nw
-            DO iw = 1, Nw
-              M_W = wannier_gauge(self%overlap(mw1:mw1 + ndw1 - 1, mw2:mw2 + ndw2 - 1, inb, ikpt), &
-                                  self%v_matrix(1:ndw1, iw, ikpt), self%v_matrix(1:ndw2, jw, iknb))
-              A_qb(iw, jw, :) = A_qb(iw, jw, :) + cmplx_i*self%wb(jnb)*M_W*b_cart(:)
-            END DO
-          END DO
-        END DO
+    ALLOCATE (tmp(Nw, self%nbnd))
 
-        !... Enforce Hermicity
+    DO ikpt = 1, self%kpts%nkpt
+      ndw1 = self%ndimwin(ikpt)
+      mw1 = self%win_min(ikpt)
+      A_qb(:, :, :) = cmplx_0
+
+      DO inb = 1, self%nnb
+        iknb = self%neighbour_k(inb, ikpt)
+        jnb = self%bvec_index(inb, ikpt)
+        ndw2 = self%ndimwin(iknb)
+        mw2 = self%win_min(iknb)
+        CALL red2cart_recip(self%bvec_red(:, jnb), b_cart)
+
+        CALL ZGEMM('C', 'N', Nw, ndw2, ndw1, cmplx_1, &
+                   self%v_matrix(1, 1, ikpt), self%nbnd, &
+                   self%overlap(mw1, mw2, inb, ikpt), self%nbnd &
+                   , cmplx_0, tmp, Nw)
+        CALL ZGEMM('N', 'N', Nw, Nw, ndw2, cmplx_1, tmp, Nw, &
+                   self%v_matrix(1, 1, iknb), self%nbnd, cmplx_0, M_W, Nw)
+
         DO ipol = 1, 3
-          self%Aq(:, :, ikpt, ipol) = 0.5_DP*(A_qb(:, :, ipol) + CONJG(TRANSPOSE(A_qb(:, :, ipol))))
+          A_qb(:, :, ipol) = A_qb(:, :, ipol) + cmplx_i*self%wb(jnb)*M_W*b_cart(ipol)
         END DO
       END DO
-    END IF
 
-    CALL write_sep_line()
+      !... Enforce Hermicity
+      DO ipol = 1, 3
+        self%Aq(:, :, ikpt, ipol) = 0.5_DP*(A_qb(:, :, ipol) + CONJG(TRANSPOSE(A_qb(:, :, ipol))))
+      END DO
+    END DO
   END SUBROUTINE build_w90_Aq
 
   MODULE SUBROUTINE bcast_w90_Aq(self)
