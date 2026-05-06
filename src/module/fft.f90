@@ -231,7 +231,7 @@ CONTAINS
   SUBROUTINE fft_R2k_vec(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     !< X_R FFT to X_k and k-derivatives dX_k, d2X_k, curl_X_k, curl_dX_k
     TYPE(R_vec_type), INTENT(IN) :: R_vec
-    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, 3, R_vec%nRpt)
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3, 3)
@@ -255,7 +255,7 @@ CONTAINS
                               iw, jw, irpt, R_cart)
     USE kpoints, ONLY: t_iks
     TYPE(R_vec_type), INTENT(IN) :: R_vec
-    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, 3, R_vec%nRpt)
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3, 3)
@@ -270,13 +270,13 @@ CONTAINS
     exp_phase = EXP(zi*phase)
     fac = exp_phase*R_vec%w_R(iw, jw, irpt)
     IF (PRESENT(X_k)) THEN
-      X_k(iw, jw, :) = X_k(iw, jw, :) + X_R(iw, jw, :, irpt)*fac
+      X_k(iw, jw, :) = X_k(iw, jw, :) + X_R(iw, jw, irpt, :)*fac
     END IF
     IF (PRESENT(dX_k)) THEN
       DO a = 1, 3
         dX_k(iw, jw, a, :) = dX_k(iw, jw, a, :) &
                              + zi*R_cart(a) &
-                             *fac*X_R(iw, jw, :, irpt)
+                             *fac*X_R(iw, jw, irpt, :)
       END DO
     END IF
     IF (PRESENT(d2X_k)) THEN
@@ -286,7 +286,7 @@ CONTAINS
             d2X_k(iw, jw, c, b, a) = d2X_k(iw, jw, c, b, a) &
                                      - R_cart(a) &
                                      *R_cart(b) &
-                                     *fac*X_R(iw, jw, c, irpt)
+                                     *fac*X_R(iw, jw, irpt, c)
           END DO
         END DO
       END DO
@@ -296,8 +296,8 @@ CONTAINS
         a = MOD(c, 3) + 1
         b = MOD(a, 3) + 1
         curl_X_k(iw, jw, c) = curl_X_k(iw, jw, c) &
-                              + zi*fac*(R_cart(b)*X_R(iw, jw, a, irpt) &
-                                        - R_cart(a)*X_R(iw, jw, b, irpt))
+                              + zi*fac*(R_cart(b)*X_R(iw, jw, irpt, a) &
+                                        - R_cart(a)*X_R(iw, jw, irpt, b))
       END DO
     END IF
     IF (PRESENT(curl_dX_k)) THEN
@@ -306,8 +306,8 @@ CONTAINS
         b = MOD(a, 3) + 1
         DO d = 1, 3
           curl_dX_k(iw, jw, c, d) = curl_dX_k(iw, jw, c, d) &
-                                    - R_cart(d)*fac*(R_cart(b)*X_R(iw, jw, a, irpt) &
-                                                     - R_cart(a)*X_R(iw, jw, b, irpt))
+                                    - R_cart(d)*fac*(R_cart(b)*X_R(iw, jw, irpt, a) &
+                                                     - R_cart(a)*X_R(iw, jw, irpt, b))
         END DO
       END DO
     END IF
@@ -315,7 +315,7 @@ CONTAINS
   ! ================================================== !
   SUBROUTINE fft_R2k_vec_periodic(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     TYPE(R_vec_type), INTENT(IN) :: R_vec
-    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, 3, R_vec%nRpt)
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3, 3)
@@ -340,7 +340,7 @@ CONTAINS
   ! ================================================== !
   SUBROUTINE fft_R2k_vec_atomic(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     TYPE(R_vec_type), INTENT(IN) :: R_vec
-    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, 3, R_vec%nRpt)
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3, 3)
@@ -368,7 +368,7 @@ CONTAINS
   ! ================================================== !
   SUBROUTINE fft_R2k_vec_wannier(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     TYPE(R_vec_type), INTENT(IN) :: R_vec
-    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, 3, R_vec%nRpt)
+    COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: dX_k(Nw, Nw, 3, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: d2X_k(Nw, Nw, 3, 3, 3)
