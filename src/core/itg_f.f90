@@ -21,7 +21,9 @@ CONTAINS
   SUBROUTINE set_f_flag()
     USE itg_k, ONLY: k_data
     IF (lBerry) THEN
-      k_data%bA_k_W = .TRUE.
+      k_data%bO_bar = .TRUE.
+      k_data%bdH_bar = .TRUE.
+      k_data%bA_bar = .TRUE.
     END IF
 
     IF (lBCD) THEN
