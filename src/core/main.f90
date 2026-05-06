@@ -9,21 +9,24 @@ PROGRAM main
   USE itg_k, ONLY: allocate_k, make_k, clear_k
   USE itg_f, ONLY: allocate_f, clear_f, make_f, write_f
   IMPLICIT NONE
-  !
+  !... Setup environment and read input
   CALL env_start(__DATE__, __TIME__)
   CALL itg_warnings()
   CALL read_input()
-  !
+
+  !... Setup q space data
   CALL make_q()
   CALL debug_q()
   ! CALL bcast_q()
-  !
+
+  !... Setup R space data
   CALL make_R()
   CALL debug_R()
   CALL clear_q()
   CALL bcast_R()
   CALL fft_init(R_vec, R_data%mA_R)
-  !
+
+  !... Setup k space data and compute final results
   WRITE (stdout, '(2X, A)') 'Building data in k space...'
   CALL t_kpt%divide_k()
   CALL allocate_k()
@@ -37,6 +40,7 @@ PROGRAM main
   CALL print_k_info(t_iks, t_kpt%nkpt)
   CALL write_sep_line()
 
+  !... Clean up and write output
   CALL clear_R()
   CALL write_f()
   !
