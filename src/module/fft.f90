@@ -296,8 +296,8 @@ CONTAINS
         a = MOD(c, 3) + 1
         b = MOD(a, 3) + 1
         curl_X_k(iw, jw, c) = curl_X_k(iw, jw, c) &
-                              + zi*fac*(R_cart(b)*X_R(iw, jw, irpt, a) &
-                                        - R_cart(a)*X_R(iw, jw, irpt, b))
+                              + zi*fac*(R_cart(a)*X_R(iw, jw, irpt, b) &
+                                        - R_cart(b)*X_R(iw, jw, irpt, a))
       END DO
     END IF
     IF (PRESENT(curl_dX_k)) THEN
@@ -306,8 +306,8 @@ CONTAINS
         b = MOD(a, 3) + 1
         DO d = 1, 3
           curl_dX_k(iw, jw, c, d) = curl_dX_k(iw, jw, c, d) &
-                                    - R_cart(d)*fac*(R_cart(b)*X_R(iw, jw, irpt, a) &
-                                                     - R_cart(a)*X_R(iw, jw, irpt, b))
+                                    - R_cart(d)*fac*(R_cart(a)*X_R(iw, jw, irpt, b) &
+                                                     - R_cart(b)*X_R(iw, jw, irpt, a))
         END DO
       END DO
     END IF
