@@ -11,9 +11,10 @@ CONTAINS
   SUBROUTINE make_R_data()
     USE constants, ONLY: zero
     USE fft_base, ONLY: fft_q2R, fft_init
-    USE io_global, ONLY: stdout
+    USE io_global, ONLY: ionode, stdout
     USE io_input, ONLY: lBCD, lNLO, lreq_mmn, convention
     INTEGER::a
+    IF (.NOT. ionode) RETURN
     CALL start_clock('make_R_data')
     WRITE (stdout, '(2X, A)') 'Building data in R space...'
     !
@@ -42,6 +43,33 @@ CONTAINS
     CALL write_sep_line()
     CALL stop_clock('make_R_data')
   END SUBROUTINE make_R_data
+  !
+  SUBROUTINE bcast_R_data()
+    USE mp_base, ONLY: mp_bcast
+    USE io_global, ONLY: ionode
+    USE io_input, ONLY: lreq_mmn, convention
+    CALL R_vec%bcast_shift()
+    SELECT CASE (convention)
+    CASE (0)
+      CALL R_vec%bcast_ws()
+    CASE (1)
+      CALL R_vec%bcast_ws()
+    CASE (2)
+      CALL R_vec%bcast_R()
+    END SELECT
+
+    IF (.NOT. ionode) THEN
+      ALLOCATE (H_R(Nw, Nw, R_vec%nRpt))
+      IF (lreq_mmn) THEN
+        ALLOCATE (A_R(Nw, Nw, R_vec%nRpt, 3))
+      END IF
+    END IF
+    !
+    CALL mp_bcast(H_R)
+    IF (lreq_mmn) THEN
+      CALL mp_bcast(A_R)
+    END IF
+  END SUBROUTINE bcast_R_data
   !
   SUBROUTINE enforce_Hemiticity_R(mat_in, mat_out)
     USE kinds, ONLY: DP, eq_vec_real

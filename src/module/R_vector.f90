@@ -31,6 +31,7 @@ MODULE R_vector
     REAL(DP), ALLOCATABLE::w_R(:, :, :)
     !< weight for each R vector (Nw, Nw, nRpt)
 
+    INTEGER::max_degen
     INTEGER, ALLOCATABLE::map_r02r(:, :, :)
     !< map from r0 to corresponding arbitrary r (nR0pt, iuw, idegen)
     INTEGER, ALLOCATABLE::map_r2r0(:, :, :)
@@ -38,8 +39,11 @@ MODULE R_vector
   CONTAINS
     PROCEDURE::clear => clear_Rvec
     PROCEDURE::build_shift => build_shift_vecs
+    PROCEDURE::bcast_shift => bcast_shift_vecs
     PROCEDURE::build_R => build_Rvecs
+    PROCEDURE::bcast_R => bcast_Rvecs
     PROCEDURE::build_ws => build_ws
+    PROCEDURE::bcast_ws => bcast_ws
   END TYPE R_vec_type
   PUBLIC::R_vec_type
   !
@@ -86,6 +90,21 @@ CONTAINS
       END DO
     END DO
   END SUBROUTINE build_shift_vecs
+  SUBROUTINE bcast_shift_vecs(self)
+    USE mp_base, ONLY: mp_bcast
+    USE io_global, ONLY: ionode
+    USE system, ONLY: Nw
+    CLASS(R_vec_type), INTENT(inout) :: self
+    CALL mp_bcast(self%nu_shift)
+    IF (.NOT. ionode) THEN
+      ALLOCATE (self%shift_cart(3, Nw, Nw))
+      ALLOCATE (self%shift_cart_u(3, self%nu_shift))
+      ALLOCATE (self%shift_map_inv(Nw, Nw))
+    END IF
+    CALL mp_bcast(self%shift_cart)
+    CALL mp_bcast(self%shift_cart_u)
+    CALL mp_bcast(self%shift_map_inv)
+  END SUBROUTINE bcast_shift_vecs
 
   SUBROUTINE build_Rvecs(self, w90data)
     USE kinds, ONLY: eq_real
@@ -215,6 +234,28 @@ CONTAINS
     IF (ALLOCATED(w_R)) DEALLOCATE (w_R)
     IF (ALLOCATED(bRvec_selected)) DEALLOCATE (bRvec_selected)
   END SUBROUTINE build_Rvecs
+
+  SUBROUTINE bcast_Rvecs(self)
+    USE mp_base, ONLY: mp_bcast
+    USE io_global, ONLY: ionode
+    USE system, ONLY: Nw
+    CLASS(R_vec_type), INTENT(inout) :: self
+    IF (.NOT. ionode) THEN
+      ALLOCATE (self%R0_red(3, self%nR0pt))
+      ALLOCATE (self%R0_cart(3, self%nR0pt))
+      ALLOCATE (self%R_red(3, self%nRpt))
+      ALLOCATE (self%R_cart(3, self%nRpt))
+      ALLOCATE (self%w_R(Nw, Nw, self%nRpt))
+    END IF
+    CALL mp_bcast(self%R0_grid)
+    CALL mp_bcast(self%R0_red)
+    CALL mp_bcast(self%R0_cart)
+    CALL mp_bcast(self%nRpt)
+    CALL mp_bcast(self%R_red)
+    CALL mp_bcast(self%R_cart)
+    CALL mp_bcast(self%w_R)
+  END SUBROUTINE bcast_Rvecs
+
   SUBROUTINE build_ws(self, w90data)
     USE io_global, ONLY: stdout
     USE system, ONLY: Nw, red2cart_real
@@ -372,11 +413,12 @@ CONTAINS
 
     ! count number of R vectors
     self%nRpt = COUNT(bRvec_selected)
+    self%max_degen = MAXVAL(ndegen)
     WRITE (stdout, '(2X, A, I0)') '- Number of selected R vectors: ', self%nRpt
     ALLOCATE (self%R_red(3, self%nRpt))
     ALLOCATE (self%R_cart(3, self%nRpt))
     ALLOCATE (self%w_R(Nw, Nw, self%nRpt))
-    ALLOCATE (self%map_r02r(self%nR0pt, self%nu_shift, MAXVAL(ndegen)))
+    ALLOCATE (self%map_r02r(self%nR0pt, self%nu_shift, self%max_degen))
     ALLOCATE (self%map_r2r0(2, self%nu_shift, self%nRpt))
     irpt = 0
     DO idx = 1, nRpt
@@ -404,4 +446,30 @@ CONTAINS
 
     WRITE (stdout, '(2X, A)') '- Finished building R vectors.'
   END SUBROUTINE build_ws
+
+  SUBROUTINE bcast_ws(self)
+    USE mp_base, ONLY: mp_bcast
+    USE io_global, ONLY: ionode
+    USE system, ONLY: Nw
+    CLASS(R_vec_type), INTENT(inout) :: self
+    CALL mp_bcast(self%max_degen)
+    CALL mp_bcast(self%nR0pt)
+    CALL mp_bcast(self%nRpt)
+    IF (.NOT. ionode) THEN
+      ALLOCATE (self%R0_red(3, self%nR0pt))
+      ALLOCATE (self%R0_cart(3, self%nR0pt))
+      ALLOCATE (self%R_red(3, self%nRpt))
+      ALLOCATE (self%R_cart(3, self%nRpt))
+      ALLOCATE (self%w_R(Nw, Nw, self%nRpt))
+      ALLOCATE (self%map_r02r(self%nR0pt, self%nu_shift, self%max_degen))
+      ALLOCATE (self%map_r2r0(2, self%nu_shift, self%nRpt))
+    END IF
+    CALL mp_bcast(self%R0_red)
+    CALL mp_bcast(self%R0_cart)
+    CALL mp_bcast(self%R_red)
+    CALL mp_bcast(self%R_cart)
+    CALL mp_bcast(self%w_R)
+    CALL mp_bcast(self%map_r02r)
+    CALL mp_bcast(self%map_r2r0)
+  END SUBROUTINE bcast_ws
 END MODULE R_vector

@@ -88,11 +88,14 @@ MODULE wannier90
     PROCEDURE::read_files => read_w90_files
     PROCEDURE::read_chk => read_w90_chk
     PROCEDURE::build_Hq => build_w90_Hq
+    PROCEDURE::bcast_Hq => bcast_w90_Hq
     PROCEDURE::read_eig => read_w90_eig
 
     PROCEDURE::read_mmn => read_w90_mmn
     PROCEDURE::build_bvec => build_w90_bvec
+    PROCEDURE::bcast_bvec => bcast_w90_bvec
     PROCEDURE::build_Aq => build_w90_Aq
+    PROCEDURE::bcast_Aq => bcast_w90_Aq
   END TYPE w90data_type
   TYPE(w90data_type)::w90data
 
@@ -114,6 +117,10 @@ MODULE wannier90
       CLASS(w90data_type), INTENT(INOUT) :: self
     END SUBROUTINE build_w90_Hq
 
+    MODULE SUBROUTINE bcast_w90_Hq(self)
+      CLASS(w90data_type), INTENT(INOUT) :: self
+    END SUBROUTINE bcast_w90_Hq
+
     MODULE SUBROUTINE read_w90_eig(self)
       CLASS(w90data_type), INTENT(INOUT) :: self
     END SUBROUTINE read_w90_eig
@@ -125,10 +132,16 @@ MODULE wannier90
     MODULE SUBROUTINE build_w90_bvec(self)
       CLASS(w90data_type), INTENT(inout) :: self
     END SUBROUTINE build_w90_bvec
+    MODULE SUBROUTINE bcast_w90_bvec(self)
+      CLASS(w90data_type), INTENT(inout) :: self
+    END SUBROUTINE bcast_w90_bvec
 
     MODULE SUBROUTINE build_w90_Aq(self)
       CLASS(w90data_type), INTENT(INOUT) :: self
     END SUBROUTINE build_w90_Aq
+    MODULE SUBROUTINE bcast_w90_Aq(self)
+      CLASS(w90data_type), INTENT(INOUT) :: self
+    END SUBROUTINE bcast_w90_Aq
   END INTERFACE
 
   ! ==================================================

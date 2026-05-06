@@ -4,8 +4,9 @@ MODULE itg_q
   IMPLICIT NONE
 CONTAINS
   SUBROUTINE make_q_data()
-    USE io_global, ONLY: stdout
+    USE io_global, ONLY: ionode, stdout
     USE debug_data, ONLY: write_matrix
+    IF (.NOT. ionode) RETURN
     CALL start_clock('make_q_data')
     WRITE (stdout, '(2X, A)') 'Building data in q space...'
     !
@@ -19,6 +20,13 @@ CONTAINS
     CALL write_sep_line()
     CALL stop_clock('make_q_data')
   END SUBROUTINE make_q_data
+  !
+  SUBROUTINE bcast_q_data()
+    !> Broadcasting q-space data to all nodes is unnecessary.
+    ! CALL w90data%bcast_Hq()
+    ! CALL w90data%bcast_bvec()
+    ! CALL w90data%bcast_Aq()
+  END SUBROUTINE bcast_q_data
   !
   SUBROUTINE clear_q_data()
     CALL w90data%clear()

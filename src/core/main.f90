@@ -3,8 +3,8 @@ PROGRAM main
   USE io_global, ONLY: stdout
   USE io_input, ONLY: read_input
   USE kpoints, ONLY: t_kpt, t_iks
-  USE itg_q, ONLY: make_q_data, clear_q_data
-  USE itg_R, ONLY: make_R_data, clear_R_data
+  USE itg_q, ONLY: make_q_data, clear_q_data, bcast_q_data
+  USE itg_R, ONLY: make_R_data, clear_R_data, bcast_R_data
   USE itg_k, ONLY: allocate_k_data, make_k_data, &
                    clear_k_data, write_k_data
   IMPLICIT NONE
@@ -15,9 +15,12 @@ PROGRAM main
   !
   CALL make_q_data()
   CALL debug_q()
+  ! CALL bcast_q_data()
+  !
   CALL make_R_data()
   CALL debug_R()
   CALL clear_q_data()
+  CALL bcast_R_data()
   !
   WRITE (stdout, '(2X, A)') '- Building data in k space...'
   CALL allocate_k_data()

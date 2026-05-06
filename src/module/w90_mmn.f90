@@ -2,7 +2,6 @@ SUBMODULE(wannier90) w90_mmn
   IMPLICIT NONE
 CONTAINS
   MODULE SUBROUTINE read_w90_mmn(self)
-    USE mp_base, ONLY: mp_bcast
     USE io_global, ONLY: check_file
     CLASS(w90data_type), INTENT(INOUT) :: self
     INTEGER::io_unit, ios
@@ -30,10 +29,10 @@ CONTAINS
       END IF
     END IF
 
-    ALLOCATE (self%neighbour_k(self%nnb, self%kpts%nkpt))
-    ALLOCATE (self%neighbour_g(3, self%nnb, self%kpts%nkpt))
-    ALLOCATE (self%overlap(self%nbnd, self%nbnd, self%nnb, self%kpts%nkpt))
     IF (ionode) THEN
+      ALLOCATE (self%neighbour_k(self%nnb, self%kpts%nkpt))
+      ALLOCATE (self%neighbour_g(3, self%nnb, self%kpts%nkpt))
+      ALLOCATE (self%overlap(self%nbnd, self%nbnd, self%nnb, self%kpts%nkpt))
       DO ikpt = 1, nkpt
         DO inb = 1, nnb
           READ (io_unit, *) k_from, k_to, g1, g2, g3
@@ -52,9 +51,6 @@ CONTAINS
         END DO
       END DO
     END IF
-    CALL mp_bcast(self%neighbour_k)
-    CALL mp_bcast(self%neighbour_g)
-    CALL mp_bcast(self%overlap)
   END SUBROUTINE read_w90_mmn
 
   MODULE SUBROUTINE build_w90_bvec(self)
@@ -202,10 +198,24 @@ CONTAINS
     DEALLOCATE (A, U, S, VT, work, w_shell)
   END SUBROUTINE build_w90_bvec
 
+  MODULE SUBROUTINE bcast_w90_bvec(self)
+    USE mp_base, ONLY: mp_bcast
+    CLASS(w90data_type), INTENT(inout) :: self
+    IF (.NOT. ionode) THEN
+      ALLOCATE (self%bvec_red(3, self%nnb))
+      ALLOCATE (self%bvec_index(self%nnb, self%kpts%nkpt))
+      ALLOCATE (self%wb(self%nnb))
+    END IF
+    CALL mp_bcast(self%bvec_red)
+    CALL mp_bcast(self%bvec_index)
+    CALL mp_bcast(self%wb)
+  END SUBROUTINE bcast_w90_bvec
+
+  ! ================================================== !
+
   MODULE SUBROUTINE build_w90_Aq(self)
     !< Build A(q) in Wannier gauge
     USE constants, ONLY: zi
-    USE mp_base, ONLY: mp_bcast
     USE system, ONLY: Nw, red2cart_recip
     CLASS(w90data_type), INTENT(INOUT) :: self
     INTEGER::ikpt, inb, jnb, iknb, ibnd, jbnd, iw, jw, ipol
@@ -243,8 +253,16 @@ CONTAINS
       END DO
     END IF
 
-    CALL mp_bcast(self%Aq)
     CALL write_sep_line()
   END SUBROUTINE build_w90_Aq
 
+  MODULE SUBROUTINE bcast_w90_Aq(self)
+    USE mp_base, ONLY: mp_bcast
+    USE system, ONLY: Nw
+    CLASS(w90data_type), INTENT(inout) :: self
+    IF (.NOT. ionode) THEN
+      ALLOCATE (self%Aq(Nw, Nw, self%kpts%nkpt, 3))
+    END IF
+    CALL mp_bcast(self%Aq)
+  END SUBROUTINE bcast_w90_Aq
 END SUBMODULE w90_mmn

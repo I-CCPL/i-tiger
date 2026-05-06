@@ -139,14 +139,16 @@ CONTAINS
       CALL cell_setup()
       ALLOCATE (self%kpts%k_cart(3, self%kpts%nkpt))
       ALLOCATE (self%kpts%k_red(3, self%kpts%nkpt))
-      ALLOCATE (self%v_matrix(self%nbnd, Nw, self%kpts%nkpt))
+      ! ALLOCATE (self%v_matrix(self%nbnd, Nw, self%kpts%nkpt))
       ALLOCATE (self%wannier_center_cart(3, Nw))
       ALLOCATE (self%wannier_spread(Nw))
     END IF
 
     CALL mp_bcast(self%kpts%k_cart)
     CALL mp_bcast(self%kpts%k_red)
-    CALL mp_bcast(self%v_matrix)
+    !> broadcasting v_matrix is expensive and unnecessary.
+    !> Compute properties in root node and broadcast results to other nodes.
+    ! CALL mp_bcast(self%v_matrix)
     CALL mp_bcast(self%wannier_center_cart)
     CALL mp_bcast(self%wannier_spread)
   END SUBROUTINE read_w90_chk
@@ -167,27 +169,24 @@ CONTAINS
     ALLOCATE (Hq(Nw, Nw, self%kpts%nkpt))
     ALLOCATE (self%Hq(Nw, Nw, self%kpts%nkpt))
     !
-    IF (ionode) THEN
-      DO ikpt = 1, self%kpts%nkpt
-        ndw = self%ndimwin(ikpt)
-        mw = self%win_min(ikpt)
-        DO jw = 1, Nw
-          DO iw = 1, Nw
-            Hq(iw, jw, ikpt) &
-              = wannier_gauge_diag(self%eigval(mw:mw + ndw - 1, ikpt), &
-                                   self%v_matrix(1:ndw, iw, ikpt), self%v_matrix(1:ndw, jw, ikpt))
-          END DO
-        END DO
-        !
-        !... Force Hemiticity
-        DO jw = 1, Nw
-          DO iw = 1, Nw
-            self%Hq(iw, jw, ikpt) = (Hq(iw, jw, ikpt) + CONJG(Hq(jw, iw, ikpt)))/2
-          END DO
+    DO ikpt = 1, self%kpts%nkpt
+      ndw = self%ndimwin(ikpt)
+      mw = self%win_min(ikpt)
+      DO jw = 1, Nw
+        DO iw = 1, Nw
+          Hq(iw, jw, ikpt) &
+            = wannier_gauge_diag(self%eigval(mw:mw + ndw - 1, ikpt), &
+                                 self%v_matrix(1:ndw, iw, ikpt), self%v_matrix(1:ndw, jw, ikpt))
         END DO
       END DO
-    END IF
-    CALL mp_bcast(self%Hq)
+      !
+      !... Force Hemiticity
+      DO jw = 1, Nw
+        DO iw = 1, Nw
+          self%Hq(iw, jw, ikpt) = (Hq(iw, jw, ikpt) + CONJG(Hq(jw, iw, ikpt)))/2
+        END DO
+      END DO
+    END DO
     !
     ! CALL check_hermiticity(self%kpts%nkpt, 1, Hq, 1.0D-10)
     IF (ionode .AND. Hq_band) THEN
@@ -198,4 +197,16 @@ CONTAINS
       CALL write_band('itg.Hq.dat', self%eigval)
     END IF
   END SUBROUTINE build_w90_Hq
+  !
+  MODULE SUBROUTINE bcast_w90_Hq(self)
+    USE mp_base, ONLY: mp_bcast
+    USE system, ONLY: Nw
+    CLASS(w90data_type), INTENT(INOUT) :: self
+
+    IF (.NOT. ionode) THEN
+      ALLOCATE (self%Hq(Nw, Nw, self%kpts%nkpt))
+    END IF
+
+    CALL mp_bcast(self%Hq)
+  END SUBROUTINE bcast_w90_Hq
 END SUBMODULE w90_chk
