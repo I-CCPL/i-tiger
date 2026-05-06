@@ -2,7 +2,7 @@ MODULE NLO
   ! Nonlinear optics
   ! Ref. PRB 61, 5337 (2000)
   USE kinds, ONLY: DP
-  USE io_input, ONLY: NLO_nE
+  USE f_params, ONLY: NLO_nE
   IMPLICIT NONE
   REAL(DP), ALLOCATABLE::NLO_hw(:)
   !> dielectric function (epsilon_r)
@@ -27,7 +27,7 @@ CONTAINS
   SUBROUTINE NLO_init(t_kpt)
     USE constants, ONLY: cmplx_0, pi, cmplx_i, hbar_eVfs, &
                          e_chg_au, e_chg_si, FS2SEC, epsilon_0
-    USE io_input, ONLY: NLO_Emin, NLO_dE
+    USE f_params, ONLY: NLO_Emin, NLO_dE
     USE system, ONLY: V_cell_3D
     USE kpoints, ONLY: kpoint_type
     TYPE(kpoint_type), INTENT(IN) :: t_kpt
@@ -176,7 +176,7 @@ CONTAINS
   !
   SUBROUTINE NLO_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H)
     USE constants, ONLY: hbar_eVfs, cmplx_0, cmplx_i
-    USE io_input, ONLY: dE_thr, dE_eta, &
+    USE f_params, ONLY: dE_thr, dE_eta, &
                         NLO_Emin, NLO_Emax, NLO_dE, NLO_nE, NLO_eta, NLO_w_thr
     USE system, ONLY: Nw
     USE delta_func, ONLY: dE_inv, w1gauss
@@ -365,7 +365,7 @@ CONTAINS
   END SUBROUTINE injection_current
   !
   PURE REAL(DP) FUNCTION occ_T0(en)
-    USE io_input, ONLY: E_fermi
+    USE f_params, ONLY: E_fermi
     REAL(DP), INTENT(IN) :: en
     IF (en <= E_fermi) THEN
       occ_T0 = 1.0_DP

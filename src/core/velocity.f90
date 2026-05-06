@@ -22,8 +22,8 @@ END SUBROUTINE velocity
 
 SUBROUTINE vel_to_berry(eigval, v_k_H, A_k_H)
   USE kinds, ONLY: DP
-  USE io_input, ONLY: dE_thr
   USE constants, ONLY: cmplx_0, cmplx_i, hbar_eVfs
+  USE f_params, ONLY: dE_thr
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)

@@ -3,6 +3,7 @@ SUBROUTINE debug_k()
   USE io_input, ONLY: debug => debug_k
   USE mp_global, ONLY: mp_rank
   USE itg_k
+  USE itg_f
   USE kpoints, ONLY: t_kpt, t_iks
   IMPLICIT NONE
   INTEGER::io_unit
@@ -41,14 +42,14 @@ SUBROUTINE debug_k()
   END DO
   CLOSE (io_unit)
 
-  IF (ALLOCATED(A_k_W)) THEN
+  IF (k_data%bA_k_W) THEN
     WRITE (fname, '(A,I0,A)') "debug_k.A_k_W.", mp_rank, ".dat"
     OPEN (io_unit, file=fname)
     DO ikpt = 1, t_kpt%nkpt
       DO m = 1, Nw
         DO n = 1, Nw
           DO a = 1, 3
-            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, A_k_W(m, n, a)
+            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, k_data%mA_k_W(m, n, a)
           END DO
         END DO
       END DO
@@ -56,14 +57,14 @@ SUBROUTINE debug_k()
     CLOSE (io_unit)
   END IF
 
-  IF (ALLOCATED(A_bar)) THEN
+  IF (k_data%bA_bar) THEN
     WRITE (fname, '(A,I0,A)') "debug_k.A_bar.", mp_rank, ".dat"
     OPEN (io_unit, file=fname)
     DO ikpt = 1, t_kpt%nkpt
       DO m = 1, Nw
         DO n = 1, Nw
           DO a = 1, 3
-            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, A_bar(m, n, a)
+            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, k_data%mA_bar(m, n, a)
           END DO
         END DO
       END DO
@@ -71,14 +72,14 @@ SUBROUTINE debug_k()
     CLOSE (io_unit)
   END IF
 
-  IF (ALLOCATED(dH_k_W)) THEN
+  IF (k_data%bdH_k_W) THEN
     WRITE (fname, '(A,I0,A)') "debug_k.dH_k_W.", mp_rank, ".dat"
     OPEN (io_unit, file=fname)
     DO ikpt = 1, t_kpt%nkpt
       DO m = 1, Nw
         DO n = 1, Nw
           DO a = 1, 3
-            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, dH_k_W(m, n, a)
+            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, k_data%mdH_k_W(m, n, a)
           END DO
         END DO
       END DO
@@ -86,14 +87,14 @@ SUBROUTINE debug_k()
     CLOSE (io_unit)
   END IF
 
-  IF (ALLOCATED(dH_bar)) THEN
+  IF (k_data%bdH_bar) THEN
     WRITE (fname, '(A,I0,A)') "debug_k.dH_bar.", mp_rank, ".dat"
     OPEN (io_unit, file=fname)
     DO ikpt = 1, t_kpt%nkpt
       DO m = 1, Nw
         DO n = 1, Nw
           DO a = 1, 3
-            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, dH_bar(m, n, a)
+            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, k_data%mdH_bar(m, n, a)
           END DO
         END DO
       END DO
@@ -116,7 +117,7 @@ SUBROUTINE debug_k()
     CLOSE (io_unit)
   END IF
 
-  IF (ALLOCATED(dA_k_W)) THEN
+  IF (k_data%bdA_k_W) THEN
     WRITE (fname, '(A,I0,A)') "debug_k.dA_k_W.", mp_rank, ".dat"
     OPEN (io_unit, file=fname)
     DO ikpt = 1, t_kpt%nkpt
@@ -124,7 +125,7 @@ SUBROUTINE debug_k()
         DO n = 1, Nw
           DO a = 1, 3
             DO b = 1, 3
-              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, dA_k_W(m, n, a, b)
+              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, k_data%mdA_k_W(m, n, a, b)
             END DO
           END DO
         END DO
@@ -133,7 +134,7 @@ SUBROUTINE debug_k()
     CLOSE (io_unit)
   END IF
 
-  IF (ALLOCATED(dA_bar)) THEN
+  IF (k_data%bdA_bar) THEN
     WRITE (fname, '(A,I0,A)') "debug_k.dA_bar.", mp_rank, ".dat"
     OPEN (io_unit, file=fname)
     DO ikpt = 1, t_kpt%nkpt
@@ -141,7 +142,7 @@ SUBROUTINE debug_k()
         DO n = 1, Nw
           DO a = 1, 3
             DO b = 1, 3
-              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, dA_bar(m, n, b, a)
+              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, k_data%mdA_bar(m, n, b, a)
             END DO
           END DO
         END DO
@@ -150,7 +151,7 @@ SUBROUTINE debug_k()
     CLOSE (io_unit)
   END IF
 
-  IF (ALLOCATED(d2H_k_W)) THEN
+  IF (k_data%bd2H_k_W) THEN
     WRITE (fname, '(A,I0,A)') "debug_k.d2H_k_W.", mp_rank, ".dat"
     OPEN (io_unit, file=fname)
     DO ikpt = 1, t_kpt%nkpt
@@ -158,7 +159,7 @@ SUBROUTINE debug_k()
         DO n = 1, Nw
           DO a = 1, 3
             DO b = 1, 3
-              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, d2H_k_W(m, n, b, a)
+              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, k_data%md2H_k_W(m, n, b, a)
             END DO
           END DO
         END DO
@@ -167,7 +168,7 @@ SUBROUTINE debug_k()
     CLOSE (io_unit)
   END IF
 
-  IF (ALLOCATED(d2H_bar)) THEN
+  IF (k_data%bd2H_bar) THEN
     WRITE (fname, '(A,I0,A)') "debug_k.d2H_bar.", mp_rank, ".dat"
     OPEN (io_unit, file=fname)
     DO ikpt = 1, t_kpt%nkpt
@@ -175,7 +176,7 @@ SUBROUTINE debug_k()
         DO n = 1, Nw
           DO a = 1, 3
             DO b = 1, 3
-              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, d2H_bar(m, n, b, a)
+              WRITE (io_unit, '(5I4, 2ES23.14E3)') ikpt, m, n, a, b, k_data%md2H_bar(m, n, b, a)
             END DO
           END DO
         END DO
@@ -184,4 +185,33 @@ SUBROUTINE debug_k()
     CLOSE (io_unit)
   END IF
 
+  IF (k_data%bO_k_W) THEN
+    WRITE (fname, '(A,I0,A)') "debug_k.O_k_W.", mp_rank, ".dat"
+    OPEN (io_unit, file=fname)
+    DO ikpt = 1, t_kpt%nkpt
+      DO m = 1, Nw
+        DO n = 1, Nw
+          DO a = 1, 3
+            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, k_data%mO_k_W(m, n, a)
+          END DO
+        END DO
+      END DO
+    END DO
+    CLOSE (io_unit)
+  END IF
+
+  IF (k_data%bO_bar) THEN
+    WRITE (fname, '(A,I0,A)') "debug_k.O_bar.", mp_rank, ".dat"
+    OPEN (io_unit, file=fname)
+    DO ikpt = 1, t_kpt%nkpt
+      DO m = 1, Nw
+        DO n = 1, Nw
+          DO a = 1, 3
+            WRITE (io_unit, '(3I4, 2ES23.14E3)') ikpt, m, n, k_data%mO_bar(m, n, a)
+          END DO
+        END DO
+      END DO
+    END DO
+    CLOSE (io_unit)
+  END IF
 END SUBROUTINE debug_k

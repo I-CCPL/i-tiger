@@ -240,6 +240,10 @@ CONTAINS
     USE io_global, ONLY: ionode
     USE system, ONLY: Nw
     CLASS(R_vec_type), INTENT(inout) :: self
+    CALL self%bcast_shift()
+    !
+    CALL mp_bcast(self%nR0pt)
+    CALL mp_bcast(self%nRpt)
     IF (.NOT. ionode) THEN
       ALLOCATE (self%R0_red(3, self%nR0pt))
       ALLOCATE (self%R0_cart(3, self%nR0pt))
@@ -250,7 +254,6 @@ CONTAINS
     CALL mp_bcast(self%R0_grid)
     CALL mp_bcast(self%R0_red)
     CALL mp_bcast(self%R0_cart)
-    CALL mp_bcast(self%nRpt)
     CALL mp_bcast(self%R_red)
     CALL mp_bcast(self%R_cart)
     CALL mp_bcast(self%w_R)
@@ -452,6 +455,8 @@ CONTAINS
     USE io_global, ONLY: ionode
     USE system, ONLY: Nw
     CLASS(R_vec_type), INTENT(inout) :: self
+    CALL self%bcast_shift()
+    !
     CALL mp_bcast(self%max_degen)
     CALL mp_bcast(self%nR0pt)
     CALL mp_bcast(self%nRpt)

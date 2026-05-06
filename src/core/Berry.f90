@@ -2,7 +2,7 @@ SUBROUTINE Berry_mod(eigval, v_k, O_k)
   USE kinds, ONLY: DP
   USE constants, ONLY: hbar_eVfs
   USE system, ONLY: Nw
-  USE io_input, ONLY: dE_thr
+  USE f_params, ONLY: dE_thr
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)
   COMPLEX(DP), INTENT(IN)::v_k(Nw, Nw, 3)
@@ -26,7 +26,7 @@ END SUBROUTINE Berry_mod
 
 SUBROUTINE Berry_sum(eigval, O_k, berry)
   USE kinds, ONLY: DP
-  USE io_input, ONLY: E_fermi
+  USE f_params, ONLY: E_fermi
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)
@@ -43,7 +43,7 @@ END SUBROUTINE Berry_sum
 SUBROUTINE Berry_proj(eigval, O_bar, A_bar, dH_bar, berry)
   USE kinds, ONLY: DP
   USE constants, ONLY: cmplx_0, cmplx_i
-  USE io_input, ONLY: dE_thr, E_fermi
+  USE f_params, ONLY: dE_thr, E_fermi
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)

@@ -9,57 +9,11 @@ MODULE io_input
   LOGICAL::debug_q = .FALSE.
   LOGICAL::debug_R = .FALSE.
   LOGICAL::debug_k = .FALSE.
-  !... itg
-  CHARACTER(LEN=8)::FFT_conv = 'atomic'
-  !< 'periodic' or 'atomic' or 'wannier' FFT convention for R2k
-  INTEGER::convention = 0
-  !< 0 for standard convention, consider degenerate R0s (build_ws)
-  !< 1 for TB convention, consider degenerate R0s (build_ws)
-  !< 2 for Wannier convention, consider only the nearest R (build_R)
-  CHARACTER(LEN=20)::formula = 'kubo'
-  !< 'kubo' or 'projection'
-
-  LOGICAL::lBand = .FALSE.
-  ! LOGICAL::lDOS = .FALSE.
-  ! LOGICAL::lPDOS = .FALSE.
-  ! INTEGER::dos_dE
-  ! INTEGER::dos_Emin
-  ! INTEGER::dos_Emax
-  LOGICAL::lOAM = .FALSE.
-  LOGICAL::lBerry = .FALSE.
-  LOGICAL::lBCD = .FALSE.
-  !< Berry Curvature Dipole
-  REAL(DP)::dE_thr = 1D-8
-  !< threshold for identifying degenerate states in eV
-  REAL(DP)::dE_eta = 0.04
-  !< broadening parameter for 1/dE
-  REAL(DP)::E_fermi = 0.0_DP
-  !< Now use for occupation number.
-
-  REAL(DP)::Ef_min = inf_DP
-  REAL(DP)::Ef_max = -inf_DP
-  REAL(DP)::Ef_step = -1.0_DP
-  INTEGER::Ef_nE
-  !< Fermi energy range for BCD calculation.
-
-  !... Nonlinear optics calculation parameters
-  !... Frequency: eV units from input
-  LOGICAL::lNLO = .FALSE.
-  REAL(DP)::NLO_Emin = 0.0_DP
-  REAL(DP)::NLO_Emax = 0.0_DP
-  REAL(DP)::NLO_dE = 0.0_DP
-  INTEGER::NLO_nE
-  REAL(DP)::NLO_eta = 0.01_DP
-  REAL(DP)::NLO_w_thr = 5.0_DP
-  !< speeding up frequency integration
-  !
-  !... Wannier90 data
-  LOGICAL::lreq_mmn
-  !< whether mmn data is required based on requested calculations
 CONTAINS
   SUBROUTINE read_input()
     USE char_mod, ONLY: captital
     USE io_global, ONLY: stdout, prefix
+    USE f_base, ONLY: set_flags
     USE wannier90, ONLY: w90data
     CHARACTER(LEN=256)::line
     CHARACTER(LEN=80)::card
@@ -70,7 +24,8 @@ CONTAINS
     !... Read Namelists
     CALL read_control()
     CALL read_itg()
-    lreq_mmn = (lOAM .OR. lBerry .OR. lBCD .OR. lNLO)
+    CALL set_flags()
+
     w90data%prefix = TRIM(prefix)
     CALL w90data%read_files()
 
@@ -99,7 +54,8 @@ CONTAINS
   !
   SUBROUTINE read_control()
     USE io_global, ONLY: prefix, debug
-    NAMELIST /control/ prefix, debug
+    USE f_params, ONLY: FFT_conv, convention, formula
+    NAMELIST /control/ prefix, debug, FFT_conv, convention, formula
     !
     WRITE (stdout, '(2X, A)') 'Reading &CONTROL Namelist...'
     IF (ionode) THEN
@@ -110,6 +66,20 @@ CONTAINS
       WRITE (stdout, '(2X, A)') 'Debug mode is ON.'
       CALL read_debug()
     END IF
+
+    CALL mp_bcast(FFT_conv)
+    IF (TRIM(FFT_conv) /= 'periodic' &
+        .AND. TRIM(FFT_conv) /= 'atomic' &
+        .AND. TRIM(FFT_conv) /= 'wannier') THEN
+      CALL errore(1, 'read_itg', 'Unknown FFT convention: "'//TRIM(FFT_conv)//'"')
+    END IF
+    CALL mp_bcast(convention)
+    CALL mp_bcast(formula)
+    IF (TRIM(formula) /= 'gauge' &
+        .AND. TRIM(formula) /= 'projection') THEN
+      CALL errore(1, 'read_itg', 'Unknown formula: "'//TRIM(formula)//'"')
+    END IF
+
   CONTAINS
     SUBROUTINE read_debug()
       USE wannier90, ONLY: chk_w90, Hq_band
@@ -124,8 +94,11 @@ CONTAINS
   !
   SUBROUTINE read_itg()
     ! USE system, ONLY: dim
-    NAMELIST /itg/ FFT_conv, convention, lBand, lOAM, lBerry, lBCD, &
-      formula, dE_thr, dE_eta, E_fermi, Ef_min, Ef_max, Ef_step, & ! dim &
+    USE f_params, ONLY: lBand, lOAM, lBerry, lBCD, &
+                        dE_thr, dE_eta, E_fermi, Ef_min, Ef_max, Ef_step, Ef_nE, & ! dim &
+                        lNLO, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr, NLO_nE
+    NAMELIST /itg/ lBand, lOAM, lBerry, lBCD, &
+      dE_thr, dE_eta, E_fermi, Ef_min, Ef_max, Ef_step, & ! dim &
       lNLO, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) THEN
@@ -142,23 +115,11 @@ CONTAINS
         WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO frequency threshold (eV): ', NLO_w_thr
       END IF
     END IF
-    CALL mp_bcast(FFT_conv)
-    IF (TRIM(FFT_conv) /= 'periodic' &
-        .AND. TRIM(FFT_conv) /= 'atomic' &
-        .AND. TRIM(FFT_conv) /= 'wannier') THEN
-      CALL errore(1, 'read_itg', 'Unknown FFT convention: "'//TRIM(FFT_conv)//'"')
-    END IF
-    CALL mp_bcast(convention)
     !
     CALL mp_bcast(lBand)
     CALL mp_bcast(lOAM)
     CALL mp_bcast(lBerry)
     CALL mp_bcast(lBCD)
-    CALL mp_bcast(formula)
-    IF (TRIM(formula) /= 'kubo' &
-        .AND. TRIM(formula) /= 'projection') THEN
-      CALL errore(1, 'read_itg', 'Unknown formula: "'//TRIM(formula)//'"')
-    END IF
     CALL mp_bcast(dE_thr)
     CALL mp_bcast(dE_eta)
     CALL mp_bcast(E_fermi)
@@ -220,6 +181,7 @@ CONTAINS
     USE char_mod, ONLY: match
     USE kpoints, ONLY: t_kpt
     USE system, ONLY: red2cart_recip
+    USE f_params, ONLY: lNLO
     CHARACTER(LEN=256), INTENT(INOUT)::line
     LOGICAL::tend
     INTEGER::i

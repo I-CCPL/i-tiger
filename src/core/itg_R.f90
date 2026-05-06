@@ -6,16 +6,29 @@ MODULE itg_R
   IMPLICIT NONE
   TYPE(R_vec_type)::R_vec
 
-  COMPLEX(DP), ALLOCATABLE::H_R(:, :, :), A_R(:, :, :, :)
+  !> intermediate data in R space
+  TYPE::R_data_type
+    COMPLEX(DP), ALLOCATABLE::mH_R(:, :, :)
+    !< Hamiltonian in R space (Nw, Nw, nRpt)
+    LOGICAL::bA_R
+    COMPLEX(DP), ALLOCATABLE::mA_R(:, :, :, :)
+    !< Berry connection in R space (Nw, Nw, nRpt, 3)
+  END TYPE R_data_type
+  TYPE(R_data_type)::R_data
 CONTAINS
-  SUBROUTINE make_R_data()
+  SUBROUTINE set_R_flag()
+    USE f_params, ONLY: lOAM, lBerry, lBCD, lNLO
+    R_data%bA_R = (lOAM .OR. lBerry .OR. lBCD .OR. lNLO)
+  END SUBROUTINE set_R_flag
+  !
+  SUBROUTINE make_R()
     USE constants, ONLY: cmplx_0
     USE fft_base, ONLY: fft_q2R, fft_init
     USE io_global, ONLY: ionode, stdout
-    USE io_input, ONLY: lBCD, lNLO, lreq_mmn, convention
+    USE f_params, ONLY: lBCD, lNLO, convention
     INTEGER::a
     IF (.NOT. ionode) RETURN
-    CALL start_clock('make_R_data')
+    CALL start_clock('make_R')
     WRITE (stdout, '(2X, A)') 'Building data in R space...'
     !
     SELECT CASE (convention)
@@ -29,26 +42,27 @@ CONTAINS
       CALL errore(1, 'make_R_data', 'invalid convention')
     END SELECT
     !
-    ALLOCATE (H_R(Nw, Nw, R_vec%nRpt))
-    CALL fft_q2R(w90data, R_vec, w90data%Hq, H_R)
+    ALLOCATE (R_data%mH_R(Nw, Nw, R_vec%nRpt))
+    CALL fft_q2R(w90data, R_vec, w90data%Hq, R_data%mH_R)
 
-    IF (lreq_mmn) THEN
-      ALLOCATE (A_R(Nw, Nw, R_vec%nRpt, 3))
+    IF (R_data%bA_R) THEN
+      ALLOCATE (R_data%mA_R(Nw, Nw, R_vec%nRpt, 3))
       DO a = 1, 3
-        CALL fft_q2R(w90data, R_vec, w90data%Aq(:, :, :, a), A_R(:, :, :, a))
+        CALL fft_q2R(w90data, R_vec, &
+                     w90data%Aq(:, :, :, a), R_data%mA_R(:, :, :, a))
       END DO
-      ! CALL enforce_Hemiticity_R(A_R_b, A_R)
+      ! CALL enforce_Hemiticity_R(R_data%mA_R_b, R_data%mA_R)
     END IF
-    CALL fft_init(R_vec, A_R)
+    CALL fft_init(R_vec, R_data%mA_R)
     CALL write_sep_line()
-    CALL stop_clock('make_R_data')
-  END SUBROUTINE make_R_data
+    CALL stop_clock('make_R')
+  END SUBROUTINE make_R
   !
-  SUBROUTINE bcast_R_data()
+  SUBROUTINE bcast_R()
     USE mp_base, ONLY: mp_bcast
     USE io_global, ONLY: ionode
-    USE io_input, ONLY: lreq_mmn, convention
-    CALL R_vec%bcast_shift()
+    USE f_params, ONLY: convention
+    !
     SELECT CASE (convention)
     CASE (0)
       CALL R_vec%bcast_ws()
@@ -59,17 +73,17 @@ CONTAINS
     END SELECT
 
     IF (.NOT. ionode) THEN
-      ALLOCATE (H_R(Nw, Nw, R_vec%nRpt))
-      IF (lreq_mmn) THEN
-        ALLOCATE (A_R(Nw, Nw, R_vec%nRpt, 3))
+      ALLOCATE (R_data%mH_R(Nw, Nw, R_vec%nRpt))
+      IF (R_data%bA_R) THEN
+        ALLOCATE (R_data%mA_R(Nw, Nw, R_vec%nRpt, 3))
       END IF
     END IF
     !
-    CALL mp_bcast(H_R)
-    IF (lreq_mmn) THEN
-      CALL mp_bcast(A_R)
+    CALL mp_bcast(R_data%mH_R)
+    IF (R_data%bA_R) THEN
+      CALL mp_bcast(R_data%mA_R)
     END IF
-  END SUBROUTINE bcast_R_data
+  END SUBROUTINE bcast_R
   !
   SUBROUTINE enforce_Hemiticity_R(mat_in, mat_out)
     USE kinds, ONLY: DP, eq_vec_real
@@ -98,9 +112,9 @@ CONTAINS
     END DO
   END SUBROUTINE enforce_Hemiticity_R
   !
-  SUBROUTINE clear_R_data()
+  SUBROUTINE clear_R()
+    IF (ALLOCATED(R_data%mH_R)) DEALLOCATE (R_data%mH_R)
+    IF (ALLOCATED(R_data%mA_R)) DEALLOCATE (R_data%mA_R)
     CALL R_vec%clear()
-    IF (ALLOCATED(H_R)) DEALLOCATE (H_R)
-    IF (ALLOCATED(A_R)) DEALLOCATE (A_R)
-  END SUBROUTINE clear_R_data
+  END SUBROUTINE clear_R
 END MODULE itg_R

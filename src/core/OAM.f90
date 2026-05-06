@@ -2,7 +2,7 @@ SUBROUTINE OAM_mod(eigval, v_k, L_k)
   !< OAM [hbar]
   USE kinds, ONLY: DP
   USE constants, ONLY: cmplx_0, cmplx_i, m_e
-  USE io_input, ONLY: dE_thr
+  USE f_params, ONLY: dE_thr
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)
@@ -37,7 +37,7 @@ SUBROUTINE OAM_mod_diag(eigval, v_k, L_k)
   !< OAM [hbar] for diagonal elements
   USE kinds, ONLY: DP
   USE constants, ONLY: cmplx_0, cmplx_i, m_e
-  USE io_input, ONLY: dE_thr
+  USE f_params, ONLY: dE_thr
   USE system, ONLY: Nw
   IMPLICIT NONE
   REAL(DP), INTENT(IN)::eigval(Nw)

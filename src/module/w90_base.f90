@@ -2,7 +2,8 @@ SUBMODULE(wannier90) w90_base
   IMPLICIT NONE
 CONTAINS
   MODULE SUBROUTINE read_w90_files(self)
-    USE io_input, ONLY: lreq_mmn
+    USE f_params
+    USE itg_R, ONLY: R_data
     CLASS(w90data_type), INTENT(INOUT) :: self
     TYPE(chk_dum_type) :: chk_dum
     !
@@ -10,7 +11,7 @@ CONTAINS
     CALL self%read_chk(chk_dum)
     CALL self%read_eig()
 
-    IF (lreq_mmn) THEN
+    IF (R_data%bA_R) THEN
       CALL self%read_mmn()
     END IF
 

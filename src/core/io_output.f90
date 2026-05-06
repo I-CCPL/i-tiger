@@ -108,7 +108,7 @@ CONTAINS
   END SUBROUTINE write_Berry_k
   !
   SUBROUTINE write_BCD(fname, BCD)
-    USE io_input, ONLY: Ef_min, Ef_max, Ef_step, Ef_nE
+    USE f_params, ONLY: Ef_min, Ef_max, Ef_step, Ef_nE
     CHARACTER(LEN=*), INTENT(IN) :: fname
     REAL(DP), INTENT(IN) :: BCD(Ef_nE, 3, 3)
     INTEGER :: io_unit, ief

@@ -48,18 +48,18 @@ SUBROUTINE debug_R()
   DO irpt = 1, R_vec%nRpt
     DO iw = 1, Nw
       DO jw = 1, Nw
-        WRITE (io_unit, *) H_R(iw, jw, irpt)
+        WRITE (io_unit, *) R_data%mH_R(iw, jw, irpt)
       END DO
     END DO
   END DO
   CLOSE (io_unit)
 
-  IF (ALLOCATED(A_R)) THEN
+  IF (ALLOCATED(R_data%mA_R)) THEN
     OPEN (io_unit, file="debug_R.A_R.dat")
     DO irpt = 1, R_vec%nRpt
       DO iw = 1, Nw
         DO jw = 1, Nw
-          WRITE (io_unit, *) A_R(iw, jw, irpt, :)
+          WRITE (io_unit, *) R_data%mA_R(iw, jw, irpt, :)
         END DO
       END DO
     END DO

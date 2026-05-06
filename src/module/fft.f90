@@ -2,7 +2,7 @@ MODULE fft_base
   USE kinds, ONLY: DP
   USE constants, ONLY: cmplx_0, tpi, cmplx_i
   USE io_global, ONLY: stdout
-  USE io_input, ONLY: FFT_conv
+  USE f_params, ONLY: FFT_conv
   USE system, ONLY: Nw
   USE wannier90, ONLY: w90data_type
   USE R_vector, ONLY: R_vec_type

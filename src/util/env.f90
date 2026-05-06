@@ -1,7 +1,7 @@
 MODULE env
   USE io_global, ONLY: stdout
   IMPLICIT NONE
-  CHARACTER(LEN=12)::itg_version = 'v0.0.4.2'
+  CHARACTER(LEN=12)::itg_version = 'v0.0.5.0'
 CONTAINS
   SUBROUTINE env_start(date, time)
     USE mp_global, ONLY: mp_start, mp_rank, mp_root, mp_size, mp_barrier
@@ -109,9 +109,10 @@ CONTAINS
     CALL print_clock('fft_R2k')
 
     WRITE (stdout, '(2X,A)') 'main functions'
-    CALL print_clock('make_q_data')
-    CALL print_clock('make_R_data')
-    CALL print_clock('make_k_data')
+    CALL print_clock('make_q')
+    CALL print_clock('make_R')
+    CALL print_clock('make_k')
+    CALL print_clock('make_f')
     CALL print_clock('NLO_main')
     CALL print_clock('write_k_data')
     CALL print_clock('i-TIGER')
