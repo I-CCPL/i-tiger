@@ -123,10 +123,13 @@ CONTAINS
     USE kpoints, ONLY: t_iks, t_kpt
     USE NLO, ONLY: NLO_main
     INTEGER::iw
-
     CALL start_clock('make_k')
 
-    ! Eigenvalues and eigenvectors
+    !... Important: nonallocatable dummy is not present
+    !...            if the actual argument is unallocated allocatable.
+    !...            (F2008 12.5.2.12 / F2018 15.5.2.12 / F2023 15.5.2.13)
+    !...            (No rule before F2008, errore would occur.)
+
     CALL fft_R2k_periodic(R_vec, R_data%mH_R, &
                           X_k=t_kpt%H_k, &
                           dX_k=k_data%mdH_k_W, &
