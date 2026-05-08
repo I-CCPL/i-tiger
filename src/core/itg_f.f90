@@ -29,7 +29,8 @@ CONTAINS
     IF (lBCD) THEN
       k_data%bO_bar = .TRUE.
       k_data%bA_bar = .TRUE.
-      k_data%bdH_bar = .TRUE.
+      ! k_data%bdH_bar = .TRUE.
+      k_data%bD_k_H = .TRUE.
     END IF
 
     IF (lNLO) THEN
@@ -96,6 +97,7 @@ CONTAINS
 
       IF (.NOT. ALLOCATED(BCD_surf)) THEN
         ALLOCATE (BCD_surf(3, 3, Ef_nE))
+        BCD_surf = 0.0_DP
       END IF
       CALL compute_BCD_surf(k_data%mO_bar, k_data%mA_bar, k_data%mdH_bar, BCD_surf)
 

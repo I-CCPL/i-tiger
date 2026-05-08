@@ -109,10 +109,11 @@ CONTAINS
   !
   SUBROUTINE write_BCD(fname, BCD)
     USE f_params, ONLY: Ef_min, Ef_max, Ef_step, Ef_nE
+    USE system, ONLY: V_cell_3D
     CHARACTER(LEN=*), INTENT(IN) :: fname
-    REAL(DP), INTENT(IN) :: BCD(Ef_nE, 3, 3)
+    REAL(DP), INTENT(IN) :: BCD(3, 3, Ef_nE)
     INTEGER :: io_unit, ief
-    REAL(DP)::Ef_val
+    REAL(DP)::Ef_val, fac
     IF (.NOT. ionode) RETURN
     CALL writing_info('BCD', fname)
     !
@@ -120,9 +121,10 @@ CONTAINS
     OPEN (unit=io_unit, file=fname)
     WRITE (io_unit, '("#", A)') 'Ef, xx, xy, xz, yx, yy, yz, zx, zy, zz'
 
+    fac = 1/V_cell_3D
     DO ief = 1, Ef_nE
       Ef_val = Ef_min + (ief - 1)*Ef_step
-      WRITE (io_unit, '(ES15.6, 9(1X, ES15.6))') Ef_val, BCD(ief, :, :)
+      WRITE (io_unit, '(ES15.6, 9(1X, ES15.6E3))') Ef_val, BCD(:, :, ief)*fac
     END DO
     CLOSE (io_unit)
   END SUBROUTINE write_BCD

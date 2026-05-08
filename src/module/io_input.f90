@@ -133,7 +133,7 @@ CONTAINS
       IF (Ef_step <= 0.0_DP) THEN
         CALL errore(1, 'read_itg', 'Ef_step > 0 required.')
       END IF
-      Ef_nE = CEILING((Ef_max - Ef_min)/Ef_step) + 1
+      Ef_nE = NINT((Ef_max - Ef_min)/Ef_step) + 1
     END IF
     ! CALL mp_bcast(dim)
     ! IF (dim < 1 .OR. dim > 3) THEN

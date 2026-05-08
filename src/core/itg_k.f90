@@ -23,6 +23,9 @@ MODULE itg_k
     LOGICAL::bd2H_bar
     COMPLEX(DP), ALLOCATABLE::md2H_bar(:, :, :, :)
     !< Hamiltonian second derivatives (Nw, Nw, 3, 3)
+    LOGICAL::bD_k_H
+    COMPLEX(DP), ALLOCATABLE::mD_k_H(:, :, :)
+    !< D_k_H = U^+ dU = -dH_k_H/dE (Nw, Nw, 3)
 
     !... Berry connection and its derivatives
     LOGICAL::bA_k_W
@@ -61,6 +64,7 @@ MODULE itg_k
 CONTAINS
   SUBROUTINE set_k_flag()
     USE itg_R, ONLY: R_data
+    IF (k_data%bD_k_H) k_data%bdH_bar = .TRUE.
     IF (k_data%bdH_bar) k_data%bdH_k_W = .TRUE.
     IF (k_data%bd2H_bar) k_data%bd2H_k_W = .TRUE.
 
@@ -85,6 +89,7 @@ CONTAINS
     IF (k_data%bdH_bar) ALLOCATE (k_data%mdH_bar(Nw, Nw, 3))
     IF (k_data%bd2H_k_W) ALLOCATE (k_data%md2H_k_W(Nw, Nw, 3, 3))
     IF (k_data%bd2H_bar) ALLOCATE (k_data%md2H_bar(Nw, Nw, 3, 3))
+    IF (k_data%bD_k_H) ALLOCATE (k_data%mD_k_H(Nw, Nw, 3))
 
     IF (k_data%bA_k_W) ALLOCATE (k_data%mA_k_W(Nw, Nw, 3))
     IF (k_data%bA_bar) ALLOCATE (k_data%mA_bar(Nw, Nw, 3))
@@ -104,6 +109,8 @@ CONTAINS
     IF (ALLOCATED(k_data%mdH_bar)) DEALLOCATE (k_data%mdH_bar)
     IF (ALLOCATED(k_data%md2H_k_W)) DEALLOCATE (k_data%md2H_k_W)
     IF (ALLOCATED(k_data%md2H_bar)) DEALLOCATE (k_data%md2H_bar)
+    IF (ALLOCATED(k_data%mD_k_H)) DEALLOCATE (k_data%mD_k_H)
+
     IF (ALLOCATED(k_data%mA_k_W)) DEALLOCATE (k_data%mA_k_W)
     IF (ALLOCATED(k_data%mA_bar)) DEALLOCATE (k_data%mA_bar)
     IF (ALLOCATED(k_data%mdA_k_W)) DEALLOCATE (k_data%mdA_k_W)
@@ -141,6 +148,7 @@ CONTAINS
 
     IF (k_data%bdH_bar) CALL t_kpt%rotate(k_data%mdH_k_W, k_data%mdH_bar)
     IF (k_data%bd2H_bar) CALL t_kpt%rotate(k_data%md2H_k_W, k_data%md2H_bar)
+    IF (k_data%bD_k_H) CALL compute_D_k_H(k_data%mdH_bar, t_kpt%eigval(:, t_iks), k_data%mD_k_H)
 
     IF (R_data%bA_R) THEN
       CALL fft_R2k_vec(R_vec, R_data%mA_R, &
@@ -158,4 +166,24 @@ CONTAINS
     CALL stop_clock('make_k')
   END SUBROUTINE make_k
   !
+  SUBROUTINE rotate_W2H(mat)
+    USE lin_mat, ONLY: mat_mul
+    COMPLEX(DP), INTENT(INOUT)::mat(Nw, Nw)
+    COMPLEX(DP)::tmp(Nw, Nw)
+    ! U^+ mat U
+    ! CALL mat_mul(t_kpt%eigvec, 'C', mat, 'N', tmp)
+    ! CALL mat_mul(tmp, 'N', t_kpt%eigvec, 'N', mat)
+    !< 동치 확인 필요.
+    CALL errore(1, 'rotate_W2H', 'Not implemented yet')
+  END SUBROUTINE rotate_W2H
+  SUBROUTINE rotate_H2W(mat)
+    USE lin_mat, ONLY: mat_mul
+    COMPLEX(DP), INTENT(INOUT)::mat(Nw, Nw)
+    COMPLEX(DP)::tmp(Nw, Nw)
+    ! U mat U^+
+    ! CALL mat_mul(t_kpt%eigvec, 'N', mat, 'N', tmp)
+    ! CALL mat_mul(tmp, 'N', t_kpt%eigvec, 'C', mat)
+    CALL mat_mul(t_kpt%eigvec, 'N', mat, 'C', tmp)
+    CALL mat_mul(t_kpt%eigvec, 'N', tmp, 'C', mat)
+  END SUBROUTINE rotate_H2W
 END MODULE itg_k

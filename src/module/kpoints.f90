@@ -18,7 +18,7 @@ MODULE kpoints
     REAL(DP), ALLOCATABLE::eigval(:, :)
     !< Eigenvalues (Nw, nktot)
     COMPLEX(DP), ALLOCATABLE::eigvec(:, :)
-    !< Eigenvectors (Nw, Nw, nktot)
+    !< Eigenvectors (Nw, Nw)
   CONTAINS
     PROCEDURE::divide_k => divide_k_idx
     PROCEDURE::global_k => global_k_idx

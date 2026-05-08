@@ -28,27 +28,33 @@ CONTAINS
     END DO
   END FUNCTION inv3x3
   !
-  SUBROUTINE mat_mul(ndim, C, A, Ac, B, Bc)
-    !< C_mn = \sum_k (A^Ac)_mk * (B^Bc)_kn \
+  SUBROUTINE mat_mul(A, Ac, B, Bc, C)
+    !< C = op(A) * op(B)
     !< (ndim, ndim) Square matrices
     USE kinds, ONLY: DP
-    INTEGER, INTENT(IN) :: ndim
-
-    COMPLEX(DP), INTENT(IN)  :: A(ndim, ndim)
+    USE constants, ONLY: cmplx_0, cmplx_1
+    COMPLEX(DP), INTENT(IN)  :: A(:, :)
     !< : left matrix
     CHARACTER(len=1), INTENT(IN) :: Ac
     !< : [left matrix]
     !< N : normal / T : transpose / C : complex conjugate
-    COMPLEX(DP), INTENT(IN)  :: B(ndim, ndim)
+    COMPLEX(DP), INTENT(IN)  :: B(:, :)
     !< : right matrix
     CHARACTER(len=1), INTENT(IN) :: Bc
     !< : [right matrix]
     !< N : normal / T : transpose / C : complex conjugate
-    COMPLEX(DP), INTENT(OUT) :: C(ndim, ndim)
+    COMPLEX(DP), INTENT(OUT) :: C(:, :)
     !< output matrix
-    COMPLEX(DP), PARAMETER::ALPHA = (1.0_DP, 0.0_DP)
-    COMPLEX(DP), PARAMETER::BETA = (0.0_DP, 0.0_DP)
+    INTEGER::m, n, k
 
-    CALL ZGEMM(Ac, Bc, ndim, ndim, ndim, ALPHA, A, ndim, B, ndim, BETA, C, ndim)
+    m = SIZE(C, 1)
+    n = SIZE(C, 2)
+    IF (Ac /= 'Z') THEN
+      k = SIZE(A, 1)
+    ELSE
+      k = SIZE(A, 2)
+    END IF
+
+    CALL ZGEMM(Ac, Bc, m, n, k, cmplx_1, A, SIZE(A, 1), B, SIZE(B, 1), cmplx_0, C, m)
   END SUBROUTINE mat_mul
 END MODULE lin_mat
