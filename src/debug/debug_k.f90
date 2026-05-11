@@ -187,4 +187,5 @@ SUBROUTINE debug_k()
     END DO
     CLOSE (io_unit)
   END IF
+CONTAINS
 END SUBROUTINE debug_k

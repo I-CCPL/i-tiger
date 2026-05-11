@@ -116,8 +116,6 @@ CONTAINS
       CALL fft_R2k_atomic(R_vec, X_R, X_k, dX_k, d2X_k)
     CASE ('wannier')
       CALL fft_R2k_wannier(R_vec, X_R, X_k, dX_k, d2X_k)
-    CASE default
-      CALL errore(1, 'fft_R2k', 'invalid convention')
     END SELECT
     CALL stop_clock('fft_R2k')
   END SUBROUTINE fft_R2k
@@ -245,8 +243,6 @@ CONTAINS
       CALL fft_R2k_vec_atomic(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     CASE ('wannier')
       CALL fft_R2k_vec_wannier(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
-    CASE default
-      CALL errore(1, 'fft_R2k', 'invalid convention')
     END SELECT
     CALL stop_clock('fft_R2k')
   END SUBROUTINE fft_R2k_vec

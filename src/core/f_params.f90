@@ -9,9 +9,8 @@ MODULE f_params
   CHARACTER(LEN=8)::FFT_conv = 'atomic'
   !< 'periodic' or 'atomic' or 'wannier' FFT convention for R2k
   INTEGER::convention = 0
-  !< 0 for standard convention, consider degenerate R0s (build_ws)
-  !< 1 for TB convention, consider degenerate R0s (build_ws)
-  !< 2 for Wannier convention, consider only the nearest R (build_R)
+  !< 0 for consider degenerate R0s and nearest R0+T (build_ws)
+  !< 2 for consider nearest R0+T+shift_vectors (build_R)
   CHARACTER(LEN=20)::formula = 'gauge'
   !< 'gauge' or 'projection'
 

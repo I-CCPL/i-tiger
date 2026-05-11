@@ -32,9 +32,7 @@ CONTAINS
     WRITE (stdout, '(2X, A)') 'Building data in R space...'
     !
     SELECT CASE (convention)
-    CASE (0)
-      CALL R_vec%build_ws(w90data)
-    CASE (1)
+    CASE (0, 1)
       CALL R_vec%build_ws(w90data)
     CASE (2)
       CALL R_vec%build_R(w90data)
@@ -63,9 +61,7 @@ CONTAINS
     USE f_params, ONLY: convention
     !
     SELECT CASE (convention)
-    CASE (0)
-      CALL R_vec%bcast_ws()
-    CASE (1)
+    CASE (0, 1)
       CALL R_vec%bcast_ws()
     CASE (2)
       CALL R_vec%bcast_R()
