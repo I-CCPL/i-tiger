@@ -180,7 +180,7 @@ CONTAINS
         END DO
       END DO
       !
-      !... Force Hemiticity
+      !... Enforce Hemiticity
       DO jw = 1, Nw
         DO iw = 1, Nw
           self%Hq(iw, jw, ikpt) = (Hq(iw, jw, ikpt) + CONJG(Hq(jw, iw, ikpt)))/2

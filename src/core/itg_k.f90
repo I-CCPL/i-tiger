@@ -23,9 +23,9 @@ MODULE itg_k
     LOGICAL::bd2H_bar
     COMPLEX(DP), ALLOCATABLE::md2H_bar(:, :, :, :)
     !< Hamiltonian second derivatives (Nw, Nw, 3, 3)
-    LOGICAL::bD_k_H
-    COMPLEX(DP), ALLOCATABLE::mD_k_H(:, :, :)
-    !< D_k_H = U^+ dU = -dH_k_H/dE (Nw, Nw, 3)
+    LOGICAL::bD_bar
+    COMPLEX(DP), ALLOCATABLE::mD_bar(:, :, :)
+    !< D_bar = U^+ dU = -dH_k_H/dE (Nw, Nw, 3)
 
     !... Berry connection and its derivatives
     LOGICAL::bA_k_W
@@ -64,7 +64,7 @@ MODULE itg_k
 CONTAINS
   SUBROUTINE set_k_flag()
     USE itg_R, ONLY: R_data
-    IF (k_data%bD_k_H) k_data%bdH_bar = .TRUE.
+    IF (k_data%bD_bar) k_data%bdH_bar = .TRUE.
     IF (k_data%bdH_bar) k_data%bdH_k_W = .TRUE.
     IF (k_data%bd2H_bar) k_data%bd2H_k_W = .TRUE.
 
@@ -89,7 +89,7 @@ CONTAINS
     IF (k_data%bdH_bar) ALLOCATE (k_data%mdH_bar(Nw, Nw, 3))
     IF (k_data%bd2H_k_W) ALLOCATE (k_data%md2H_k_W(Nw, Nw, 3, 3))
     IF (k_data%bd2H_bar) ALLOCATE (k_data%md2H_bar(Nw, Nw, 3, 3))
-    IF (k_data%bD_k_H) ALLOCATE (k_data%mD_k_H(Nw, Nw, 3))
+    IF (k_data%bD_bar) ALLOCATE (k_data%mD_bar(Nw, Nw, 3))
 
     IF (k_data%bA_k_W) ALLOCATE (k_data%mA_k_W(Nw, Nw, 3))
     IF (k_data%bA_bar) ALLOCATE (k_data%mA_bar(Nw, Nw, 3))
@@ -103,13 +103,14 @@ CONTAINS
   !
   SUBROUTINE clear_k()
     IF (ALLOCATED(t_kpt%H_k)) DEALLOCATE (t_kpt%H_k)
-    IF (ALLOCATED(t_kpt%eigval)) DEALLOCATE (t_kpt%eigval)
+    ! Used in write_f
+    ! IF (ALLOCATED(t_kpt%eigval)) DEALLOCATE (t_kpt%eigval)
     IF (ALLOCATED(t_kpt%eigvec)) DEALLOCATE (t_kpt%eigvec)
     IF (ALLOCATED(k_data%mdH_k_W)) DEALLOCATE (k_data%mdH_k_W)
     IF (ALLOCATED(k_data%mdH_bar)) DEALLOCATE (k_data%mdH_bar)
     IF (ALLOCATED(k_data%md2H_k_W)) DEALLOCATE (k_data%md2H_k_W)
     IF (ALLOCATED(k_data%md2H_bar)) DEALLOCATE (k_data%md2H_bar)
-    IF (ALLOCATED(k_data%mD_k_H)) DEALLOCATE (k_data%mD_k_H)
+    IF (ALLOCATED(k_data%mD_bar)) DEALLOCATE (k_data%mD_bar)
 
     IF (ALLOCATED(k_data%mA_k_W)) DEALLOCATE (k_data%mA_k_W)
     IF (ALLOCATED(k_data%mA_bar)) DEALLOCATE (k_data%mA_bar)
@@ -128,7 +129,7 @@ CONTAINS
     USE itg_R, ONLY: R_data
     USE lin_eig_H, ONLY: eig_H
     USE kpoints, ONLY: t_iks, t_kpt
-    USE NLO, ONLY: NLO_main
+    USE NLO_g, ONLY: NLO_g_main
     INTEGER::iw
     CALL start_clock('make_k')
 
@@ -148,7 +149,7 @@ CONTAINS
 
     IF (k_data%bdH_bar) CALL t_kpt%rotate(k_data%mdH_k_W, k_data%mdH_bar)
     IF (k_data%bd2H_bar) CALL t_kpt%rotate(k_data%md2H_k_W, k_data%md2H_bar)
-    IF (k_data%bD_k_H) CALL compute_D_k_H(k_data%mdH_bar, t_kpt%eigval(:, t_iks), k_data%mD_k_H)
+    IF (k_data%bD_bar) CALL compute_D_bar(k_data%mdH_bar, t_kpt%eigval(:, t_iks), k_data%mD_bar)
 
     IF (R_data%bA_R) THEN
       CALL fft_R2k_vec(R_vec, R_data%mA_R, &

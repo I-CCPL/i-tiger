@@ -1,4 +1,4 @@
-SUBROUTINE OAM_mod(eigval, v_k, L_k)
+SUBROUTINE OAM_g_mod(eigval, v_k, L_k)
   !< OAM [hbar]
   USE kinds, ONLY: DP
   USE constants, ONLY: cmplx_0, cmplx_i, m_e
@@ -31,9 +31,9 @@ SUBROUTINE OAM_mod(eigval, v_k, L_k)
       END DO
     END DO
   END DO
-END SUBROUTINE OAM_mod
+END SUBROUTINE OAM_g_mod
 
-SUBROUTINE OAM_mod_diag(eigval, v_k, L_k)
+SUBROUTINE OAM_g_mod_diag(eigval, v_k, L_k)
   !< OAM [hbar] for diagonal elements
   USE kinds, ONLY: DP
   USE constants, ONLY: cmplx_0, cmplx_i, m_e
@@ -62,4 +62,4 @@ SUBROUTINE OAM_mod_diag(eigval, v_k, L_k)
       END DO
     END DO
   END DO
-END SUBROUTINE OAM_mod_diag
+END SUBROUTINE OAM_g_mod_diag

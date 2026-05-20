@@ -1,4 +1,4 @@
-MODULE NLO
+MODULE NLO_g
   ! Nonlinear optics
   ! Ref. PRB 61, 5337 (2000)
   USE kinds, ONLY: DP
@@ -24,7 +24,7 @@ MODULE NLO
 
   INTEGER::is_mn, is_nm, ie_mn, ie_nm
 CONTAINS
-  SUBROUTINE NLO_init(t_kpt)
+  SUBROUTINE NLO_g_init(t_kpt)
     USE constants, ONLY: cmplx_0, pi, cmplx_i, hbar_eVfs, &
                          e_chg_au, e_chg_si, FS2SEC, epsilon_0
     USE f_params, ONLY: NLO_Emin, NLO_dE
@@ -85,16 +85,16 @@ CONTAINS
     fac_JDOS = fac_JDOS*hbar_eVfs
     fac_shift = fac_shift*hbar_eVfs
     fac_injection = fac_injection*hbar_eVfs
-  END SUBROUTINE NLO_init
-  SUBROUTINE NLO_clear()
+  END SUBROUTINE NLO_g_init
+  SUBROUTINE NLO_g_clear()
     IF (ALLOCATED(NLO_hw)) DEALLOCATE (NLO_hw)
     IF (ALLOCATED(epsilon_w)) DEALLOCATE (epsilon_w)
     IF (ALLOCATED(JDOS_w)) DEALLOCATE (JDOS_w)
     IF (ALLOCATED(shift_w)) DEALLOCATE (shift_w)
     IF (ALLOCATED(injection_w)) DEALLOCATE (injection_w)
 
-  END SUBROUTINE NLO_clear
-  SUBROUTINE NLO_write(t_kpt)
+  END SUBROUTINE NLO_g_clear
+  SUBROUTINE NLO_g_write(t_kpt)
     USE mp_base, ONLY: mp_sum
     USE io_global, ONLY: ionode, get_free_unit
     USE io_output, ONLY: writing_info
@@ -172,9 +172,9 @@ CONTAINS
 0947 FORMAT("# ", A)
 0948 FORMAT("# hw (eV)", 6(",", A16))
 0949 FORMAT(F13.6, 6(1X, ES16.8E3))
-  END SUBROUTINE NLO_write
+  END SUBROUTINE NLO_g_write
   !
-  SUBROUTINE NLO_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H)
+  SUBROUTINE NLO_g_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H)
     USE constants, ONLY: hbar_eVfs, cmplx_0, cmplx_i
     USE f_params, ONLY: dE_thr, dE_eta, &
                         NLO_Emin, NLO_Emax, NLO_dE, NLO_nE, NLO_eta, NLO_w_thr
@@ -193,7 +193,7 @@ CONTAINS
     COMPLEX(DP)::psum, dr_mn, da_mn
     COMPLEX(DP)::gen_r(Nw, Nw, 3), gen_dr_mn(3, 3)
     REAL(DP), ALLOCATABLE::delta_E(:, :, :)
-    CALL start_clock('NLO_main')
+    CALL start_clock('NLO_g_main')
     inv_hbar = 1.0_DP/hbar_eVfs
     ALLOCATE (delta_E(NLO_nE, Nw, Nw))
     DO n = 1, Nw
@@ -279,8 +279,8 @@ CONTAINS
                                del_H_nm, gen_r(n, m, :), gen_r(m, n, :))
       END DO
     END DO
-    CALL stop_clock('NLO_main')
-  END SUBROUTINE NLO_main
+    CALL stop_clock('NLO_g_main')
+  END SUBROUTINE NLO_g_main
   !
   SUBROUTINE dielectric(epsilon_w, delta_Enm, fmn, r_nm, r_mn)
     COMPLEX(DP), INTENT(INOUT) :: epsilon_w(6, NLO_nE)
@@ -373,4 +373,4 @@ CONTAINS
       occ_T0 = 0.0_DP
     END IF
   END FUNCTION occ_T0
-END MODULE NLO
+END MODULE NLO_g

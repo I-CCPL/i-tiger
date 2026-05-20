@@ -29,6 +29,7 @@ PROGRAM main
   !... Setup k space data and compute final results
   WRITE (stdout, '(2X, A)') 'Building data in k space...'
   CALL t_kpt%divide_k()
+  WRITE (stdout, '(2X, A, I0, A)') '- ', t_kpt%nkpt, ' points in root'
   CALL allocate_k()
   CALL allocate_f()
   DO t_iks = 1, t_kpt%nkpt
@@ -40,11 +41,12 @@ PROGRAM main
   CALL print_k_info(t_iks, t_kpt%nkpt)
   CALL write_sep_line()
 
-  !... Clean up and write output
+  !... Clean up
   CALL clear_R()
-  CALL write_f()
-  !
   CALL clear_k()
+
+  !... Write results
+  CALL write_f()
   CALL clear_f()
   CALL env_end()
 END PROGRAM main

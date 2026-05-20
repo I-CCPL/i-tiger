@@ -3,8 +3,8 @@
 ./build/f_params.o : ./build/kinds.o 
 ./build/io_output.o : ./build/f_params.o ./build/kpoints.o ./build/system.o ./build/io_global.o ./build/kinds.o 
 ./build/itg_R.o : ./build/mp_base.o ./build/io_global.o ./build/fft.o ./build/constants.o ./build/f_params.o ./build/R_vector.o ./build/wannier90.o ./build/system.o ./build/kinds.o 
-./build/itg_f.o : ./build/io_output.o ./build/mp_base.o ./build/io_global.o ./build/NLO.o ./build/system.o ./build/kpoints.o ./build/itg_R.o ./build/itg_k.o ./build/f_params.o ./build/kinds.o 
-./build/itg_k.o : ./build/lin_mat.o ./build/NLO.o ./build/lin_eig_H.o ./build/f_params.o ./build/fft.o ./build/constants.o ./build/kpoints.o ./build/itg_R.o ./build/system.o ./build/kinds.o 
+./build/itg_f.o : ./build/io_output.o ./build/mp_base.o ./build/io_global.o ./build/NLO_g.o ./build/system.o ./build/kpoints.o ./build/itg_R.o ./build/itg_k.o ./build/f_params.o ./build/kinds.o 
+./build/itg_k.o : ./build/lin_mat.o ./build/NLO_g.o ./build/lin_eig_H.o ./build/f_params.o ./build/fft.o ./build/constants.o ./build/kpoints.o ./build/itg_R.o ./build/system.o ./build/kinds.o 
 ./build/itg_q.o : ./build/itg_R.o ./build/write_matrix.o ./build/io_global.o ./build/wannier90.o 
 ./build/main.o : ./build/itg_f.o ./build/itg_k.o ./build/itg_R.o ./build/itg_q.o ./build/fft.o ./build/kpoints.o ./build/io_input.o ./build/io_global.o ./build/env.o 
 ./build/check_Hermicity.o : ./build/system.o ./build/io_global.o ./build/kinds.o 
@@ -17,11 +17,12 @@
 ./build/w90_chk_dum.o : ./build/system.o ./build/dump_vec_io.o 
 ./build/warning.o : ./build/io_global.o 
 ./build/write_matrix.o : ./build/kpoints.o ./build/system.o ./build/kinds.o 
-./build/NLO.o : ./build/delta_funct.o ./build/io_output.o ./build/io_global.o ./build/mp_base.o ./build/kpoints.o ./build/system.o ./build/constants.o ./build/f_params.o ./build/kinds.o 
-./build/OAM.o : ./build/system.o ./build/f_params.o ./build/constants.o ./build/kinds.o 
+./build/Berry_g.o : ./build/f_params.o ./build/system.o ./build/constants.o ./build/kinds.o 
+./build/NLO_g.o : ./build/delta_funct.o ./build/io_output.o ./build/io_global.o ./build/mp_base.o ./build/kpoints.o ./build/system.o ./build/constants.o ./build/f_params.o ./build/kinds.o 
+./build/OAM_g.o : ./build/system.o ./build/f_params.o ./build/constants.o ./build/kinds.o 
 ./build/velocity.o : ./build/f_params.o ./build/fft.o ./build/kpoints.o ./build/R_vector.o ./build/system.o ./build/constants.o ./build/kinds.o 
-./build/BCD.o : ./build/delta_funct.o ./build/system.o ./build/kpoints.o ./build/f_params.o ./build/kinds.o 
-./build/Berry.o : ./build/kpoints.o ./build/itg_k.o ./build/f_params.o ./build/system.o ./build/constants.o ./build/kinds.o 
+./build/BCD_p.o : ./build/delta_funct.o ./build/system.o ./build/kpoints.o ./build/f_params.o ./build/kinds.o 
+./build/Berry_p.o : ./build/itg_k.o ./build/kpoints.o ./build/system.o ./build/f_params.o ./build/constants.o ./build/kinds.o 
 ./build/R_vector.o : ./build/wannier90.o ./build/constants.o ./build/mp_base.o ./build/algo_unique.o ./build/system.o ./build/io_global.o ./build/kinds.o 
 ./build/delta_funct.o : ./build/constants.o ./build/kinds.o 
 ./build/fft.o : ./build/kpoints.o ./build/R_vector.o ./build/wannier90.o ./build/system.o ./build/f_params.o ./build/io_global.o ./build/constants.o ./build/kinds.o 

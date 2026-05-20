@@ -1,22 +1,22 @@
-SUBROUTINE compute_D_k_H(dH_bar, eigval, D_k_H)
+SUBROUTINE compute_D_bar(dH_bar, eigval, D_bar)
   USE kinds, ONLY: DP
   USE f_params, ONLY: dE_thr
   USE system, ONLY: Nw
   IMPLICIT NONE
   COMPLEX(DP), INTENT(IN)::dH_bar(Nw, Nw, 3)
   REAL(DP), INTENT(IN)::eigval(Nw)
-  COMPLEX(DP), INTENT(OUT)::D_k_H(Nw, Nw, 3)
+  COMPLEX(DP), INTENT(OUT)::D_bar(Nw, Nw, 3)
   INTEGER::m, n
   DO m = 1, Nw
     DO n = 1, Nw
       IF (ABS(eigval(m) - eigval(n)) <= dE_thr) THEN
-        D_k_H(m, n, :) = 0.0_DP
+        D_bar(m, n, :) = 0.0_DP
       ELSE
-        D_k_H(m, n, :) = dH_bar(m, n, :)/(eigval(n) - eigval(m))
+        D_bar(m, n, :) = dH_bar(m, n, :)/(eigval(n) - eigval(m))
       END IF
     END DO
   END DO
-END SUBROUTINE compute_D_k_H
+END SUBROUTINE compute_D_bar
 
 SUBROUTINE compute_occ_mat(occ, f_list, g_list)
   USE kinds, ONLY: DP
@@ -71,8 +71,8 @@ SUBROUTINE compute_JJ_list(occ, JJm, JJp)
   DO m = 1, Nw
     DO n = 1, Nw
       IF (occ(m) < 0.5_DP .AND. occ(n) > 0.5_DP) THEN
-        JJm(n, m, :) = cmplx_i*k_data%mD_k_H(n, m, :)
-        JJp(m, n, :) = cmplx_i*k_data%mD_k_H(m, n, :)
+        JJm(n, m, :) = cmplx_i*k_data%mD_bar(n, m, :)
+        JJp(m, n, :) = cmplx_i*k_data%mD_bar(m, n, :)
       ELSE
         JJm(n, m, :) = cmplx_0
         JJp(m, n, :) = cmplx_0
