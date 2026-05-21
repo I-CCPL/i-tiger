@@ -12,7 +12,7 @@ MODULE NLO_g
   !> shift current (sigma)
   REAL(DP), ALLOCATABLE::shift_w(:, :, :)
   !> injection current (eta)
-  REAL(DP), ALLOCATABLE::injection_w(:, :, :)
+  COMPLEX(DP), ALLOCATABLE::injection_w(:, :, :)
   !... factors
   COMPLEX(DP)::fac_dielec
   REAL(DP)::fac_JDOS
@@ -161,7 +161,7 @@ CONTAINS
       OPEN (unit=io_unit, file=fname_a)
       CALL writing_info('injection current', fname_a)
       WRITE (io_unit, 0947) 'injection current units: [microA/V^2]'
-      WRITE (io_unit, 0948) 'xy', 'yz', 'zx'
+      WRITE (io_unit, 0948) 'xy_re', 'xy_im', 'yz_re', 'yz_im', 'zx_re', 'zx_im'
 
       DO iom = 1, NLO_nE
         WRITE (io_unit, 0949) NLO_hw(iom), &
@@ -233,6 +233,7 @@ CONTAINS
 
         del_bar_mn = (dH_bar(m, m, :) - dH_bar(n, n, :))*inv_hbar
         del_H_nm = v_k_H(n, n, :) - v_k_H(m, m, :)
+        del_H_nm = v_bar(n, n, :) - v_bar(m, m, :)
         DO a = 1, 3
           DO b = 1, 3
             psum = cmplx_0
@@ -341,20 +342,20 @@ CONTAINS
   END SUBROUTINE shift_current
   !
   SUBROUTINE injection_current(injection_w, delta_Enm, fmn, del_H_nm, r_nm, r_mn)
-    REAL(DP), INTENT(INOUT) :: injection_w(3, 3, NLO_nE)
+    COMPLEX(DP), INTENT(INOUT) :: injection_w(3, 3, NLO_nE)
     REAL(DP), INTENT(IN) :: delta_Enm(:), fmn
     COMPLEX(DP), INTENT(IN) :: del_H_nm(3), r_nm(3), r_mn(3)
     INTEGER :: a, b, c, bc, iom
     COMPLEX(DP)::pref
-    REAL(DP) :: kernel_mn(3, 3)
+    COMPLEX(DP) :: kernel_mn(3, 3)
     !
     pref = fmn*fac_injection
     DO a = 1, 3
       DO bc = 1, 3
         b = bc2b(bc*2)
         c = bc2c(bc*2)
-        kernel_mn(a, bc) = DBLE(pref*del_H_nm(a) &
-                                *(r_nm(b)*r_mn(c) - r_nm(c)*r_mn(b)))
+        kernel_mn(a, bc) = pref*del_H_nm(a) &
+                           *(r_nm(c)*r_mn(b) - r_nm(b)*r_mn(c))
       END DO
     END DO
 
