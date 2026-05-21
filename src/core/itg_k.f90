@@ -124,7 +124,7 @@ CONTAINS
   !
   SUBROUTINE make_k()
     USE constants, ONLY: cmplx_i
-    USE fft_base, ONLY: fft_R2k_simple, fft_R2k_vec
+    USE fft_base, ONLY: fft_R2k, fft_R2k_vec
     USE f_params, ONLY: lOAM, lBerry, lBCD, lNLO, Ef_nE
     USE itg_R, ONLY: R_data
     USE lin_eig_H, ONLY: eig_H
@@ -138,10 +138,10 @@ CONTAINS
     !...            (F2008 12.5.2.12 / F2018 15.5.2.12 / F2023 15.5.2.13)
     !...            (No rule before F2008, errore would occur.)
 
-    CALL fft_R2k_simple(R_vec, R_data%mH_R, &
-                        X_k=t_kpt%H_k, &
-                        dX_k=k_data%mdH_k_W, &
-                        d2X_k=k_data%md2H_k_W)
+    CALL fft_R2k(R_vec, R_data%mH_R, &
+                 X_k=t_kpt%H_k, &
+                 dX_k=k_data%mdH_k_W, &
+                 d2X_k=k_data%md2H_k_W)
     DO iw = 1, Nw
       t_kpt%H_k(iw, iw) = REAL(t_kpt%H_k(iw, iw), DP)
     END DO

@@ -12,7 +12,6 @@ MODULE fft_base
   REAL(DP), ALLOCATABLE::shift_cart(:, :, :)
   REAL(DP), ALLOCATABLE::shift_red(:, :, :)
   PUBLIC::fft_init, fft_q2R, fft_R2k, fft_R2k_vec
-  PUBLIC::fft_R2k_simple
 CONTAINS
   SUBROUTINE fft_init(R_vec, A_R)
     USE system, ONLY: cart2red_real
