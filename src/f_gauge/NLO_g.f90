@@ -92,7 +92,6 @@ CONTAINS
     IF (ALLOCATED(JDOS_w)) DEALLOCATE (JDOS_w)
     IF (ALLOCATED(shift_w)) DEALLOCATE (shift_w)
     IF (ALLOCATED(injection_w)) DEALLOCATE (injection_w)
-
   END SUBROUTINE NLO_g_clear
   SUBROUTINE NLO_g_write(t_kpt)
     USE mp_base, ONLY: mp_sum

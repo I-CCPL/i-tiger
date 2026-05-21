@@ -7,7 +7,7 @@ MODULE f_params
   !> User input parameters
   !... itg
   CHARACTER(LEN=8)::FFT_conv = 'simple'
-  !< 'simple' 'TB' or 'wannier' FFT convention for R2k
+  !< 'simple' 'TB' or 'Test' FFT convention for R2k
   INTEGER::convention = 0
   !< 0 for consider degenerate R0s and nearest R0+T (build_ws)
   !< 2 for consider nearest R0+T+shift_vectors (build_R)

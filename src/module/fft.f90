@@ -113,8 +113,8 @@ CONTAINS
       CALL fft_R2k_simple(R_vec, X_R, X_k, dX_k, d2X_k)
     CASE ('TB')
       CALL fft_R2k_TB(R_vec, X_R, X_k, dX_k, d2X_k)
-    CASE ('wannier')
-      CALL fft_R2k_wannier(R_vec, X_R, X_k, dX_k, d2X_k)
+    CASE ('Test')
+      CALL fft_R2k_Test(R_vec, X_R, X_k, dX_k, d2X_k)
     END SELECT
     CALL stop_clock('fft_R2k')
   END SUBROUTINE fft_R2k
@@ -200,7 +200,7 @@ CONTAINS
     END DO
   END SUBROUTINE fft_R2k_TB
   ! ================================================== !
-  SUBROUTINE fft_R2k_wannier(R_vec, X_R, X_k, dX_k, d2X_k)
+  SUBROUTINE fft_R2k_Test(R_vec, X_R, X_k, dX_k, d2X_k)
     USE kpoints, ONLY: t_iks
     TYPE(R_vec_type), INTENT(IN) :: R_vec
     COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt)
@@ -223,7 +223,7 @@ CONTAINS
         END DO
       END DO
     END DO
-  END SUBROUTINE fft_R2k_wannier
+  END SUBROUTINE fft_R2k_Test
   ! ================================================== !
   SUBROUTINE fft_R2k_vec(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     !< X_R FFT to X_k and k-derivatives dX_k, d2X_k, curl_X_k, curl_dX_k
@@ -240,8 +240,8 @@ CONTAINS
       CALL fft_R2k_vec_simple(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     CASE ('TB')
       CALL fft_R2k_vec_TB(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
-    CASE ('wannier')
-      CALL fft_R2k_vec_wannier(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+    CASE ('Test')
+      CALL fft_R2k_vec_Test(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     END SELECT
     CALL stop_clock('fft_R2k')
   END SUBROUTINE fft_R2k_vec
@@ -361,7 +361,7 @@ CONTAINS
     END DO
   END SUBROUTINE fft_R2k_vec_TB
   ! ================================================== !
-  SUBROUTINE fft_R2k_vec_wannier(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+  SUBROUTINE fft_R2k_vec_Test(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     TYPE(R_vec_type), INTENT(IN) :: R_vec
     COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
@@ -386,6 +386,6 @@ CONTAINS
         END DO
       END DO
     END DO
-  END SUBROUTINE fft_R2k_vec_wannier
+  END SUBROUTINE fft_R2k_vec_Test
   ! ================================================== !
 END MODULE fft_base

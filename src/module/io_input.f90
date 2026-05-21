@@ -72,7 +72,7 @@ CONTAINS
     CALL mp_bcast(formula)
     IF (TRIM(FFT_conv) /= 'simple' &
         .AND. TRIM(FFT_conv) /= 'TB' &
-        .AND. TRIM(FFT_conv) /= 'wannier') THEN
+        .AND. TRIM(FFT_conv) /= 'Test') THEN
       CALL errore(1, 'read_itg', 'Unknown FFT convention: "'//TRIM(FFT_conv)//'"')
     END IF
     IF (TRIM(formula) /= 'gauge' &
