@@ -126,6 +126,7 @@ CONTAINS
     REAL(DP)::dr_nmR0(3) !< R0 + r_m - r_n
     LOGICAL, ALLOCATABLE::bRvec_selected(:)
     !< whether Rvec is selected for given R0
+    CALL errore(1, 'build_Rvecs', 'Deprecated subroutine. Use build_ws instead.')
 
     self%nR0pt = w90data%kpts%nkpt
 
