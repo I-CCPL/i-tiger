@@ -73,7 +73,7 @@ CONTAINS
 
     !... injection current
     !> [e/fs * 1/V^2 * 1/fs/Ang^3]
-    !> kernel is [fs*Ang^2] units, so overall [1/fs * 1/V^2]
+    !> kernel is [Ang^3] units, so overall [e/fs^2 * 1/V^2]
     fac_injection = pi*(e_chg_au**3)/((hbar_eVfs**2)*V_cell_3D)/2 &
                     *t_kpt%wk
     !> [e/fs] to [microA] units
@@ -159,7 +159,7 @@ CONTAINS
       fname_a = 'itg.injection_'//a_lab(ia)//'.dat'
       OPEN (unit=io_unit, file=fname_a)
       CALL writing_info('injection current', fname_a)
-      WRITE (io_unit, 0947) 'injection current units: [microA/V^2]'
+      WRITE (io_unit, 0947) 'injection current units: [microA/V^2/fs]'
       WRITE (io_unit, 0948) 'xy_re', 'xy_im', 'yz_re', 'yz_im', 'zx_re', 'zx_im'
 
       DO iom = 1, NLO_nE
@@ -173,7 +173,7 @@ CONTAINS
 0949 FORMAT(F13.6, 6(1X, ES16.8E3))
   END SUBROUTINE NLO_g_write
   !
-  SUBROUTINE NLO_g_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H)
+  SUBROUTINE NLO_g_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H, D_bar)
     USE constants, ONLY: hbar_eVfs, cmplx_0, cmplx_i
     USE f_params, ONLY: dE_thr, dE_eta, &
                         NLO_Emin, NLO_Emax, NLO_dE, NLO_nE, NLO_eta, NLO_w_thr
@@ -186,9 +186,10 @@ CONTAINS
     COMPLEX(DP), INTENT(IN) :: A_bar(Nw, Nw, 3)
     COMPLEX(DP), INTENT(IN) :: dA_bar(Nw, Nw, 3, 3)
     COMPLEX(DP), INTENT(IN) :: v_k_H(Nw, Nw, 3)
+    COMPLEX(DP), INTENT(IN):: D_bar(Nw, Nw, 3)
     INTEGER::n, m, p, a, b, iom
     REAL(DP)::inv_hbar, eig_n, eig_m, dE_nm, w_inv(Nw, Nw), occ(Nw), fmn, E_inv(Nw, Nw)
-    COMPLEX(DP)::v_bar(Nw, Nw, 3), del_H_nm(3), del_bar_mn(3), dv_bar
+    COMPLEX(DP)::v_bar(Nw, Nw, 3), del_v_nm(3), del_bar_mn(3), dv_bar
     COMPLEX(DP)::psum, dr_mn, da_mn
     COMPLEX(DP)::gen_r(Nw, Nw, 3), gen_dr_mn(3, 3)
     REAL(DP), ALLOCATABLE::delta_E(:, :, :)
@@ -215,7 +216,8 @@ CONTAINS
 
         v_bar(n, m, :) = dH_bar(n, m, :)*inv_hbar
         ! PRB 97, 245143 (2018) Eq. (22)
-        gen_r(n, m, :) = -cmplx_i*v_bar(n, m, :)*E_inv(n, m) + A_bar(n, m, :)
+        ! r = A - i*v/w (or) A + iD
+        gen_r(n, m, :) = A_bar(n, m, :) + cmplx_i*D_bar(n, m, :)
       END DO
     END DO
 
@@ -231,8 +233,8 @@ CONTAINS
         ! IF (ABS(dE_nm) <= dE_thr) CYCLE
 
         del_bar_mn = (dH_bar(m, m, :) - dH_bar(n, n, :))*inv_hbar
-        del_H_nm = v_k_H(n, n, :) - v_k_H(m, m, :)
-        del_H_nm = v_bar(n, n, :) - v_bar(m, m, :)
+        del_v_nm = v_k_H(n, n, :) - v_k_H(m, m, :)
+        ! del_H_nm = v_bar(n, n, :) - v_bar(m, m, :)
         DO a = 1, 3
           DO b = 1, 3
             psum = cmplx_0
@@ -276,7 +278,7 @@ CONTAINS
         CALL Joint_DOS(JDOS_w, delta_E(:, n, m), fmn)
         CALL shift_current(shift_w, delta_E(:, n, m), delta_E(:, m, n), fmn, gen_r(n, m, :), gen_dr_mn)
         CALL injection_current(injection_w, delta_E(:, n, m), fmn, &
-                               del_H_nm, gen_r(n, m, :), gen_r(m, n, :))
+                               del_v_nm, gen_r(n, m, :), gen_r(m, n, :))
       END DO
     END DO
     CALL stop_clock('NLO_g_main')
@@ -340,10 +342,10 @@ CONTAINS
     END DO
   END SUBROUTINE shift_current
   !
-  SUBROUTINE injection_current(injection_w, delta_Enm, fmn, del_H_nm, r_nm, r_mn)
+  SUBROUTINE injection_current(injection_w, delta_Enm, fmn, del_v_nm, r_nm, r_mn)
     COMPLEX(DP), INTENT(INOUT) :: injection_w(3, 3, NLO_nE)
     REAL(DP), INTENT(IN) :: delta_Enm(:), fmn
-    COMPLEX(DP), INTENT(IN) :: del_H_nm(3), r_nm(3), r_mn(3)
+    COMPLEX(DP), INTENT(IN) :: del_v_nm(3), r_nm(3), r_mn(3)
     INTEGER :: a, b, c, bc, iom
     COMPLEX(DP)::pref
     COMPLEX(DP) :: kernel_mn(3, 3)
@@ -353,7 +355,7 @@ CONTAINS
       DO bc = 1, 3
         b = bc2b(bc*2)
         c = bc2c(bc*2)
-        kernel_mn(a, bc) = pref*del_H_nm(a) &
+        kernel_mn(a, bc) = pref*del_v_nm(a) &
                            *(r_nm(c)*r_mn(b) - r_nm(b)*r_mn(c))
       END DO
     END DO

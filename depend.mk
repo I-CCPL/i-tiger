@@ -20,7 +20,6 @@
 ./build/Berry_g.o : ./build/f_params.o ./build/system.o ./build/constants.o ./build/kinds.o 
 ./build/NLO_g.o : ./build/delta_funct.o ./build/io_output.o ./build/io_global.o ./build/mp_base.o ./build/kpoints.o ./build/system.o ./build/constants.o ./build/f_params.o ./build/kinds.o 
 ./build/OAM_g.o : ./build/system.o ./build/f_params.o ./build/constants.o ./build/kinds.o 
-./build/velocity.o : ./build/f_params.o ./build/fft.o ./build/kpoints.o ./build/R_vector.o ./build/system.o ./build/constants.o ./build/kinds.o 
 ./build/BCD_p.o : ./build/delta_funct.o ./build/system.o ./build/kpoints.o ./build/f_params.o ./build/kinds.o 
 ./build/Berry_p.o : ./build/itg_k.o ./build/kpoints.o ./build/system.o ./build/f_params.o ./build/constants.o ./build/kinds.o 
 ./build/R_vector.o : ./build/wannier90.o ./build/constants.o ./build/mp_base.o ./build/algo_unique.o ./build/system.o ./build/io_global.o ./build/kinds.o 

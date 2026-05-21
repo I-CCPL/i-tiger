@@ -18,6 +18,26 @@ SUBROUTINE compute_D_bar(dH_bar, eigval, D_bar)
   END DO
 END SUBROUTINE compute_D_bar
 
+SUBROUTINE compute_v_k_H(A_bar, dH_bar, v_k_H)
+  USE kinds, ONLY: DP
+  USE constants, ONLY: cmplx_i, hbar_eVfs
+  USE system, ONLY: Nw
+  USE kpoints, ONLY: t_kpt, t_iks
+  IMPLICIT NONE
+  COMPLEX(DP), INTENT(IN)::A_bar(Nw, Nw, 3)
+  COMPLEX(DP), INTENT(IN)::dH_bar(Nw, Nw, 3)
+  COMPLEX(DP), INTENT(OUT)::v_k_H(Nw, Nw, 3)
+  INTEGER::iw, jw
+  !
+  DO jw = 1, Nw
+    DO iw = 1, Nw
+      v_k_H(iw, jw, :) = (dH_bar(iw, jw, :) + cmplx_i*A_bar(iw, jw, :) &
+                          *(t_kpt%eigval(iw, t_iks) - t_kpt%eigval(jw, t_iks))) &
+                         /hbar_eVfs
+    END DO
+  END DO
+END SUBROUTINE compute_v_k_H
+
 SUBROUTINE compute_occ_mat(occ, f_list, g_list)
   USE kinds, ONLY: DP
   USE constants, ONLY: cmplx_0, cmplx_1

@@ -49,6 +49,7 @@ CONTAINS
       k_data%bd2H_bar = .TRUE.
       k_data%bA_bar = .TRUE.
       k_data%bdA_bar = .TRUE.
+      k_data%bD_bar = .TRUE.
     END IF
   END SUBROUTINE set_f_flag
   !
@@ -91,7 +92,7 @@ CONTAINS
     CALL start_clock('make_f')
 
     IF (R_data%bA_R) THEN
-      ! CALL velocity(k_data%mA_bar, k_data%mdH_bar, v_k_H)
+      CALL compute_v_k_H(k_data%mA_bar, k_data%mdH_bar, v_k_H)
     END IF
 
     IF (lOAM) THEN
@@ -119,7 +120,8 @@ CONTAINS
     END IF
 
     IF (lNLO) THEN
-      CALL NLO_g_main(t_kpt, k_data%mdH_bar, k_data%md2H_bar, k_data%mA_bar, k_data%mdA_bar, v_k_H)
+      CALL NLO_g_main(t_kpt, k_data%mdH_bar, k_data%md2H_bar, &
+                      k_data%mA_bar, k_data%mdA_bar, v_k_H, k_data%mD_bar)
     END IF
 
     CALL stop_clock('make_f')
