@@ -12,7 +12,7 @@ MODULE fft_base
   REAL(DP), ALLOCATABLE::shift_cart(:, :, :)
   REAL(DP), ALLOCATABLE::shift_red(:, :, :)
   PUBLIC::fft_init, fft_q2R, fft_R2k, fft_R2k_vec
-  PUBLIC::fft_R2k_periodic
+  PUBLIC::fft_R2k_simple
 CONTAINS
   SUBROUTINE fft_init(R_vec, A_R)
     USE system, ONLY: cart2red_real
@@ -20,7 +20,7 @@ CONTAINS
     COMPLEX(DP), INTENT(INOUT) :: A_R(Nw, Nw, R_vec%nRpt, 3)
     REAL(DP)::center(3, Nw)
     INTEGER::irpt, iw, jw
-    IF (TRIM(FFT_conv) /= 'atomic') RETURN
+    IF (TRIM(FFT_conv) /= 'TB') RETURN
     ALLOCATE (shift_cart(3, Nw, Nw))
     ALLOCATE (shift_red(3, Nw, Nw))
     DO irpt = 1, R_vec%nRpt
@@ -110,10 +110,10 @@ CONTAINS
 
     CALL start_clock('fft_R2k')
     SELECT CASE (TRIM(FFT_conv))
-    CASE ('periodic')
-      CALL fft_R2k_periodic(R_vec, X_R, X_k, dX_k, d2X_k)
-    CASE ('atomic')
-      CALL fft_R2k_atomic(R_vec, X_R, X_k, dX_k, d2X_k)
+    CASE ('simple')
+      CALL fft_R2k_simple(R_vec, X_R, X_k, dX_k, d2X_k)
+    CASE ('TB')
+      CALL fft_R2k_TB(R_vec, X_R, X_k, dX_k, d2X_k)
     CASE ('wannier')
       CALL fft_R2k_wannier(R_vec, X_R, X_k, dX_k, d2X_k)
     END SELECT
@@ -152,7 +152,7 @@ CONTAINS
     END IF
   END SUBROUTINE fft_R2k_body
   ! ================================================== !
-  SUBROUTINE fft_R2k_periodic(R_vec, X_R, X_k, dX_k, d2X_k)
+  SUBROUTINE fft_R2k_simple(R_vec, X_R, X_k, dX_k, d2X_k)
     USE kpoints, ONLY: t_iks
     TYPE(R_vec_type), INTENT(IN) :: R_vec
     COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt)
@@ -174,9 +174,9 @@ CONTAINS
         END DO
       END DO
     END DO
-  END SUBROUTINE fft_R2k_periodic
+  END SUBROUTINE fft_R2k_simple
   ! ================================================== !
-  SUBROUTINE fft_R2k_atomic(R_vec, X_R, X_k, dX_k, d2X_k)
+  SUBROUTINE fft_R2k_TB(R_vec, X_R, X_k, dX_k, d2X_k)
     USE kpoints, ONLY: t_iks
     TYPE(R_vec_type), INTENT(IN) :: R_vec
     COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt)
@@ -199,7 +199,7 @@ CONTAINS
         END DO
       END DO
     END DO
-  END SUBROUTINE fft_R2k_atomic
+  END SUBROUTINE fft_R2k_TB
   ! ================================================== !
   SUBROUTINE fft_R2k_wannier(R_vec, X_R, X_k, dX_k, d2X_k)
     USE kpoints, ONLY: t_iks
@@ -237,10 +237,10 @@ CONTAINS
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: curl_dX_k(Nw, Nw, 3, 3)
     CALL start_clock('fft_R2k')
     SELECT CASE (TRIM(FFT_conv))
-    CASE ('periodic')
-      CALL fft_R2k_vec_periodic(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
-    CASE ('atomic')
-      CALL fft_R2k_vec_atomic(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+    CASE ('simple')
+      CALL fft_R2k_vec_simple(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+    CASE ('TB')
+      CALL fft_R2k_vec_TB(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     CASE ('wannier')
       CALL fft_R2k_vec_wannier(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     END SELECT
@@ -309,7 +309,7 @@ CONTAINS
     END IF
   END SUBROUTINE fft_R2k_vec_body
   ! ================================================== !
-  SUBROUTINE fft_R2k_vec_periodic(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+  SUBROUTINE fft_R2k_vec_simple(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     TYPE(R_vec_type), INTENT(IN) :: R_vec
     COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
@@ -332,9 +332,9 @@ CONTAINS
         END DO
       END DO
     END DO
-  END SUBROUTINE fft_R2k_vec_periodic
+  END SUBROUTINE fft_R2k_vec_simple
   ! ================================================== !
-  SUBROUTINE fft_R2k_vec_atomic(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
+  SUBROUTINE fft_R2k_vec_TB(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     TYPE(R_vec_type), INTENT(IN) :: R_vec
     COMPLEX(DP), INTENT(IN) :: X_R(Nw, Nw, R_vec%nRpt, 3)
     COMPLEX(DP), OPTIONAL, INTENT(OUT) :: X_k(Nw, Nw, 3)
@@ -360,7 +360,7 @@ CONTAINS
         END DO
       END DO
     END DO
-  END SUBROUTINE fft_R2k_vec_atomic
+  END SUBROUTINE fft_R2k_vec_TB
   ! ================================================== !
   SUBROUTINE fft_R2k_vec_wannier(R_vec, X_R, X_k, dX_k, d2X_k, curl_X_k, curl_dX_k)
     TYPE(R_vec_type), INTENT(IN) :: R_vec

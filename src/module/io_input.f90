@@ -70,8 +70,8 @@ CONTAINS
     CALL mp_bcast(FFT_conv)
     CALL mp_bcast(convention)
     CALL mp_bcast(formula)
-    IF (TRIM(FFT_conv) /= 'periodic' &
-        .AND. TRIM(FFT_conv) /= 'atomic' &
+    IF (TRIM(FFT_conv) /= 'simple' &
+        .AND. TRIM(FFT_conv) /= 'TB' &
         .AND. TRIM(FFT_conv) /= 'wannier') THEN
       CALL errore(1, 'read_itg', 'Unknown FFT convention: "'//TRIM(FFT_conv)//'"')
     END IF
