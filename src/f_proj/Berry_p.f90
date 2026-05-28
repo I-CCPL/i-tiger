@@ -1,4 +1,4 @@
-SUBROUTINE get_berry_p_nk(l, eigval, O_bar, A_bar, dH_bar, berry)
+SUBROUTINE get_berry_p_nk(l, eigval, A_bar, dH_bar, berry)
   USE kinds, ONLY: DP
   USE constants, ONLY: cmplx_0, cmplx_1, cmplx_i
   USE f_params, ONLY: dE_thr, E_fermi
@@ -8,7 +8,6 @@ SUBROUTINE get_berry_p_nk(l, eigval, O_bar, A_bar, dH_bar, berry)
   IMPLICIT NONE
   INTEGER, INTENT(IN) :: l
   REAL(DP), INTENT(IN) :: eigval(Nw)
-  COMPLEX(DP), INTENT(IN) :: O_bar(Nw, Nw, 3)
   COMPLEX(DP), INTENT(IN) :: A_bar(Nw, Nw, 3)
   COMPLEX(DP), INTENT(IN) :: dH_bar(Nw, Nw, 3)
   INTEGER::n, m, p, ief, a, b, c

@@ -16,10 +16,6 @@ MODULE itg_R
   END TYPE R_data_type
   TYPE(R_data_type)::R_data
 CONTAINS
-  SUBROUTINE set_R_flag()
-    USE f_params, ONLY: lOAM, lBerry, lBCD, lNLO
-    R_data%bA_R = (lOAM .OR. lBerry .OR. lBCD .OR. lNLO)
-  END SUBROUTINE set_R_flag
   !
   SUBROUTINE make_R()
     USE constants, ONLY: cmplx_0

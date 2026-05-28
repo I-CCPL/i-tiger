@@ -13,7 +13,6 @@ CONTAINS
   SUBROUTINE read_input()
     USE char_mod, ONLY: captital
     USE io_global, ONLY: stdout, prefix
-    USE f_base, ONLY: set_flags
     USE wannier90, ONLY: w90data
     CHARACTER(LEN=256)::line
     CHARACTER(LEN=80)::card
@@ -24,7 +23,6 @@ CONTAINS
     !... Read Namelists
     CALL read_control()
     CALL read_itg()
-    CALL set_flags()
 
     w90data%prefix = TRIM(prefix)
     CALL w90data%read_files()
@@ -94,32 +92,39 @@ CONTAINS
   !
   SUBROUTINE read_itg()
     ! USE system, ONLY: dim
-    USE f_params, ONLY: lBand, lOAM, lBerry, lBCD, &
-                        dE_thr, dE_eta, E_fermi, Ef_min, Ef_max, Ef_step, Ef_nE, & ! dim &
-                        lNLO, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr, NLO_nE
-    NAMELIST /itg/ lBand, lOAM, lBerry, lBCD, &
+    USE f_base, ONLY: set_flags
+    USE f_params
+    NAMELIST /itg/ lBand, lOAM, lOAM_g, &
+      lBerry, lBerry_p, lBerry_g, &
+      lBCD, lBCD_p, &
       dE_thr, dE_eta, E_fermi, Ef_min, Ef_max, Ef_step, & ! dim &
-      lNLO, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr
+      lNLO, lNLO_g, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
-    IF (ionode) THEN
-      READ (stdin, nml=itg)
-      WRITE (stdout, '(2X, A, ES11.4)') '- dE threshold: ', dE_thr
-      WRITE (stdout, '(2X, A, ES11.4)') '- Fermi energy: ', E_fermi
-      ! WRITE (stdout, '(2X, A, 1X, I0)') '- Dimension: ', dim
-      IF (lNLO) THEN
-        NLO_nE = CEILING((NLO_Emax - NLO_Emin)/NLO_dE) + 1
-        WRITE (stdout, '(2X, A, 2(1X, ES11.4))') '- NLO energy window (eV): ', NLO_Emin, NLO_Emax
-        WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO broadening (eV): ', NLO_eta
-        WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO dE (eV): ', NLO_dE
-        WRITE (stdout, '(2X, A, 1X, I0)') '- NLO E points: ', NLO_nE
-        WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO frequency threshold (eV): ', NLO_w_thr
-      END IF
-    END IF
-    !
+    IF (ionode) READ (stdin, nml=itg)
     CALL mp_bcast(lBand)
     CALL mp_bcast(lOAM)
+    CALL mp_bcast(lOAM_g)
     CALL mp_bcast(lBerry)
+    CALL mp_bcast(lBerry_p)
+    CALL mp_bcast(lBerry_g)
     CALL mp_bcast(lBCD)
+    CALL mp_bcast(lBCD_p)
+    CALL mp_bcast(lNLO)
+    CALL mp_bcast(lNLO_g)
+    CALL set_flags()
+    !
+    WRITE (stdout, '(2X, A, ES11.4)') '- dE threshold: ', dE_thr
+    WRITE (stdout, '(2X, A, ES11.4)') '- Fermi energy: ', E_fermi
+    ! WRITE (stdout, '(2X, A, 1X, I0)') '- Dimension: ', dim
+    IF (lNLO) THEN
+      NLO_nE = CEILING((NLO_Emax - NLO_Emin)/NLO_dE) + 1
+      WRITE (stdout, '(2X, A, 2(1X, ES11.4))') '- NLO energy window (eV): ', NLO_Emin, NLO_Emax
+      WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO broadening (eV): ', NLO_eta
+      WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO dE (eV): ', NLO_dE
+      WRITE (stdout, '(2X, A, 1X, I0)') '- NLO E points: ', NLO_nE
+      WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO frequency threshold (eV): ', NLO_w_thr
+    END IF
+    !
     CALL mp_bcast(dE_thr)
     CALL mp_bcast(dE_eta)
     CALL mp_bcast(E_fermi)
@@ -139,7 +144,6 @@ CONTAINS
     ! IF (dim < 1 .OR. dim > 3) THEN
     !   CALL errore(1, 'read_itg', 'dimensionality must be 1, 2, or 3')
     ! END IF
-    CALL mp_bcast(lNLO)
     IF (lNLO) THEN
       CALL mp_bcast(NLO_Emin)
       CALL mp_bcast(NLO_Emax)

@@ -1,19 +1,17 @@
 MODULE itg_f
   !> Final properties to be calculated
   USE kinds, ONLY: DP
-  USE f_params, ONLY: lBand, lOAM, lBerry, lBCD, lNLO
+  USE f_params
   IMPLICIT NONE
   COMPLEX(DP), ALLOCATABLE::v_k_H(:, :, :)
   !< Velocity matrix (Nw, Nw, 3)
   REAL(DP), ALLOCATABLE::L_k(:, :, :)
   !< OAM matrix (Nw, 3, nktot)
 
-  LOGICAL::lBerry_p = .FALSE.
-  REAL(DP), ALLOCATABLE::berry_p_nk(:, :, :)
+  REAL(DP), ALLOCATABLE::berry_p_k(:, :, :)
   !< Berry curvature (Nw, 3, nktot)
-  REAL(DP), ALLOCATABLE::berry_p_k(:, :)
+  REAL(DP), ALLOCATABLE::berry_p_sum(:, :)
   !< Berry curvature (Nw, 3)
-  LOGICAL::lBerry_g = .FALSE.
   REAL(DP), ALLOCATABLE::berry_g_k(:, :, :)
   !< Berry curvature (Nw, 3, nktot)
   REAL(DP), ALLOCATABLE::berry_g_sum(:, :)
@@ -27,24 +25,31 @@ CONTAINS
   SUBROUTINE set_f_flag()
     USE itg_k, ONLY: k_data
 
-    IF (lBerry .AND. .NOT. lBerry_g) THEN
-      lBerry_p = .TRUE.
-    END IF
+    IF (lOAM) lOAM_g = .TRUE.
+    IF (lBerry) lBerry_p = .TRUE.
+    IF (lBCD) lBCD_p = .TRUE.
+    IF (lNLO) lNLO_g = .TRUE.
 
     IF (lBerry_p) THEN
       k_data%bO_bar = .TRUE.
       k_data%bdH_bar = .TRUE.
       k_data%bA_bar = .TRUE.
+      k_data%bD_bar = .TRUE.
     END IF
 
-    IF (lBCD) THEN
+    IF (lBerry_g) THEN
+      k_data%bdH_k_W = .TRUE.
+      k_data%bA_k_W = .TRUE.
+    END IF
+
+    IF (lBCD_p) THEN
       k_data%bO_bar = .TRUE.
       k_data%bA_bar = .TRUE.
       ! k_data%bdH_bar = .TRUE.
       k_data%bD_bar = .TRUE.
     END IF
 
-    IF (lNLO) THEN
+    IF (lNLO_g) THEN
       k_data%bdH_bar = .TRUE.
       k_data%bd2H_bar = .TRUE.
       k_data%bA_bar = .TRUE.
@@ -61,13 +66,17 @@ CONTAINS
     USE NLO_g, ONLY: NLO_g_init
     !
     IF (R_data%bA_R) ALLOCATE (v_k_H(Nw, Nw, 3))
-    IF (lOAM) ALLOCATE (L_k(Nw, 3, t_kpt%nkpt))
-    IF (lBerry) THEN
-      ALLOCATE (berry_p_k(3, t_kpt%nkpt))
-      ALLOCATE (berry_p_nk(Nw, 3, t_kpt%nkpt))
+    IF (lOAM_g) ALLOCATE (L_k(Nw, 3, t_kpt%nkpt))
+    IF (lBerry_p) THEN
+      ALLOCATE (berry_p_sum(3, t_kpt%nkpt))
+      ALLOCATE (berry_p_k(Nw, 3, t_kpt%nkpt))
     END IF
-    IF (lBCD) ALLOCATE (BCD_sea(3, 3, Ef_nE))
-    IF (lNLO) CALL NLO_g_init(t_kpt)
+    IF (lBerry_g) THEN
+      ALLOCATE (berry_g_sum(3, t_kpt%nkpt))
+      ALLOCATE (berry_g_k(Nw, 3, t_kpt%nkpt))
+    END IF
+    IF (lBCD_p) ALLOCATE (BCD_sea(3, 3, Ef_nE))
+    IF (lNLO_g) CALL NLO_g_init(t_kpt)
   END SUBROUTINE allocate_f
   !
   SUBROUTINE clear_f()
@@ -76,8 +85,10 @@ CONTAINS
     IF (ALLOCATED(t_kpt%eigval)) DEALLOCATE (t_kpt%eigval)
     IF (ALLOCATED(v_k_H)) DEALLOCATE (v_k_H)
     IF (ALLOCATED(L_k)) DEALLOCATE (L_k)
+    IF (ALLOCATED(berry_p_sum)) DEALLOCATE (berry_p_sum)
     IF (ALLOCATED(berry_p_k)) DEALLOCATE (berry_p_k)
-    IF (ALLOCATED(berry_p_nk)) DEALLOCATE (berry_p_nk)
+    IF (ALLOCATED(berry_g_sum)) DEALLOCATE (berry_g_sum)
+    IF (ALLOCATED(berry_g_k)) DEALLOCATE (berry_g_k)
     IF (ALLOCATED(BCD_sea)) DEALLOCATE (BCD_sea)
     IF (ALLOCATED(BCD_surf)) DEALLOCATE (BCD_surf)
     CALL NLO_g_clear()
@@ -89,24 +100,32 @@ CONTAINS
     USE itg_k, ONLY: k_data
     USE kpoints, ONLY: t_iks, t_kpt
     USE NLO_g, ONLY: NLO_g_main
+    USE system, ONLY: Nw
+    INTEGER::n
     CALL start_clock('make_f')
 
-    IF (R_data%bA_R) THEN
+    IF (k_data%bA_bar .AND. k_data%bdH_bar) THEN
       CALL compute_v_k_H(k_data%mA_bar, k_data%mdH_bar, v_k_H)
     END IF
 
-    IF (lOAM) THEN
+    IF (lOAM_g) THEN
       CALL OAM_g_mod_diag(t_kpt%eigval(:, t_iks), v_k_H, L_k(:, :, t_iks))
     END IF
 
-    IF (lBerry) THEN
-      ! CALL Berry_mod(t_kpt%eigval(:, t_iks), v_k_H, O_k(:, :))
-      ! berry_p_nk(:, :, t_iks) = O_k(:, :)
-      ! CALL Berry_sum(t_kpt%eigval(:, t_iks), O_k(:, :), berry_p_k(:, t_iks))
-      CALL get_berry_p_k(t_kpt%eigval(:, t_iks), k_data%mO_bar, k_data%mA_bar, k_data%mdH_bar, berry_p_k(:, t_iks))
+    IF (lBerry_p) THEN
+      ! FIXME
+      ! DO n = 1, Nw
+      !   CALL get_berry_p_nk(n, k_data%mA_bar, k_data%mdH_bar, berry_p_k(n, :, t_iks))
+      ! END DO
+      CALL get_berry_p_k(t_kpt%eigval(:, t_iks), k_data%mO_bar, k_data%mA_bar, k_data%mdH_bar, berry_p_sum(:, t_iks))
     END IF
 
-    IF (lBCD) THEN
+    IF (lBerry_g) THEN
+      CALL get_berry_g_nk(t_kpt%eigval(:, t_iks), v_k_H, berry_g_k(:, :, t_iks))
+      CALL get_berry_g_k(t_kpt%eigval(:, t_iks), berry_g_k(:, :, t_iks), berry_g_sum(:, t_iks))
+    END IF
+
+    IF (lBCD_p) THEN
       !... Fermi surface
 
       IF (.NOT. ALLOCATED(BCD_surf)) THEN
@@ -119,7 +138,7 @@ CONTAINS
       ! CALL compute_BCD_sea(t_kpt%eigval(:, t_iks), k_data%mdH_bar, k_data%md2H_bar, k_data%mA_bar, k_data%mdA_bar, k_data%mdO_bar, BCD_sea)
     END IF
 
-    IF (lNLO) THEN
+    IF (lNLO_g) THEN
       CALL NLO_g_main(t_kpt, k_data%mdH_bar, k_data%md2H_bar, &
                       k_data%mA_bar, k_data%mdA_bar, v_k_H, k_data%mD_bar)
     END IF
@@ -156,7 +175,7 @@ CONTAINS
       DEALLOCATE (eigval)
     END IF
 
-    IF (lOAM) THEN
+    IF (lOAM_g) THEN
       IF (ionode) THEN
         ALLOCATE (L_k_tot(Nw, 3, t_kpt%nktot))
       ELSE
@@ -167,7 +186,7 @@ CONTAINS
       DEALLOCATE (L_k_tot)
     END IF
 
-    IF (lBerry) THEN
+    IF (lBerry_p) THEN
       IF (ionode) THEN
         ALLOCATE (berry_tot(3, t_kpt%nktot))
         ALLOCATE (berry_k_tot(Nw, 3, t_kpt%nktot))
@@ -175,22 +194,38 @@ CONTAINS
         ALLOCATE (berry_tot(0, 0))
         ALLOCATE (berry_k_tot(0, 0, 0))
       END IF
-      CALL t_kpt%gather(3, berry_p_k, berry_tot)
-      CALL t_kpt%gather(Nw*3, berry_p_nk, berry_k_tot)
+      CALL t_kpt%gather(3, berry_p_sum, berry_tot)
+      CALL t_kpt%gather(Nw*3, berry_p_k, berry_k_tot)
       CALL write_Berry('itg.Berry.dat', berry_tot)
       CALL write_Berry_k('itg.Berry_k.dat', berry_k_tot)
       DEALLOCATE (berry_tot)
       DEALLOCATE (berry_k_tot)
     END IF
 
-    IF (lBCD) THEN
+    IF (lBerry_g) THEN
+      IF (ionode) THEN
+        ALLOCATE (berry_tot(3, t_kpt%nktot))
+        ALLOCATE (berry_k_tot(Nw, 3, t_kpt%nktot))
+      ELSE
+        ALLOCATE (berry_tot(0, 0))
+        ALLOCATE (berry_k_tot(0, 0, 0))
+      END IF
+      CALL t_kpt%gather(3, berry_g_sum, berry_tot)
+      CALL t_kpt%gather(Nw*3, berry_g_k, berry_k_tot)
+      CALL write_Berry('itg.Berry_g.dat', berry_tot)
+      CALL write_Berry_k('itg.Berry_g_k.dat', berry_k_tot)
+      DEALLOCATE (berry_tot)
+      DEALLOCATE (berry_k_tot)
+    END IF
+
+    IF (lBCD_p) THEN
       ! CALL mp_sum(BCD_sea)
       ! CALL write_BCD('itg.BCD.sea.dat', BCD_sea)
       CALL mp_sum(BCD_surf)
       CALL write_BCD('itg.BCD.surf.dat', BCD_surf)
     END IF
 
-    IF (lNLO) THEN
+    IF (lNLO_g) THEN
       CALL NLO_g_write(t_kpt)
     END IF
 

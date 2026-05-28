@@ -21,8 +21,14 @@ MODULE f_params
   ! INTEGER::dos_Emin
   ! INTEGER::dos_Emax
   LOGICAL::lOAM = .FALSE.
+  LOGICAL::lOAM_g = .FALSE.
+
   LOGICAL::lBerry = .FALSE.
+  LOGICAL::lBerry_p = .FALSE.
+  LOGICAL::lBerry_g = .FALSE.
+
   LOGICAL::lBCD = .FALSE.
+  LOGICAL::lBCD_p = .FALSE.
   !< Berry Curvature Dipole
   REAL(DP)::dE_thr = 1D-8
   !< threshold for identifying degenerate states in eV
@@ -40,6 +46,7 @@ MODULE f_params
   !... Nonlinear optics calculation parameters
   !... Frequency: eV units from input
   LOGICAL::lNLO = .FALSE.
+  LOGICAL::lNLO_g = .FALSE.
   REAL(DP)::NLO_Emin = 0.0_DP
   REAL(DP)::NLO_Emax = 0.0_DP
   REAL(DP)::NLO_dE = 0.0_DP
