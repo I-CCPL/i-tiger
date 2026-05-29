@@ -49,7 +49,7 @@ CONTAINS
       k_data%bD_bar = .TRUE.
     END IF
 
-    IF (lNLO_g) THEN
+    IF (lNLO_g .OR. lshift_g_E) THEN
       k_data%bdH_bar = .TRUE.
       k_data%bd2H_bar = .TRUE.
       k_data%bA_bar = .TRUE.
@@ -76,7 +76,7 @@ CONTAINS
       ALLOCATE (berry_g_k(Nw, 3, t_kpt%nkpt))
     END IF
     IF (lBCD_p) ALLOCATE (BCD_sea(3, 3, Ef_nE))
-    IF (lNLO_g) CALL NLO_g_init(t_kpt)
+    IF (lNLO_g .OR. lshift_g_E) CALL NLO_g_init(t_kpt)
   END SUBROUTINE allocate_f
   !
   SUBROUTINE clear_f()
@@ -138,7 +138,7 @@ CONTAINS
       ! CALL compute_BCD_sea(t_kpt%eigval(:, t_iks), k_data%mdH_bar, k_data%md2H_bar, k_data%mA_bar, k_data%mdA_bar, k_data%mdO_bar, BCD_sea)
     END IF
 
-    IF (lNLO_g) THEN
+    IF (lNLO_g .OR. lshift_g_E) THEN
       CALL NLO_g_main(t_kpt, k_data%mdH_bar, k_data%md2H_bar, &
                       k_data%mA_bar, k_data%mdA_bar, v_k_H, k_data%mD_bar)
     END IF
@@ -225,7 +225,7 @@ CONTAINS
       CALL write_BCD('itg.BCD.surf.dat', BCD_surf)
     END IF
 
-    IF (lNLO_g) THEN
+    IF (lNLO_g .OR. lshift_g_E) THEN
       CALL NLO_g_write(t_kpt)
     END IF
 

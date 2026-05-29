@@ -21,7 +21,7 @@ CONTAINS
     USE constants, ONLY: cmplx_0
     USE fft_base, ONLY: fft_q2R
     USE io_global, ONLY: ionode, stdout
-    USE f_params, ONLY: lBCD, lNLO, convention
+    USE f_params, ONLY: convention
     INTEGER::a
     IF (.NOT. ionode) RETURN
     CALL start_clock('make_R')

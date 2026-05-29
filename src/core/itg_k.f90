@@ -123,13 +123,10 @@ CONTAINS
   END SUBROUTINE clear_k
   !
   SUBROUTINE make_k()
-    USE constants, ONLY: cmplx_i
     USE fft_base, ONLY: fft_R2k, fft_R2k_vec
-    USE f_params, ONLY: lOAM, lBerry, lBCD, lNLO, Ef_nE
     USE itg_R, ONLY: R_data
     USE lin_eig_H, ONLY: eig_H
     USE kpoints, ONLY: t_iks, t_kpt
-    USE NLO_g, ONLY: NLO_g_main
     INTEGER::iw
     CALL start_clock('make_k')
 

@@ -2,7 +2,8 @@ MODULE NLO_g
   ! Nonlinear optics
   ! Ref. PRB 61, 5337 (2000)
   USE kinds, ONLY: DP
-  USE f_params, ONLY: NLO_nE
+  USE f_params, ONLY: NLO_nE, lNLO_g, lshift_g, &
+                      lshift_g_E
   IMPLICIT NONE
   REAL(DP), ALLOCATABLE::NLO_hw(:)
   !> dielectric function (epsilon_r)
@@ -13,6 +14,10 @@ MODULE NLO_g
   REAL(DP), ALLOCATABLE::shift_w(:, :, :)
   !> injection current (eta)
   COMPLEX(DP), ALLOCATABLE::injection_w(:, :, :)
+  !
+  !> shift current for given omega & band energy window
+  !> size: (3, 6, NLO_nE)
+  REAL(DP), ALLOCATABLE::shift_w_E(:, :, :)
   !... factors
   COMPLEX(DP)::fac_dielec
   REAL(DP)::fac_JDOS
@@ -22,7 +27,7 @@ MODULE NLO_g
   INTEGER, PARAMETER :: bc2b(6) = (/1, 1, 2, 2, 3, 3/)
   INTEGER, PARAMETER :: bc2c(6) = (/1, 2, 2, 3, 3, 1/)
 
-  INTEGER::is_mn, is_nm, ie_mn, ie_nm
+  INTEGER::is_mn, is_nm, ie_mn, ie_nm, is_E, ie_E
 CONTAINS
   SUBROUTINE NLO_g_init(t_kpt)
     USE constants, ONLY: cmplx_0, pi, cmplx_i, hbar_eVfs, &
@@ -33,12 +38,23 @@ CONTAINS
     TYPE(kpoint_type), INTENT(IN) :: t_kpt
     INTEGER::i
 
-    ALLOCATE (NLO_hw(NLO_nE))
-    ALLOCATE (epsilon_w(6, NLO_nE))
-    ALLOCATE (JDOS_w(NLO_nE))
-    ALLOCATE (shift_w(3, 6, NLO_nE))
-    ALLOCATE (injection_w(3, 3, NLO_nE))
+    IF (lNLO_g) THEN
+      ALLOCATE (epsilon_w(6, NLO_nE))
+      ALLOCATE (JDOS_w(NLO_nE))
+      IF (lshift_g) THEN
+        ALLOCATE (shift_w(3, 6, NLO_nE))
+        shift_w = 0.0_DP
+      END IF
+      ALLOCATE (injection_w(3, 3, NLO_nE))
+      epsilon_w = cmplx_0
+      JDOS_w = 0.0_DP
+      injection_w = 0.0_DP
+    ELSE IF (lshift_g_E) THEN
+      ALLOCATE (shift_w_E(3, 6, NLO_nE))
+      shift_w_E = 0.0_DP
+    END IF
 
+    ALLOCATE (NLO_hw(NLO_nE))
     IF (NLO_nE == 1) THEN
       NLO_hw(1) = NLO_Emin
     ELSE
@@ -46,10 +62,6 @@ CONTAINS
         NLO_hw(i) = NLO_Emin + REAL(i - 1, DP)*NLO_dE
       END DO
     END IF
-    epsilon_w = cmplx_0
-    JDOS_w = 0.0_DP
-    shift_w = 0.0_DP
-    injection_w = 0.0_DP
 
     !... dielectric function
     !> [e/V * 1/fs/Ang^3 * Ang*V/e] units
@@ -91,6 +103,7 @@ CONTAINS
     IF (ALLOCATED(epsilon_w)) DEALLOCATE (epsilon_w)
     IF (ALLOCATED(JDOS_w)) DEALLOCATE (JDOS_w)
     IF (ALLOCATED(shift_w)) DEALLOCATE (shift_w)
+    IF (ALLOCATED(shift_w_E)) DEALLOCATE (shift_w_E)
     IF (ALLOCATED(injection_w)) DEALLOCATE (injection_w)
   END SUBROUTINE NLO_g_clear
   SUBROUTINE NLO_g_write(t_kpt)
@@ -102,75 +115,99 @@ CONTAINS
     INTEGER :: io_unit, iom, ia, ibc
     CHARACTER(LEN=256) :: fname_a
     CHARACTER(LEN=1), PARAMETER :: a_lab(3) = (/'x', 'y', 'z'/)
-    CALL mp_sum(epsilon_w)
-    CALL mp_sum(JDOS_w)
-    CALL mp_sum(shift_w)
-    CALL mp_sum(injection_w)
+    IF (lNLO_g) THEN
+      CALL mp_sum(epsilon_w)
+      CALL mp_sum(JDOS_w)
+      IF (lshift_g) CALL mp_sum(shift_w)
+      CALL mp_sum(injection_w)
+    ELSE IF (lshift_g_E) THEN
+      CALL mp_sum(shift_w_E)
+    END IF
 
     IF (.NOT. ionode) RETURN
     io_unit = get_free_unit()
 
-    !... Dielectric constant
-    ! OPEN (unit=io_unit, file='itg.epsilon_r.dat')
-    ! CALL writing_info('dielectric function', 'itg.epsilon_r.dat')
-    ! WRITE (io_unit, 0947) 'dielectric function units: [1]'
-    ! WRITE (io_unit, 0948) "xx", "xy", "yy", "yz", "zz", "zx"
-    ! DO iom = 1, NLO_nE
-    !   WRITE (io_unit, 0949) NLO_hw(iom), DBLE(epsilon_w(:, iom))
-    ! END DO
-    ! CLOSE (io_unit)
+    IF (lNLO_g) THEN
+      !... Dielectric constant
+      ! OPEN (unit=io_unit, file='itg.epsilon_r.dat')
+      ! CALL writing_info('dielectric function', 'itg.epsilon_r.dat')
+      ! WRITE (io_unit, 0947) 'dielectric function units: [1]'
+      ! WRITE (io_unit, 0948) "xx", "xy", "yy", "yz", "zz", "zx"
+      ! DO iom = 1, NLO_nE
+      !   WRITE (io_unit, 0949) NLO_hw(iom), DBLE(epsilon_w(:, iom))
+      ! END DO
+      ! CLOSE (io_unit)
 
-    OPEN (unit=io_unit, file='itg.epsilon_i.dat')
-    CALL writing_info('dielectric function', 'itg.epsilon_i.dat')
-    WRITE (io_unit, 0947) 'dielectric function units: [1]'
-    WRITE (io_unit, 0948) "xx", "xy", "yy", "yz", "zz", "zx"
-    DO iom = 1, NLO_nE
-      WRITE (io_unit, 0949) NLO_hw(iom), AIMAG(epsilon_w(:, iom))
-    END DO
-    CLOSE (io_unit)
-
-    !... Joint density of states
-    OPEN (unit=io_unit, file='itg.JDOS.dat')
-    CALL writing_info('joint density of states', 'itg.JDOS.dat')
-    WRITE (io_unit, 0947) 'joint density of states units: [states/eV]'
-    WRITE (io_unit, 0947) 'hw (eV), JDOS'
-    DO iom = 1, NLO_nE
-      WRITE (io_unit, 0949) NLO_hw(iom), JDOS_w(iom)
-    END DO
-    CLOSE (io_unit)
-
-    !... Shift current
-    DO ia = 1, 3
-      fname_a = 'itg.shift_'//a_lab(ia)//'.dat'
-      OPEN (unit=io_unit, file=fname_a)
-      CALL writing_info('shift current', fname_a)
-      WRITE (io_unit, 0947) 'shift current units: [microA/V^2]'
+      OPEN (unit=io_unit, file='itg.epsilon_i.dat')
+      CALL writing_info('dielectric function', 'itg.epsilon_i.dat')
+      WRITE (io_unit, 0947) 'dielectric function units: [1]'
       WRITE (io_unit, 0948) "xx", "xy", "yy", "yz", "zz", "zx"
-
       DO iom = 1, NLO_nE
-        WRITE (io_unit, 0949) NLO_hw(iom), &
-          (shift_w(ia, ibc, iom), ibc=1, 6)
+        WRITE (io_unit, 0949) NLO_hw(iom), AIMAG(epsilon_w(:, iom))
       END DO
       CLOSE (io_unit)
-    END DO
 
-    !... Injection current
-    DO ia = 1, 3
-      fname_a = 'itg.injection_'//a_lab(ia)//'.dat'
-      OPEN (unit=io_unit, file=fname_a)
-      CALL writing_info('injection current', fname_a)
-      WRITE (io_unit, 0947) 'injection current units: [microA/V^2/fs]'
-      WRITE (io_unit, 0948) 'xy_re', 'xy_im', 'yz_re', 'yz_im', 'zx_re', 'zx_im'
-
+      !... Joint density of states
+      OPEN (unit=io_unit, file='itg.JDOS.dat')
+      CALL writing_info('joint density of states', 'itg.JDOS.dat')
+      WRITE (io_unit, 0947) 'joint density of states units: [states/eV]'
+      WRITE (io_unit, 0947) 'hw (eV), JDOS'
       DO iom = 1, NLO_nE
-        WRITE (io_unit, 0949) NLO_hw(iom), &
-          (injection_w(ia, ibc, iom), ibc=1, 3)
+        WRITE (io_unit, 0949) NLO_hw(iom), JDOS_w(iom)
       END DO
       CLOSE (io_unit)
-    END DO
+
+      !... Shift current
+      IF (lshift_g) THEN
+        DO ia = 1, 3
+          fname_a = 'itg.shift_'//a_lab(ia)//'.dat'
+          OPEN (unit=io_unit, file=fname_a)
+          CALL writing_info('shift current', fname_a)
+          WRITE (io_unit, 0947) 'shift current units: [microA/V^2]'
+          WRITE (io_unit, 0948) "xx", "xy", "yy", "yz", "zz", "zx"
+
+          DO iom = 1, NLO_nE
+            WRITE (io_unit, 0949) NLO_hw(iom), &
+              (shift_w(ia, ibc, iom), ibc=1, 6)
+          END DO
+          CLOSE (io_unit)
+        END DO
+      END IF
+
+      !... Injection current
+      DO ia = 1, 3
+        fname_a = 'itg.injection_'//a_lab(ia)//'.dat'
+        OPEN (unit=io_unit, file=fname_a)
+        CALL writing_info('injection current', fname_a)
+        WRITE (io_unit, 0947) 'injection current units: [microA/V^2/fs]'
+        WRITE (io_unit, 0948) 'xy_re', 'xy_im', 'yz_re', 'yz_im', 'zx_re', 'zx_im'
+
+        DO iom = 1, NLO_nE
+          WRITE (io_unit, 0949) NLO_hw(iom), &
+            (injection_w(ia, ibc, iom), ibc=1, 3)
+        END DO
+        CLOSE (io_unit)
+      END DO
+    END IF
+
+    IF (lshift_g_E) THEN
+      DO ia = 1, 3
+        fname_a = 'itg.shift_E_'//a_lab(ia)//'.dat'
+        OPEN (unit=io_unit, file=fname_a)
+        CALL writing_info('shift current for given omega & band energy window', fname_a)
+        WRITE (io_unit, 0947) 'shift current units: [microA/V^2/eV]'
+        WRITE (io_unit, 0950) "xx", "xy", "yy", "yz", "zz", "zx"
+        DO iom = 1, NLO_nE
+          WRITE (io_unit, 0949) NLO_hw(iom), &
+            (shift_w_E(ia, ibc, iom), ibc=1, 6)
+        END DO
+        CLOSE (io_unit)
+      END DO
+    END IF
 0947 FORMAT("# ", A)
 0948 FORMAT("# hw (eV)", 6(",", A16))
 0949 FORMAT(F13.6, 6(1X, ES16.8E3))
+0950 FORMAT("# E (eV)", 6(",", A16))
   END SUBROUTINE NLO_g_write
   !
   SUBROUTINE NLO_g_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H, D_bar)
@@ -188,7 +225,8 @@ CONTAINS
     COMPLEX(DP), INTENT(IN) :: v_k_H(Nw, Nw, 3)
     COMPLEX(DP), INTENT(IN):: D_bar(Nw, Nw, 3)
     INTEGER::n, m, p, a, b, iom
-    REAL(DP)::inv_hbar, eig_n, eig_m, dE_nm, w_inv(Nw, Nw), occ(Nw), fmn, E_inv(Nw, Nw)
+    REAL(DP)::inv_hbar, eig_n, eig_m, dE_nm, delta_res_nm
+    REAL(DP)::w_inv(Nw, Nw), occ(Nw), fmn, E_inv(Nw, Nw)
     COMPLEX(DP)::v_bar(Nw, Nw, 3), del_v_nm(3), del_bar_mn(3), dv_bar
     COMPLEX(DP)::psum, dr_mn, da_mn
     COMPLEX(DP)::gen_r(Nw, Nw, 3), gen_dr_mn(3, 3)
@@ -196,6 +234,7 @@ CONTAINS
     CALL start_clock('NLO_g_main')
     inv_hbar = 1.0_DP/hbar_eVfs
     ALLOCATE (delta_E(NLO_nE, Nw, Nw))
+    delta_E = 0.0_DP
     DO n = 1, Nw
       eig_n = t_kpt%eigval(n, t_iks)
       occ(n) = occ_T0(eig_n)
@@ -203,9 +242,16 @@ CONTAINS
         eig_m = t_kpt%eigval(m, t_iks)
         dE_nm = eig_n - eig_m
 
-        is_nm = MAX(INT((dE_nm - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
-        ie_nm = MIN(INT((dE_nm + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
-        delta_E(is_nm:ie_nm, n, m) = w1gauss(ie_nm - is_nm, (dE_nm - NLO_hw(is_nm:ie_nm)), NLO_eta, -99)
+        IF (lNLO_g) THEN
+          ! photon-energy-resolved spectrum: delta(E_n - E_m - hw)
+          is_nm = MAX(INT((dE_nm - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
+          ie_nm = MIN(INT((dE_nm + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
+          IF (is_nm <= ie_nm) THEN
+            delta_E(is_nm:ie_nm, n, m) = &
+              w1gauss(ie_nm - is_nm, (dE_nm - NLO_hw(is_nm:ie_nm)), NLO_eta, -99)
+          END IF
+        END IF
+
         IF (m == n) THEN
           w_inv(n, m) = cmplx_0
           E_inv(n, m) = cmplx_0
@@ -232,55 +278,66 @@ CONTAINS
         dE_nm = eig_n - eig_m
         ! IF (ABS(dE_nm) <= dE_thr) CYCLE
 
-        del_bar_mn = (dH_bar(m, m, :) - dH_bar(n, n, :))*inv_hbar
         del_v_nm = v_k_H(n, n, :) - v_k_H(m, m, :)
-        ! del_H_nm = v_bar(n, n, :) - v_bar(m, m, :)
-        DO a = 1, 3
-          DO b = 1, 3
-            psum = cmplx_0
-            dv_bar = d2H_bar(m, n, b, a)*inv_hbar
-            DO p = 1, Nw
-              IF (p == m .OR. p == n) CYCLE
-              psum = psum &
-                     + (v_bar(m, p, a)*v_bar(p, n, b))*w_inv(p, n) &
-                     - (v_bar(m, p, b)*v_bar(p, n, a))*w_inv(m, p)
-            END DO
-            dr_mn = cmplx_i*E_inv(m, n) &
-                    *( &
-                    (v_bar(m, n, a)*del_bar_mn(b) &
-                     + v_bar(m, n, b)*del_bar_mn(a))*E_inv(m, n) &
-                    - dv_bar &
-                    + psum &
-                    )
+        IF (lshift_g .OR. lshift_g_E) THEN
+          del_bar_mn = (dH_bar(m, m, :) - dH_bar(n, n, :))*inv_hbar
+          ! del_H_nm = v_bar(n, n, :) - v_bar(m, m, :)
+          DO a = 1, 3
+            DO b = 1, 3
+              psum = cmplx_0
+              dv_bar = d2H_bar(m, n, b, a)*inv_hbar
+              DO p = 1, Nw
+                IF (p == m .OR. p == n) CYCLE
+                psum = psum &
+                       + (v_bar(m, p, a)*v_bar(p, n, b))*w_inv(p, n) &
+                       - (v_bar(m, p, b)*v_bar(p, n, a))*w_inv(m, p)
+              END DO
+              dr_mn = cmplx_i*E_inv(m, n) &
+                      *( &
+                      (v_bar(m, n, a)*del_bar_mn(b) &
+                       + v_bar(m, n, b)*del_bar_mn(a))*E_inv(m, n) &
+                      - dv_bar &
+                      + psum &
+                      )
 
-            psum = cmplx_0
-            DO p = 1, Nw
-              IF (p == m .OR. p == n) CYCLE
-              psum = psum &
-                     + (v_bar(m, p, b)*A_bar(p, n, a))*w_inv(m, p) &
-                     - (A_bar(m, p, a)*v_bar(p, n, b))*w_inv(p, n)
+              psum = cmplx_0
+              DO p = 1, Nw
+                IF (p == m .OR. p == n) CYCLE
+                psum = psum &
+                       + (v_bar(m, p, b)*A_bar(p, n, a))*w_inv(m, p) &
+                       - (A_bar(m, p, a)*v_bar(p, n, b))*w_inv(p, n)
+              END DO
+              da_mn = dA_bar(m, n, a, b) &
+                      - (A_bar(m, m, a) - A_bar(n, n, a))*v_bar(m, n, b)*E_inv(m, n) &
+                      + psum
+              ! PRB 97, 245143 (2018) Eq. (36)
+              gen_dr_mn(b, a) = dr_mn + da_mn &
+                                - (A_bar(m, m, b) - A_bar(n, n, b)) &
+                                *(v_bar(m, n, a)*E_inv(m, n) + cmplx_i*A_bar(m, n, a))
             END DO
-            da_mn = dA_bar(m, n, a, b) &
-                    - (A_bar(m, m, a) - A_bar(n, n, a))*v_bar(m, n, b)*E_inv(m, n) &
-                    + psum
-            ! PRB 97, 245143 (2018) Eq. (36)
-            gen_dr_mn(b, a) = dr_mn + da_mn &
-                              - (A_bar(m, m, b) - A_bar(n, n, b)) &
-                              *(v_bar(m, n, a)*E_inv(m, n) + cmplx_i*A_bar(m, n, a))
           END DO
-        END DO
+        END IF
+
         is_mn = MAX(INT((-dE_nm - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
         ie_mn = MIN(INT((-dE_nm + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
         is_nm = MAX(INT((dE_nm - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
         ie_nm = MIN(INT((dE_nm + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
 
-        CALL dielectric(epsilon_w, delta_E(:, n, m), fmn, gen_r(n, m, :), gen_r(m, n, :))
-        CALL Joint_DOS(JDOS_w, delta_E(:, n, m), fmn)
-        CALL shift_current(shift_w, delta_E(:, n, m), delta_E(:, m, n), fmn, gen_r(n, m, :), gen_dr_mn)
-        CALL injection_current(injection_w, delta_E(:, n, m), fmn, &
-                               del_v_nm, gen_r(n, m, :), gen_r(m, n, :))
+        IF (lNLO_g) THEN
+          CALL dielectric(epsilon_w, delta_E(:, n, m), fmn, gen_r(n, m, :), gen_r(m, n, :))
+          CALL Joint_DOS(JDOS_w, delta_E(:, n, m), fmn)
+          IF (lshift_g) &
+            CALL shift_current(shift_w, delta_E(:, n, m), delta_E(:, m, n), fmn, gen_r(n, m, :), gen_dr_mn)
+          CALL injection_current(injection_w, delta_E(:, n, m), fmn, &
+                                 del_v_nm, gen_r(n, m, :), gen_r(m, n, :))
+        END IF
+
+        IF (lshift_g_E) THEN
+          CALL shift_current_E(shift_w_E, eig_n, eig_m, fmn, gen_r(n, m, :), gen_dr_mn)
+        END IF
       END DO
     END DO
+    DEALLOCATE (delta_E)
     CALL stop_clock('NLO_g_main')
   END SUBROUTINE NLO_g_main
   !
@@ -341,6 +398,39 @@ CONTAINS
                            + delta_Emn(iom)*kernel_mn(:, :)
     END DO
   END SUBROUTINE shift_current
+  !
+  SUBROUTINE shift_current_E(shift_w_E, eig_n, eig_m, fmn, r_nm, dr_mn)
+    USE f_params, ONLY: shift_hw, NLO_eta, NLO_w_thr, NLO_Emin, NLO_dE, NLO_nE
+    USE delta_func, ONLY: w1gauss
+    REAL(DP), INTENT(INOUT) :: shift_w_E(3, 6, NLO_nE)
+    REAL(DP), INTENT(IN) :: eig_n, eig_m, fmn
+    COMPLEX(DP), INTENT(IN) :: r_nm(3), dr_mn(3, 3)
+    INTEGER :: a, b, c, bc, iom
+    COMPLEX(DP)::pref
+    REAL(DP) :: kernel_mn(3, 6), delta_Enm_E, delta_Emn_E, smear_E(NLO_nE)
+    !
+    delta_Enm_E = w1gauss((eig_n - eig_m - shift_hw), NLO_eta, -99)
+    delta_Emn_E = w1gauss((eig_m - eig_n - shift_hw), NLO_eta, -99)
+    pref = fmn*fac_shift*(delta_Enm_E + delta_Emn_E)
+    DO a = 1, 3
+      DO bc = 1, 6
+        b = bc2b(bc)
+        c = bc2c(bc)
+        kernel_mn(a, bc) = DBLE(pref*(r_nm(b)*dr_mn(a, c) + r_nm(c)*dr_mn(a, b)))
+      END DO
+    END DO
+
+    is_E = MAX(INT((eig_n - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
+    ie_E = MIN(INT((eig_n + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
+    IF (is_E <= ie_E) THEN
+      smear_E(is_E:ie_E) = w1gauss(ie_E - is_E, eig_n - NLO_hw(is_E:ie_E), NLO_eta, 0)
+
+      DO iom = is_E, ie_E
+        shift_w_E(:, :, iom) = shift_w_E(:, :, iom) &
+                               + smear_E(iom)*kernel_mn(:, :)
+      END DO
+    END IF
+  END SUBROUTINE shift_current_E
   !
   SUBROUTINE injection_current(injection_w, delta_Enm, fmn, del_v_nm, r_nm, r_mn)
     COMPLEX(DP), INTENT(INOUT) :: injection_w(3, 3, NLO_nE)

@@ -47,6 +47,7 @@ MODULE f_params
   !... Frequency: eV units from input
   LOGICAL::lNLO = .FALSE.
   LOGICAL::lNLO_g = .FALSE.
+  LOGICAL::lshift_g = .FALSE.
   REAL(DP)::NLO_Emin = 0.0_DP
   REAL(DP)::NLO_Emax = 0.0_DP
   REAL(DP)::NLO_dE = 0.0_DP
@@ -54,4 +55,7 @@ MODULE f_params
   REAL(DP)::NLO_eta = 0.01_DP
   REAL(DP)::NLO_w_thr = 5.0_DP
   !< speeding up frequency integration
+
+  LOGICAL::lshift_g_E = .FALSE.
+  REAL(DP)::shift_hw = -1.0_DP
 END MODULE f_params

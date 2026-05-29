@@ -98,7 +98,8 @@ CONTAINS
       lBerry, lBerry_p, lBerry_g, &
       lBCD, lBCD_p, &
       dE_thr, dE_eta, E_fermi, Ef_min, Ef_max, Ef_step, & ! dim &
-      lNLO, lNLO_g, NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr
+      lNLO, lNLO_g, lshift_g, lshift_g_E, shift_hw, &
+      NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) READ (stdin, nml=itg)
     CALL mp_bcast(lBand)
@@ -111,12 +112,14 @@ CONTAINS
     CALL mp_bcast(lBCD_p)
     CALL mp_bcast(lNLO)
     CALL mp_bcast(lNLO_g)
+    CALL mp_bcast(lshift_g)
+    CALL mp_bcast(lshift_g_E)
     CALL set_flags()
     !
     WRITE (stdout, '(2X, A, ES11.4)') '- dE threshold: ', dE_thr
     WRITE (stdout, '(2X, A, ES11.4)') '- Fermi energy: ', E_fermi
     ! WRITE (stdout, '(2X, A, 1X, I0)') '- Dimension: ', dim
-    IF (lNLO) THEN
+    IF (lNLO .OR. lshift_g_E) THEN
       NLO_nE = CEILING((NLO_Emax - NLO_Emin)/NLO_dE) + 1
       WRITE (stdout, '(2X, A, 2(1X, ES11.4))') '- NLO energy window (eV): ', NLO_Emin, NLO_Emax
       WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO broadening (eV): ', NLO_eta
@@ -144,7 +147,7 @@ CONTAINS
     ! IF (dim < 1 .OR. dim > 3) THEN
     !   CALL errore(1, 'read_itg', 'dimensionality must be 1, 2, or 3')
     ! END IF
-    IF (lNLO) THEN
+    IF (lNLO .OR. lshift_g_E) THEN
       CALL mp_bcast(NLO_Emin)
       CALL mp_bcast(NLO_Emax)
       CALL mp_bcast(NLO_dE)
@@ -161,6 +164,12 @@ CONTAINS
         CALL errore(1, 'read_itg', 'NLO_eta must be positive')
       IF (NLO_w_thr <= 0.0_DP) &
         CALL errore(1, 'read_itg', 'NLO_w_thr must be positive')
+    END IF
+    IF (lshift_g_E) THEN
+      CALL mp_bcast(shift_hw)
+      IF (shift_hw <= 0.0_DP) THEN
+        CALL errore(1, 'read_itg', 'shift_hw must be positive')
+      END IF
     END IF
   END SUBROUTINE read_itg
   !
@@ -185,7 +194,7 @@ CONTAINS
     USE char_mod, ONLY: match
     USE kpoints, ONLY: t_kpt
     USE system, ONLY: red2cart_recip
-    USE f_params, ONLY: lNLO
+    USE f_params, ONLY: lNLO, lshift_g_E
     CHARACTER(LEN=256), INTENT(INOUT)::line
     LOGICAL::tend
     INTEGER::i
@@ -215,9 +224,11 @@ CONTAINS
       WRITE (stdout, '(2X,A, 1X, I0)') '- Total k-points: ', t_kpt%nktot
       !
     ELSE IF (match('CRYSTAL_B', line)) THEN
-      IF (lNLO) CALL errore(1, 'read_kpts', &
-                            'NLO requires a uniform k-mesh.' &
-                            //' Use AUTOMATIC keyword.')
+      IF (lNLO .OR. lshift_g_E) THEN
+        CALL errore(1, 'read_kpts', &
+                    'NLO requires a uniform k-mesh.' &
+                    //' Use AUTOMATIC keyword.')
+      END IF
 
       CALL read_line(line, tend)
       IF (tend) GOTO 10
