@@ -3,7 +3,7 @@ MODULE NLO_g
   ! Ref. PRB 61, 5337 (2000)
   USE kinds, ONLY: DP
   USE f_params, ONLY: NLO_nE, lNLO_g, lshift_g, &
-                      lshift_g_E
+                      lshift_g_E, ldielec_g_E
   IMPLICIT NONE
   REAL(DP), ALLOCATABLE::NLO_hw(:)
   !> dielectric function (epsilon_r)
@@ -18,6 +18,9 @@ MODULE NLO_g
   !> shift current for given omega & band energy window
   !> size: (3, 6, NLO_nE)
   REAL(DP), ALLOCATABLE::shift_w_E(:, :, :)
+  !> dielectric function for given omega & band energy window
+  !> size: (6, NLO_nE)
+  COMPLEX(DP), ALLOCATABLE::epsilon_w_E(:, :)
   !... factors
   COMPLEX(DP)::fac_dielec
   REAL(DP)::fac_JDOS
@@ -49,9 +52,16 @@ CONTAINS
       epsilon_w = cmplx_0
       JDOS_w = 0.0_DP
       injection_w = 0.0_DP
-    ELSE IF (lshift_g_E) THEN
+    END IF
+
+    IF (lshift_g_E) THEN
       ALLOCATE (shift_w_E(3, 6, NLO_nE))
       shift_w_E = 0.0_DP
+    END IF
+
+    IF (ldielec_g_E) THEN
+      ALLOCATE (epsilon_w_E(6, NLO_nE))
+      epsilon_w_E = cmplx_0
     END IF
 
     ALLOCATE (NLO_hw(NLO_nE))
@@ -104,6 +114,7 @@ CONTAINS
     IF (ALLOCATED(JDOS_w)) DEALLOCATE (JDOS_w)
     IF (ALLOCATED(shift_w)) DEALLOCATE (shift_w)
     IF (ALLOCATED(shift_w_E)) DEALLOCATE (shift_w_E)
+    IF (ALLOCATED(epsilon_w_E)) DEALLOCATE (epsilon_w_E)
     IF (ALLOCATED(injection_w)) DEALLOCATE (injection_w)
   END SUBROUTINE NLO_g_clear
   SUBROUTINE NLO_g_write(t_kpt)
@@ -120,9 +131,9 @@ CONTAINS
       CALL mp_sum(JDOS_w)
       IF (lshift_g) CALL mp_sum(shift_w)
       CALL mp_sum(injection_w)
-    ELSE IF (lshift_g_E) THEN
-      CALL mp_sum(shift_w_E)
     END IF
+    IF (lshift_g_E) CALL mp_sum(shift_w_E)
+    IF (ldielec_g_E) CALL mp_sum(epsilon_w_E)
 
     IF (.NOT. ionode) RETURN
     io_unit = get_free_unit()
@@ -188,6 +199,18 @@ CONTAINS
         END DO
         CLOSE (io_unit)
       END DO
+    END IF
+
+    IF (ldielec_g_E) THEN
+      OPEN (unit=io_unit, file='itg.epsilon_E_i.dat')
+      CALL writing_info('dielectric function for given omega & band energy window', &
+                        'itg.epsilon_E_i.dat')
+      WRITE (io_unit, 0947) 'dielectric function units: [1/eV]'
+      WRITE (io_unit, 0950) "xx", "xy", "yy", "yz", "zz", "zx"
+      DO iom = 1, NLO_nE
+        WRITE (io_unit, 0949) NLO_hw(iom), AIMAG(epsilon_w_E(:, iom))
+      END DO
+      CLOSE (io_unit)
     END IF
 
     IF (lshift_g_E) THEN
@@ -332,6 +355,11 @@ CONTAINS
                                  del_v_nm, gen_r(n, m, :), gen_r(m, n, :))
         END IF
 
+        IF (ldielec_g_E) THEN
+          CALL dielectric_E(epsilon_w_E, eig_n, eig_m, fmn, &
+                            gen_r(n, m, :), gen_r(m, n, :))
+        END IF
+
         IF (lshift_g_E) THEN
           CALL shift_current_E(shift_w_E, eig_n, eig_m, fmn, gen_r(n, m, :), gen_dr_mn)
         END IF
@@ -359,6 +387,41 @@ CONTAINS
                           + delta_Enm(iom)*kernel_mn
     END DO
   END SUBROUTINE dielectric
+  !
+  SUBROUTINE dielectric_E(epsilon_w_E, eig_n, eig_m, fmn, r_nm, r_mn)
+    USE f_params, ONLY: shift_hw, NLO_eta, NLO_w_thr, NLO_Emin, NLO_dE, NLO_nE
+    USE delta_func, ONLY: w1gauss
+    COMPLEX(DP), INTENT(INOUT) :: epsilon_w_E(6, NLO_nE)
+    REAL(DP), INTENT(IN) :: eig_n, eig_m, fmn
+    COMPLEX(DP), INTENT(IN) :: r_nm(3), r_mn(3)
+    INTEGER :: b, c, bc, iom
+    COMPLEX(DP) :: pref, kernel_mn(6)
+    REAL(DP) :: delta_Enm_E, delta_Emn_E, smear_E(NLO_nE)
+    !
+    delta_Enm_E = w1gauss((eig_n - eig_m - shift_hw), NLO_eta, -99)
+    delta_Emn_E = w1gauss((eig_m - eig_n - shift_hw), NLO_eta, -99)
+
+    pref = 0.5_DP*ABS(fmn)*fac_dielec*(delta_Enm_E + delta_Emn_E)
+
+    DO bc = 1, 6
+      b = bc2b(bc)
+      c = bc2c(bc)
+      kernel_mn(bc) = pref*r_mn(b)*r_nm(c)
+    END DO
+
+    is_E = MAX(INT((eig_n - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
+    ie_E = MIN(INT((eig_n + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
+
+    IF (is_E <= ie_E) THEN
+      smear_E(is_E:ie_E) = w1gauss(ie_E - is_E, &
+                                   eig_n - NLO_hw(is_E:ie_E), NLO_eta, 0)
+
+      DO iom = is_E, ie_E
+        epsilon_w_E(:, iom) = epsilon_w_E(:, iom) &
+                              + smear_E(iom)*kernel_mn(:)
+      END DO
+    END IF
+  END SUBROUTINE dielectric_E
   !
   SUBROUTINE Joint_DOS(JDOS_w, delta_Enm, fmn)
     REAL(DP), INTENT(INOUT) :: JDOS_w(NLO_nE)

@@ -98,7 +98,7 @@ CONTAINS
       lBerry, lBerry_p, lBerry_g, &
       lBCD, lBCD_p, &
       dE_thr, dE_eta, E_fermi, Ef_min, Ef_max, Ef_step, & ! dim &
-      lNLO, lNLO_g, lshift_g, lshift_g_E, shift_hw, &
+      lNLO, lNLO_g, lshift_g, lshift_g_E, shift_hw, ldielec_g_E, &
       NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) READ (stdin, nml=itg)
@@ -114,12 +114,13 @@ CONTAINS
     CALL mp_bcast(lNLO_g)
     CALL mp_bcast(lshift_g)
     CALL mp_bcast(lshift_g_E)
+    CALL mp_bcast(ldielec_g_E)
     CALL set_flags()
     !
     WRITE (stdout, '(2X, A, ES11.4)') '- dE threshold: ', dE_thr
     WRITE (stdout, '(2X, A, ES11.4)') '- Fermi energy: ', E_fermi
     ! WRITE (stdout, '(2X, A, 1X, I0)') '- Dimension: ', dim
-    IF (lNLO .OR. lshift_g_E) THEN
+    IF (lNLO .OR. lshift_g_E .OR. ldielec_g_E) THEN
       NLO_nE = CEILING((NLO_Emax - NLO_Emin)/NLO_dE) + 1
       WRITE (stdout, '(2X, A, 2(1X, ES11.4))') '- NLO energy window (eV): ', NLO_Emin, NLO_Emax
       WRITE (stdout, '(2X, A, 1X, ES11.4)') '- NLO broadening (eV): ', NLO_eta
@@ -147,7 +148,7 @@ CONTAINS
     ! IF (dim < 1 .OR. dim > 3) THEN
     !   CALL errore(1, 'read_itg', 'dimensionality must be 1, 2, or 3')
     ! END IF
-    IF (lNLO .OR. lshift_g_E) THEN
+    IF (lNLO .OR. lshift_g_E .OR. ldielec_g_E) THEN
       CALL mp_bcast(NLO_Emin)
       CALL mp_bcast(NLO_Emax)
       CALL mp_bcast(NLO_dE)
@@ -165,7 +166,7 @@ CONTAINS
       IF (NLO_w_thr <= 0.0_DP) &
         CALL errore(1, 'read_itg', 'NLO_w_thr must be positive')
     END IF
-    IF (lshift_g_E) THEN
+    IF (lshift_g_E .OR. ldielec_g_E) THEN
       CALL mp_bcast(shift_hw)
       IF (shift_hw <= 0.0_DP) THEN
         CALL errore(1, 'read_itg', 'shift_hw must be positive')
