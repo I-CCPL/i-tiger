@@ -18,7 +18,7 @@ SUBROUTINE compute_BCD_surf_p(O_bar, A_bar, dH_bar, BCD_surf)
   COMPLEX(DP), INTENT(IN)::O_bar(Nw, Nw, 3)
   COMPLEX(DP), INTENT(IN)::A_bar(Nw, Nw, 3)
   COMPLEX(DP), INTENT(IN)::dH_bar(Nw, Nw, 3)
-  REAL(DP), INTENT(OUT)::BCD_surf(3, 3, Ef_nE)
+  REAL(DP), INTENT(INOUT)::BCD_surf(3, 3, Ef_nE)
   INTEGER::ief, j, n
   REAL(DP)::delta
   REAL(DP)::imf_k(3, 3, Ef_nE)
@@ -37,10 +37,11 @@ SUBROUTINE compute_BCD_surf_p(O_bar, A_bar, dH_bar, BCD_surf)
       IF (ABS(t_kpt%eigval(n, t_iks) - E_fermi) > 5*dE_eta) CYCLE
 
       IF (.NOT. bdone) THEN
-        CALL get_berry_p_nk(n, t_kpt%eigval(:, t_iks), O_bar, A_bar, dH_bar, curv_nk(:))
+        CALL get_berry_p_nk(n, t_kpt%eigval(:, t_iks), A_bar, dH_bar, curv_nk(:))
         bdone = .TRUE.
       END IF
       delta = w1gauss(t_kpt%eigval(n, t_iks) - E_fermi, dE_eta, 0)*t_kpt%wk
+      ! dH_bar [eV*Ang], curv_nk [Ang^2], delta [1/eV] => BCD_surf [Ang^3]
       DO j = 1, 3
         BCD_surf(:, j, ief) = BCD_surf(:, j, ief) + DBLE(dH_bar(n, n, :))*curv_nk(j)*delta
       END DO

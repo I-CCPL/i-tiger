@@ -135,7 +135,7 @@ CONTAINS
     CALL mp_bcast(Ef_min)
     CALL mp_bcast(Ef_max)
     CALL mp_bcast(Ef_step)
-    IF (lBCD) THEN
+    IF (lBCD_p) THEN
       IF (Ef_min > Ef_max) THEN
         CALL errore(1, 'read_itg', 'Ef_max >= Ef_min required.')
       END IF

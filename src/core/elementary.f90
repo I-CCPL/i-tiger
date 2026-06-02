@@ -7,6 +7,7 @@ SUBROUTINE compute_D_bar(dH_bar, eigval, D_bar)
   REAL(DP), INTENT(IN)::eigval(Nw)
   COMPLEX(DP), INTENT(OUT)::D_bar(Nw, Nw, 3)
   INTEGER::m, n
+  ! dH_bar [eV*Ang], eigval [eV] => D_bar [Ang]
   DO m = 1, Nw
     DO n = 1, Nw
       IF (ABS(eigval(m) - eigval(n)) <= dE_thr) THEN
@@ -28,7 +29,7 @@ SUBROUTINE compute_v_k_H(A_bar, dH_bar, v_k_H)
   COMPLEX(DP), INTENT(IN)::dH_bar(Nw, Nw, 3)
   COMPLEX(DP), INTENT(OUT)::v_k_H(Nw, Nw, 3)
   INTEGER::iw, jw
-  !
+  ! dH_bar [eV*Ang], A_bar [Ang], eigval [eV] => v_k_H [Ang/fs]
   DO jw = 1, Nw
     DO iw = 1, Nw
       v_k_H(iw, jw, :) = (dH_bar(iw, jw, :) + cmplx_i*A_bar(iw, jw, :) &

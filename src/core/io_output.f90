@@ -95,7 +95,7 @@ CONTAINS
     !
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file=fname)
-    WRITE (io_unit, '("#", A)') 'k_pos, Berry  (arb.)'
+    WRITE (io_unit, '("#", A)') 'k_pos, Berry  (Ang^2)'
 
     DO iw = 1, Nw
       DO ikpt = 1, t_kpt%nktot
@@ -112,19 +112,22 @@ CONTAINS
     USE system, ONLY: V_cell_3D
     CHARACTER(LEN=*), INTENT(IN) :: fname
     REAL(DP), INTENT(IN) :: BCD(3, 3, Ef_nE)
-    INTEGER :: io_unit, ief
+    INTEGER :: io_unit, a, b, ief
     REAL(DP)::Ef_val, fac
     IF (.NOT. ionode) RETURN
     CALL writing_info('BCD', fname)
     !
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file=fname)
-    WRITE (io_unit, '("#", A)') 'Ef, xx, xy, xz, yx, yy, yz, zx, zy, zz'
+    WRITE (io_unit, '("#", A)') 'Berry curvature dipole (BCD) units: [1]'
+    WRITE (io_unit, '("#", A)') '(dimensionless in 3D, normalized by cell volume)'
+    WRITE (io_unit, '("#", A)') 'Ef (eV), xx, xy, xz, yx, yy, yz, zx, zy, zz'
 
     fac = 1/V_cell_3D
     DO ief = 1, Ef_nE
       Ef_val = Ef_min + (ief - 1)*Ef_step
-      WRITE (io_unit, '(ES15.6, 9(1X, ES15.6E3))') Ef_val, BCD(:, :, ief)*fac
+      WRITE (io_unit, '(ES15.6, 9(1X, ES15.6E3))') Ef_val, &
+        ((BCD(a, b, ief)*fac, b=1, 3), a=1, 3)
     END DO
     CLOSE (io_unit)
   END SUBROUTINE write_BCD
