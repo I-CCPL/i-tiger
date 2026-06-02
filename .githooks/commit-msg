@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# Usage:
+#   git config core.hooksPath .githooks
+#   chmod +x .githooks/commit-msg
+
+# This script checks the commit message for a version number in the format vX.Y.Z (e.g., v1.0.0) 
+# and updates the version number in env.f90 accordingly.
+
+# Set the path to env.f90 file
+f_env="env.f90"
+env_relpath="src/util/${f_env}"
+COMMIT_MSG_FILE="$1"
+VERSION_PATTERN='v[0-9]+(\.[0-9]+)*'
+
+# Check if the commit message file exists
+if [ -z "$COMMIT_MSG_FILE" ] || [ ! -f "$COMMIT_MSG_FILE" ]; then
+  echo "Error: commit message file not found."
+  exit 1
+fi
+
+repo_root=$(git rev-parse --show-toplevel) || exit 1
+env_file="$repo_root/$env_relpath"
+
+# Skip when there are no staged changes under src/.
+if git diff --cached --quiet -- src/; then
+  exit 0
+fi
+
+# Extract the first version string from the commit message, excluding comment lines.
+VERSION=$(
+  grep -v '^[[:space:]]*#' "$COMMIT_MSG_FILE" \
+  | grep -oE "$VERSION_PATTERN" \
+  | head -n 1
+)
+
+if [ -z "$VERSION" ]; then
+  echo "Error: No version number found in the commit message, e.g. v1.0.0."
+  exit 1
+fi
+
+if [ ! -f "$env_file" ]; then
+  echo "Error: ${f_env} file not found at $env_file"
+  exit 1
+fi
+
+# Read itg_version from the worktree copy.
+WORKTREE_VERSION=$(
+  grep -m 1 -oE "itg_version[[:space:]]*=[[:space:]]*'$VERSION_PATTERN'" "$env_file" \
+  | grep -oE "$VERSION_PATTERN" \
+  | head -n 1
+)
+
+# Read itg_version from the staged copy.
+STAGED_VERSION=$(
+  git show ":$env_relpath" 2>/dev/null \
+  | grep -m 1 -oE "itg_version[[:space:]]*=[[:space:]]*'$VERSION_PATTERN'" \
+  | grep -oE "$VERSION_PATTERN" \
+  | head -n 1
+)
+
+if [ -z "$WORKTREE_VERSION" ]; then
+  echo "Error: No itg_version value found in $env_file"
+  exit 1
+fi
+
+# If the staged itg_version does not match the commit message, update and restage it.
+if [ "$STAGED_VERSION" != "$VERSION" ]; then
+  if [ "$WORKTREE_VERSION" != "$VERSION" ]; then
+    tmp_file=$(mktemp "${env_file}.XXXXXX") || exit 1
+
+    sed -E \
+      "s/(itg_version[[:space:]]*=[[:space:]]*')$VERSION_PATTERN('.*)/\1$VERSION\3/" \
+      "$env_file" > "$tmp_file" \
+      && mv "$tmp_file" "$env_file"
+
+    UPDATED_VERSION=$(
+      grep -m 1 -oE "itg_version[[:space:]]*=[[:space:]]*'$VERSION_PATTERN'" "$env_file" \
+      | grep -oE "$VERSION_PATTERN" \
+      | head -n 1
+    )
+
+    if [ "$UPDATED_VERSION" != "$VERSION" ]; then
+      echo "Error: Failed to update itg_version in $env_file"
+      exit 1
+    fi
+  fi
+
+  git add "$env_file"
+
+  echo "Info: staged itg_version $VERSION in $env_file."
+  echo "Info: commit dropped by git hook. Please commit again."
+  exit 1
+fi
