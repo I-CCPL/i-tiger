@@ -113,11 +113,12 @@ CONTAINS
     END IF
 
     IF (lBerry_p) THEN
-      ! FIXME
       DO n = 1, Nw
-        CALL get_berry_p_nk(n, k_data%mA_bar, k_data%mdH_bar, berry_p_k(n, :, t_iks))
+        CALL get_berry_p_nk(n, t_kpt%eigval(:, t_iks), k_data%mA_bar, k_data%mdH_bar, &
+                            berry_p_k(n, :, t_iks))
       END DO
-      CALL get_berry_p_k(t_kpt%eigval(:, t_iks), k_data%mO_bar, k_data%mA_bar, k_data%mdH_bar, berry_p_sum(:, t_iks))
+      CALL get_berry_p_sum(t_kpt%eigval(:, t_iks), berry_p_k(:, :, t_iks), berry_p_sum(:, t_iks))
+      ! CALL get_berry_p_k(t_kpt%eigval(:, t_iks), k_data%mO_bar, k_data%mA_bar, k_data%mdH_bar, berry_p_sum(:, t_iks))
     END IF
 
     IF (lBerry_g) THEN

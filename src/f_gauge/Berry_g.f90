@@ -19,7 +19,7 @@ SUBROUTINE get_berry_g_nk(eigval, v_k, O_k)
       DO kpol = 1, 3
         ipol = MOD(kpol, 3) + 1
         jpol = MOD(kpol + 1, 3) + 1
-        O_k(iw1, kpol) = O_k(iw1, kpol) + factor*DIMAG(v_k(iw1, iw2, ipol)*v_k(iw2, iw1, jpol)/(denom**2))
+        O_k(iw1, kpol) = O_k(iw1, kpol) + factor*AIMAG(v_k(iw1, iw2, ipol)*v_k(iw2, iw1, jpol)/(denom**2))
       END DO
     END DO
   END DO
@@ -54,6 +54,7 @@ SUBROUTINE get_berry_g_k(eigval, v_k, berry)
   REAL(DP)::denom, factor
   ! v_k [Ang/fs], denom [eV] => O_k [Ang^2]
   factor = -2.0_DP*(hbar_eVfs**2)
+  berry = 0.0_DP
   DO iw1 = 1, Nw
     IF (eigval(iw1) > E_fermi) CYCLE
     DO iw2 = 1, Nw
@@ -62,7 +63,7 @@ SUBROUTINE get_berry_g_k(eigval, v_k, berry)
       DO kpol = 1, 3
         ipol = MOD(kpol, 3) + 1
         jpol = MOD(kpol + 1, 3) + 1
-        berry(kpol) = berry(kpol) + factor*DIMAG(v_k(iw1, iw2, ipol)*v_k(iw2, iw1, jpol)/(denom**2))
+        berry(kpol) = berry(kpol) + factor*AIMAG(v_k(iw1, iw2, ipol)*v_k(iw2, iw1, jpol)/(denom**2))
       END DO
     END DO
   END DO

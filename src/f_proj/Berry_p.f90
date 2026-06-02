@@ -40,6 +40,23 @@ SUBROUTINE get_berry_p_nk(l, eigval, A_bar, dH_bar, berry)
   END DO
 END SUBROUTINE get_berry_p_nk
 
+SUBROUTINE get_berry_p_sum(eigval, berry_k, berry)
+  USE kinds, ONLY: DP
+  USE f_params, ONLY: E_fermi
+  USE system, ONLY: Nw
+  IMPLICIT NONE
+  REAL(DP), INTENT(IN) :: eigval(Nw)
+  REAL(DP), INTENT(IN) :: berry_k(Nw, 3)
+  REAL(DP), INTENT(OUT) :: berry(3)
+  INTEGER :: n, c
+
+  berry = 0.0_DP
+  DO n = 1, Nw
+    IF (eigval(n) > E_fermi) CYCLE
+    berry(:) = berry(:) + berry_k(n, :)
+  END DO
+END SUBROUTINE get_berry_p_sum
+
 SUBROUTINE get_berry_p_k(eigval, O_bar, A_bar, dH_bar, berry)
   USE kinds, ONLY: DP
   USE constants, ONLY: cmplx_0, cmplx_i

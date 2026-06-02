@@ -103,7 +103,6 @@ CONTAINS
       END DO
       WRITE (io_unit, *) ! blank line
     END DO
-    WRITE (io_unit, *) ! blank line
     CLOSE (io_unit)
   END SUBROUTINE write_Berry_k
   !
