@@ -3,7 +3,7 @@ MODULE NLO_g
   ! Ref. PRB 61, 5337 (2000)
   USE kinds, ONLY: DP
   USE f_params, ONLY: NLO_nE, lNLO_g, lshift_g, &
-                      lshift_g_E, ldielec_g_E
+                      lshift_E_g, ldielec_E_g
   IMPLICIT NONE
   REAL(DP), ALLOCATABLE::NLO_hw(:)
   !> dielectric function (epsilon_r)
@@ -54,12 +54,12 @@ CONTAINS
       injection_w = 0.0_DP
     END IF
 
-    IF (lshift_g_E) THEN
+    IF (lshift_E_g) THEN
       ALLOCATE (shift_w_E(3, 6, NLO_nE))
       shift_w_E = 0.0_DP
     END IF
 
-    IF (ldielec_g_E) THEN
+    IF (ldielec_E_g) THEN
       ALLOCATE (epsilon_w_E(6, NLO_nE))
       epsilon_w_E = cmplx_0
     END IF
@@ -132,8 +132,8 @@ CONTAINS
       IF (lshift_g) CALL mp_sum(shift_w)
       CALL mp_sum(injection_w)
     END IF
-    IF (lshift_g_E) CALL mp_sum(shift_w_E)
-    IF (ldielec_g_E) CALL mp_sum(epsilon_w_E)
+    IF (lshift_E_g) CALL mp_sum(shift_w_E)
+    IF (ldielec_E_g) CALL mp_sum(epsilon_w_E)
 
     IF (.NOT. ionode) RETURN
     io_unit = get_free_unit()
@@ -201,7 +201,7 @@ CONTAINS
       END DO
     END IF
 
-    IF (ldielec_g_E) THEN
+    IF (ldielec_E_g) THEN
       OPEN (unit=io_unit, file='itg.epsilon_E_i.dat')
       CALL writing_info('dielectric function for given omega & band energy window', &
                         'itg.epsilon_E_i.dat')
@@ -213,7 +213,7 @@ CONTAINS
       CLOSE (io_unit)
     END IF
 
-    IF (lshift_g_E) THEN
+    IF (lshift_E_g) THEN
       DO ia = 1, 3
         fname_a = 'itg.shift_E_'//a_lab(ia)//'.dat'
         OPEN (unit=io_unit, file=fname_a)
@@ -302,7 +302,7 @@ CONTAINS
         ! IF (ABS(dE_nm) <= dE_thr) CYCLE
 
         del_v_nm = v_k_H(n, n, :) - v_k_H(m, m, :)
-        IF (lshift_g .OR. lshift_g_E) THEN
+        IF (lshift_g .OR. lshift_E_g) THEN
           del_bar_mn = (dH_bar(m, m, :) - dH_bar(n, n, :))*inv_hbar
           ! del_H_nm = v_bar(n, n, :) - v_bar(m, m, :)
           DO a = 1, 3
@@ -355,12 +355,12 @@ CONTAINS
                                  del_v_nm, gen_r(n, m, :), gen_r(m, n, :))
         END IF
 
-        IF (ldielec_g_E) THEN
+        IF (ldielec_E_g) THEN
           CALL dielectric_E(epsilon_w_E, eig_n, eig_m, fmn, &
                             gen_r(n, m, :), gen_r(m, n, :))
         END IF
 
-        IF (lshift_g_E) THEN
+        IF (lshift_E_g) THEN
           CALL shift_current_E(shift_w_E, eig_n, eig_m, fmn, gen_r(n, m, :), gen_dr_mn)
         END IF
       END DO

@@ -37,7 +37,7 @@ SUBROUTINE compute_BCD_surf_p(O_bar, A_bar, dH_bar, BCD_surf)
       IF (ABS(t_kpt%eigval(n, t_iks) - E_fermi) > 5*dE_eta) CYCLE
 
       IF (.NOT. bdone) THEN
-        CALL get_berry_p_nk(n, t_kpt%eigval(:, t_iks), A_bar, dH_bar, curv_nk(:))
+        CALL get_berry_nk_p(n, t_kpt%eigval(:, t_iks), A_bar, dH_bar, curv_nk(:))
         bdone = .TRUE.
       END IF
       delta = w1gauss(t_kpt%eigval(n, t_iks) - E_fermi, dE_eta, 0)*t_kpt%wk

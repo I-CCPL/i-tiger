@@ -1,4 +1,4 @@
-SUBROUTINE get_berry_p_nk(l, eigval, A_bar, dH_bar, berry)
+SUBROUTINE get_berry_nk_p(l, eigval, A_bar, dH_bar, berry)
   USE kinds, ONLY: DP
   USE constants, ONLY: cmplx_0, cmplx_1, cmplx_i
   USE f_params, ONLY: dE_thr, E_fermi
@@ -38,9 +38,9 @@ SUBROUTINE get_berry_p_nk(l, eigval, A_bar, dH_bar, berry)
     END DO
     berry(c) = J0 + J1 + J2
   END DO
-END SUBROUTINE get_berry_p_nk
+END SUBROUTINE get_berry_nk_p
 
-SUBROUTINE get_berry_p_sum(eigval, berry_k, berry)
+SUBROUTINE get_berry_sum_p(eigval, berry_k, berry)
   USE kinds, ONLY: DP
   USE f_params, ONLY: E_fermi
   USE system, ONLY: Nw
@@ -55,9 +55,9 @@ SUBROUTINE get_berry_p_sum(eigval, berry_k, berry)
     IF (eigval(n) > E_fermi) CYCLE
     berry(:) = berry(:) + berry_k(n, :)
   END DO
-END SUBROUTINE get_berry_p_sum
+END SUBROUTINE get_berry_sum_p
 
-SUBROUTINE get_berry_p_k(eigval, O_bar, A_bar, dH_bar, berry)
+SUBROUTINE get_berry_k_p(eigval, O_bar, A_bar, dH_bar, berry)
   USE kinds, ONLY: DP
   USE constants, ONLY: cmplx_0, cmplx_i
   USE f_params, ONLY: dE_thr, E_fermi
@@ -97,4 +97,4 @@ SUBROUTINE get_berry_p_k(eigval, O_bar, A_bar, dH_bar, berry)
     END DO
     berry = berry + REAL(O_bar(n, n, :) - 2*sum_val, DP)
   END DO
-END SUBROUTINE get_berry_p_k
+END SUBROUTINE get_berry_k_p

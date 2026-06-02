@@ -1,4 +1,4 @@
-SUBROUTINE get_berry_g_nk(eigval, v_k, O_k)
+SUBROUTINE get_berry_nk_g(eigval, v_k, O_k)
   USE kinds, ONLY: DP
   USE constants, ONLY: hbar_eVfs
   USE system, ONLY: Nw
@@ -23,9 +23,9 @@ SUBROUTINE get_berry_g_nk(eigval, v_k, O_k)
       END DO
     END DO
   END DO
-END SUBROUTINE get_berry_g_nk
+END SUBROUTINE get_berry_nk_g
 
-SUBROUTINE get_berry_g_sum(eigval, O_k, berry)
+SUBROUTINE get_berry_sum_g(eigval, O_k, berry)
   USE kinds, ONLY: DP
   USE f_params, ONLY: E_fermi
   USE system, ONLY: Nw
@@ -39,9 +39,9 @@ SUBROUTINE get_berry_g_sum(eigval, O_k, berry)
     IF (eigval(iw) > E_fermi) CYCLE
     berry(:) = berry(:) + O_k(iw, :)
   END DO
-END SUBROUTINE get_berry_g_sum
+END SUBROUTINE get_berry_sum_g
 
-SUBROUTINE get_berry_g_k(eigval, v_k, berry)
+SUBROUTINE get_berry_k_g(eigval, v_k, berry)
   USE kinds, ONLY: DP
   USE constants, ONLY: hbar_eVfs
   USE system, ONLY: Nw
@@ -67,4 +67,4 @@ SUBROUTINE get_berry_g_k(eigval, v_k, berry)
       END DO
     END DO
   END DO
-END SUBROUTINE get_berry_g_k
+END SUBROUTINE get_berry_k_g

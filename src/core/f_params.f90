@@ -56,8 +56,8 @@ MODULE f_params
   REAL(DP)::NLO_w_thr = 5.0_DP
   !< speeding up frequency integration
 
-  LOGICAL::lshift_g_E = .FALSE.
+  LOGICAL::lshift_E_g = .FALSE.
   REAL(DP)::shift_hw = -1.0_DP
-  LOGICAL::ldielec_g_E = .FALSE.
+  LOGICAL::ldielec_E_g = .FALSE.
 
 END MODULE f_params
