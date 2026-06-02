@@ -38,8 +38,8 @@ CONTAINS
     END IF
 
     IF (lBerry_g) THEN
-      k_data%bdH_k_W = .TRUE.
-      k_data%bA_k_W = .TRUE.
+      k_data%bdH_bar = .TRUE.
+      k_data%bA_bar = .TRUE.
     END IF
 
     IF (lBCD_p) THEN
@@ -114,15 +114,15 @@ CONTAINS
 
     IF (lBerry_p) THEN
       ! FIXME
-      ! DO n = 1, Nw
-      !   CALL get_berry_p_nk(n, k_data%mA_bar, k_data%mdH_bar, berry_p_k(n, :, t_iks))
-      ! END DO
+      DO n = 1, Nw
+        CALL get_berry_p_nk(n, k_data%mA_bar, k_data%mdH_bar, berry_p_k(n, :, t_iks))
+      END DO
       CALL get_berry_p_k(t_kpt%eigval(:, t_iks), k_data%mO_bar, k_data%mA_bar, k_data%mdH_bar, berry_p_sum(:, t_iks))
     END IF
 
     IF (lBerry_g) THEN
       CALL get_berry_g_nk(t_kpt%eigval(:, t_iks), v_k_H, berry_g_k(:, :, t_iks))
-      CALL get_berry_g_k(t_kpt%eigval(:, t_iks), berry_g_k(:, :, t_iks), berry_g_sum(:, t_iks))
+      CALL get_berry_g_sum(t_kpt%eigval(:, t_iks), berry_g_k(:, :, t_iks), berry_g_sum(:, t_iks))
     END IF
 
     IF (lBCD_p) THEN
@@ -196,8 +196,8 @@ CONTAINS
       END IF
       CALL t_kpt%gather(3, berry_p_sum, berry_tot)
       CALL t_kpt%gather(Nw*3, berry_p_k, berry_k_tot)
-      CALL write_Berry('itg.Berry.dat', berry_tot)
-      CALL write_Berry_k('itg.Berry_k.dat', berry_k_tot)
+      CALL write_Berry('itg.Berry.p.dat', berry_tot)
+      CALL write_Berry_k('itg.Berry_k.p.dat', berry_k_tot)
       DEALLOCATE (berry_tot)
       DEALLOCATE (berry_k_tot)
     END IF
@@ -212,17 +212,17 @@ CONTAINS
       END IF
       CALL t_kpt%gather(3, berry_g_sum, berry_tot)
       CALL t_kpt%gather(Nw*3, berry_g_k, berry_k_tot)
-      CALL write_Berry('itg.Berry_g.dat', berry_tot)
-      CALL write_Berry_k('itg.Berry_g_k.dat', berry_k_tot)
+      CALL write_Berry('itg.Berry.g.dat', berry_tot)
+      CALL write_Berry_k('itg.Berry_k.g.dat', berry_k_tot)
       DEALLOCATE (berry_tot)
       DEALLOCATE (berry_k_tot)
     END IF
 
     IF (lBCD_p) THEN
       ! CALL mp_sum(BCD_sea)
-      ! CALL write_BCD('itg.BCD.sea.dat', BCD_sea)
+      ! CALL write_BCD('itg.BCD.sea.p.dat', BCD_sea)
       CALL mp_sum(BCD_surf)
-      CALL write_BCD('itg.BCD.surf.dat', BCD_surf)
+      CALL write_BCD('itg.BCD.surf.p.dat', BCD_surf)
     END IF
 
     IF (lNLO_g .OR. lshift_g_E .OR. ldielec_g_E) THEN
