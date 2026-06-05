@@ -54,14 +54,16 @@ CONTAINS
     IF (chk_dum%have_disentangled) THEN
       WRITE (io_unit, '(A,2(1X,I0))') 'dims_lwindow=', SIZE(chk_dum%lwindow, 1), SIZE(chk_dum%lwindow, 2)
       WRITE (io_unit, '(A,1X,I0)') 'dims_ndimwin=', SIZE(self%ndimwin)
-      WRITE (io_unit, '(A,3(1X,I0))') 'dims_u_matrix_opt=', SIZE(chk_dum%u_matrix_opt, 1), SIZE(chk_dum%u_matrix_opt, 2), SIZE(chk_dum%u_matrix_opt, 3)
+      WRITE (io_unit, '(A,3(1X,I0))') 'dims_u_matrix_opt=', &
+        SIZE(chk_dum%u_matrix_opt, 1), SIZE(chk_dum%u_matrix_opt, 2), SIZE(chk_dum%u_matrix_opt, 3)
     ELSE
       WRITE (io_unit, '(A,2(1X,I0))') 'dims_lwindow=', 0, 0
       WRITE (io_unit, '(A,1X,I0)') 'dims_ndimwin=', 0
       WRITE (io_unit, '(A,3(1X,I0))') 'dims_u_matrix_opt=', 0, 0, 0
     END IF
    WRITE (io_unit, '(A,3(1X,I0))') 'dims_u_matrix=', SIZE(chk_dum%u_matrix, 1), SIZE(chk_dum%u_matrix, 2), SIZE(chk_dum%u_matrix, 3)
-    WRITE (io_unit, '(A,4(1X,I0))') 'dims_m_matrix=', SIZE(chk_dum%m_matrix, 1), SIZE(chk_dum%m_matrix, 2), SIZE(chk_dum%m_matrix, 3), SIZE(chk_dum%m_matrix, 4)
+    WRITE (io_unit, '(A,4(1X,I0))') 'dims_m_matrix=', &
+      SIZE(chk_dum%m_matrix, 1), SIZE(chk_dum%m_matrix, 2), SIZE(chk_dum%m_matrix, 3), SIZE(chk_dum%m_matrix, 4)
     WRITE (io_unit, '(A,2(1X,I0))') 'dims_wannier_centers=', 3, Nw
     WRITE (io_unit, '(A,1X,I0)') 'dims_wannier_spreads=', Nw
     CLOSE (io_unit)

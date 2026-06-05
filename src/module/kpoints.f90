@@ -89,7 +89,7 @@ CONTAINS
       END DO
     END DO
     self%k_red(:, ikpt) = skp(:, npath)
-    CALL red2cart_recip(self%k_red, self%k_cart, nktot)
+    CALL red2cart_recip(nktot, self%k_red, self%k_cart)
     self%nkpt = nktot
     self%nktot = nktot
     self%wk = 1.0_DP/REAL(nktot, DP)
@@ -135,7 +135,7 @@ CONTAINS
         END DO
       END DO
     END DO
-    CALL red2cart_recip(self%k_red, self%k_cart, nktot)
+    CALL red2cart_recip(nktot, self%k_red, self%k_cart)
     self%nkpt = nktot
     self%nktot = nktot
     self%wk = 1.0_DP/REAL(nktot, DP)

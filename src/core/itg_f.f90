@@ -136,7 +136,6 @@ CONTAINS
       CALL compute_BCD_surf_p(k_data%mO_bar, k_data%mA_bar, k_data%mdH_bar, BCD_surf)
 
       !... Fermi sea
-      ! CALL compute_BCD_sea(t_kpt%eigval(:, t_iks), k_data%mdH_bar, k_data%md2H_bar, k_data%mA_bar, k_data%mdA_bar, k_data%mdO_bar, BCD_sea)
     END IF
 
     IF (lNLO_g .OR. lshift_E_g .OR. ldielec_E_g) THEN

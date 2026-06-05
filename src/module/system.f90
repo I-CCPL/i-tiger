@@ -67,11 +67,11 @@ CONTAINS
     IF (.NOT. bInit) CALL errore(1, 'red2cart', 'call before init')
     A_cart = MATMUL(real_lattice, A_red)
   END SUBROUTINE red2cart_real_1D
-  SUBROUTINE red2cart_real_2D(A_red, A_cart, ndim)
+  SUBROUTINE red2cart_real_2D(ndim, A_red, A_cart)
     !< Convert reduced coordinates to cartesian coordinates in real space
+    INTEGER, INTENT(IN) :: ndim
     REAL(DP), INTENT(IN) :: A_red(3, ndim)
     REAL(DP), INTENT(OUT) :: A_cart(3, ndim)
-    INTEGER, INTENT(IN) :: ndim
     INTEGER :: idim
     DO idim = 1, ndim
       CALL red2cart_real_1D(A_red(:, idim), A_cart(:, idim))
@@ -85,24 +85,24 @@ CONTAINS
     IF (.NOT. bInit) CALL errore(1, 'cart2red', 'call before init')
     A_red = MATMUL(real_lattice_inv, A_cart)
   END SUBROUTINE cart2red_real_1D
-  SUBROUTINE cart2red_real_2D(A_cart, A_red, ndim)
+  SUBROUTINE cart2red_real_2D(ndim, A_cart, A_red)
     !< Convert cartesian coordinates to reduced coordinates in real space
+    INTEGER, INTENT(IN) :: ndim
     REAL(DP), INTENT(IN) :: A_cart(3, ndim)
     REAL(DP), INTENT(OUT) :: A_red(3, ndim)
-    INTEGER, INTENT(IN) :: ndim
     INTEGER :: idim
     DO idim = 1, ndim
       CALL cart2red_real_1D(A_cart(:, idim), A_red(:, idim))
     END DO
   END SUBROUTINE cart2red_real_2D
-  SUBROUTINE cart2red_real_3D(A_cart, A_red, dim1, dim2)
+  SUBROUTINE cart2red_real_3D(ndim1, ndim2, A_cart, A_red)
     !< Convert cartesian coordinates to reduced coordinates in real space
-    INTEGER, INTENT(IN) :: dim1, dim2
-    REAL(DP), INTENT(IN) :: A_cart(3, dim1, dim2)
-    REAL(DP), INTENT(OUT) :: A_red(3, dim1, dim2)
+    INTEGER, INTENT(IN) :: ndim1, ndim2
+    REAL(DP), INTENT(IN) :: A_cart(3, ndim1, ndim2)
+    REAL(DP), INTENT(OUT) :: A_red(3, ndim1, ndim2)
     INTEGER :: idim1, idim2
-    DO idim1 = 1, dim1
-      DO idim2 = 1, dim2
+    DO idim1 = 1, ndim1
+      DO idim2 = 1, ndim2
         CALL cart2red_real_1D(A_cart(:, idim1, idim2), A_red(:, idim1, idim2))
       END DO
     END DO
@@ -115,11 +115,11 @@ CONTAINS
     IF (.NOT. bInit) CALL errore(1, 'red2cart_recip', 'call before init')
     A_cart = MATMUL(recip_lattice, A_red)
   END SUBROUTINE red2cart_recip_1D
-  SUBROUTINE red2cart_recip_2D(A_red, A_cart, ndim)
+  SUBROUTINE red2cart_recip_2D(ndim, A_red, A_cart)
     !< Convert reduced coordinates to cartesian coordinates in reciprocal space
+    INTEGER, INTENT(IN) :: ndim
     REAL(DP), INTENT(IN) :: A_red(3, ndim)
     REAL(DP), INTENT(OUT) :: A_cart(3, ndim)
-    INTEGER, INTENT(IN) :: ndim
     INTEGER :: idim
     DO idim = 1, ndim
       CALL red2cart_recip_1D(A_red(:, idim), A_cart(:, idim))
@@ -133,11 +133,11 @@ CONTAINS
     IF (.NOT. bInit) CALL errore(1, 'cart2red_recip', 'call before init')
     A_red = MATMUL(recip_lattice_inv, A_cart)
   END SUBROUTINE cart2red_recip_1D
-  SUBROUTINE cart2red_recip_2D(A_cart, A_red, ndim)
+  SUBROUTINE cart2red_recip_2D(ndim, A_cart, A_red)
     !< Convert cartesian coordinates to reduced coordinates in reciprocal space
+    INTEGER, INTENT(IN) :: ndim
     REAL(DP), INTENT(IN) :: A_cart(3, ndim)
     REAL(DP), INTENT(OUT) :: A_red(3, ndim)
-    INTEGER, INTENT(IN) :: ndim
     INTEGER :: idim
     DO idim = 1, ndim
       CALL cart2red_recip_1D(A_cart(:, idim), A_red(:, idim))

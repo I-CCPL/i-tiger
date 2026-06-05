@@ -55,7 +55,7 @@ CONTAINS
       ALLOCATE (self%kpts%k_cart(3, self%kpts%nkpt))
       ALLOCATE (self%kpts%k_red(3, self%kpts%nkpt))
       READ (io_unit) self%kpts%k_red
-      CALL red2cart_recip(self%kpts%k_red, self%kpts%k_cart, self%kpts%nkpt)
+      CALL red2cart_recip(self%kpts%nkpt, self%kpts%k_red, self%kpts%k_cart)
       READ (io_unit) self%nnb
       WRITE (stdout, '(2X, A, I0)') '- nnb: ', self%nnb
       READ (io_unit) Nw

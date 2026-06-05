@@ -5,20 +5,25 @@ BIN_DIR ?= ./bin
 TARGET ?= $(BIN_DIR)/i-tiger.x
 TMP_FILE ?= /tmp/makedepf90_$(USER)
 
-LD := mpiifort
+MPIF90 ?= mpiifort
+MPI_INCLUDE ?= $(I_MPI_ROOT)/include/
+LD := $(MPIF90)
 LDFLAGS ?= 
 LDLIBS ?= $(BLAS_LIBS)
-
-MOD_FLAG ?= -I
-MODFLAGS ?= $(MOD_FLAG)$(BUILD_DIR) $(MOD_FLAG)$(BLAS_FLAGS)
-D__FLAGS := -D__MPI -D__DFTI
 
 BLAS_FLAGS ?= /opt/intel/oneapi/mkl/2022.1.0/include/
 BLAS_LIBS ?= -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 
-MPIF90 ?= mpiifort
+MOD_FLAG ?= -I
+MODFLAGS ?= $(MOD_FLAG)$(BUILD_DIR) \
+  $(MOD_FLAG)$(BLAS_FLAGS) \
+  $(MOD_FLAG)$(MPI_INCLUDE)
+D__FLAGS := -D__MPI -D__DFTI
+
+
 FFLAGS_COMMON = -assume byterecl -g -traceback \
 	-no-wrap-margin -nomodule -fpp -allow nofpp_comments \
+  -stand f18 \
 	$(MODFLAGS) $(D__FLAGS) -module $(BUILD_DIR)
 FFLAGS_OPT ?= -O2 $(FFLAGS_COMMON)
 FFLAGS_DEBUG ?= -O0 -check all -fpe0 $(FFLAGS_COMMON)

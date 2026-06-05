@@ -45,7 +45,7 @@ CONTAINS
         shift_cart(:, iw, jw) = center(:, jw) - center(:, iw)
       END DO
     END DO
-    CALL cart2red_real(shift_cart, shift_red, Nw, Nw)
+    CALL cart2red_real(Nw, Nw, shift_cart, shift_red)
   END SUBROUTINE fft_init
   !
   SUBROUTINE fft_q2R(w90data, R_vec, X_q, X_R)
