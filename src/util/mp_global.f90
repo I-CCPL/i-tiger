@@ -7,11 +7,15 @@ MODULE mp_global
   !
 CONTAINS
   SUBROUTINE mp_start()
+    LOGICAL::binit
 #ifdef __MPI
     mp_comm = MPI_COMM_WORLD
     mp_root = 0
-    CALL MPI_INIT(ierr)
-    CALL mp_abort(ierr, 'MPI_Init failed.')
+    CALL MPI_INITIALIZED(binit, ierr)
+    IF (.NOT. binit) THEN
+      CALL MPI_INIT(ierr)
+      CALL mp_abort(ierr, 'MPI_Init failed.')
+    END IF
     CALL MPI_COMM_RANK(mp_comm, mp_rank, ierr)
     CALL mp_abort(ierr, 'MPI_Comm_rank failed.')
     CALL MPI_COMM_SIZE(mp_comm, mp_size, ierr)
@@ -25,9 +29,13 @@ CONTAINS
   END SUBROUTINE mp_start
   !
   SUBROUTINE mp_end()
+    LOGICAL::bfinal
 #ifdef __MPI
-    CALL MPI_FINALIZE(ierr)
-    CALL mp_abort(ierr, 'MPI_Finalize failed.')
+    CALL MPI_FINALIZED(bfinal, ierr)
+    IF (.NOT. bfinal) THEN
+      CALL MPI_FINALIZE(ierr)
+      CALL mp_abort(ierr, 'MPI_Finalize failed.')
+    END IF
 #endif
   END SUBROUTINE mp_end
   !

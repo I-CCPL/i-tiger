@@ -1,3 +1,6 @@
+# No req.
+*.err
+
 # temporary files
 *.i90
 *.swp

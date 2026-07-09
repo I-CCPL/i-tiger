@@ -79,9 +79,14 @@ CONTAINS
   END SUBROUTINE mp_bcast_cmplx
 
   SUBROUTINE mp_bcast_char(msg)
+#ifdef __MPI
     USE mp_global, ONLY: mp_abort, mp_comm, mp_root, ierr, MPI_CHARACTER
+#endif
     CHARACTER(LEN=*), INTENT(INOUT) :: msg
 #ifdef __MPI
+    IF (LEN(msg) <= 0) THEN
+      CALL mp_abort(1, 'Invalid message size for mp_bcast.')
+    END IF
     CALL MPI_BCAST(msg, LEN(msg), MPI_CHARACTER, mp_root, mp_comm, ierr)
     CALL mp_abort(ierr, 'MPI bcast character failed.')
 #endif
