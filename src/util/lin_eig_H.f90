@@ -7,7 +7,6 @@ CONTAINS
   !
   SUBROUTINE eig_H(ld_cH, cHk, eigval, eigvec)
     !< Calculate eigenvalues and eigenvectors of Complex H in Wannier gauge at each k.
-    USE io_global, ONLY: stdout
     INTEGER, INTENT(IN) :: ld_cH
     COMPLEX(DP), INTENT(IN) :: cHk(ld_cH, ld_cH)
     REAL(DP), INTENT(OUT) :: eigval(ld_cH)
@@ -20,7 +19,6 @@ CONTAINS
   !
   SUBROUTINE eig_zheev(ld_cH, cH, eigval, eigvec)
     !< Calculate eigenvalues and eigenvectors of Complex H in Wannier gauge at given k.
-    USE mp_base, ONLY: mp_bcast
     INTEGER, INTENT(IN) :: ld_cH
     COMPLEX(DP), INTENT(IN) :: cH(ld_cH, ld_cH)
     REAL(DP), INTENT(OUT) :: eigval(ld_cH)
@@ -51,7 +49,6 @@ CONTAINS
 
   SUBROUTINE eig_zheevd(ld_cH, cH, eigval, eigvec)
     !< Calculate eigenvalues and eigenvectors of Complex H in Wannier gauge at given k.
-    USE mp_base, ONLY: mp_bcast
     INTEGER, INTENT(IN) :: ld_cH
     COMPLEX(DP), INTENT(IN) :: cH(ld_cH, ld_cH)
     REAL(DP), INTENT(OUT) :: eigval(ld_cH)
@@ -93,13 +90,13 @@ CONTAINS
     USE kinds, ONLY: DP
     USE constants, ONLY: cmplx_0
 
-    INTEGER, INTENT(in) :: ld_cH
-    COMPLEX(kind=dp), INTENT(in) :: mat(ld_cH, ld_cH)
-    REAL(kind=dp), INTENT(out) :: eig(ld_cH)
-    COMPLEX(kind=dp), INTENT(out) :: rot(ld_cH, ld_cH)
+    INTEGER, INTENT(IN) :: ld_cH
+    COMPLEX(DP), INTENT(IN) :: mat(ld_cH, ld_cH)
+    REAL(DP), INTENT(OUT) :: eig(ld_cH)
+    COMPLEX(DP), INTENT(OUT) :: rot(ld_cH, ld_cH)
 
-    COMPLEX(kind=dp) :: mat_pack((ld_cH*(ld_cH + 1))/2), cwork(2*ld_cH)
-    REAL(kind=dp) :: rwork(7*ld_cH)
+    COMPLEX(DP) :: mat_pack((ld_cH*(ld_cH + 1))/2), cwork(2*ld_cH)
+    REAL(DP) :: rwork(7*ld_cH)
     INTEGER :: i, j, info, nfound, iwork(5*ld_cH), ifail(ld_cH)
     CHARACTER(len=120) :: errormsg
 

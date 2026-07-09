@@ -30,6 +30,7 @@ CONTAINS
   !
   SUBROUTINE mat_mul(A, Ac, B, Bc, C)
     !< C = op(A) * op(B)
+    !< op(X): N = X, T = X^T, C = X^dagger
     !< (ndim, ndim) Square matrices
     USE kinds, ONLY: DP
     USE constants, ONLY: cmplx_0, cmplx_1
@@ -37,12 +38,12 @@ CONTAINS
     !< : left matrix
     CHARACTER(len=1), INTENT(IN) :: Ac
     !< : [left matrix]
-    !< N : normal / T : transpose / C : complex conjugate
+    !< N : normal / T : transpose / C : conjugate transpose
     COMPLEX(DP), INTENT(IN)  :: B(:, :)
     !< : right matrix
     CHARACTER(len=1), INTENT(IN) :: Bc
     !< : [right matrix]
-    !< N : normal / T : transpose / C : complex conjugate
+    !< N : normal / T : transpose / C : conjugate transpose
     COMPLEX(DP), INTENT(OUT) :: C(:, :)
     !< output matrix
     INTEGER::m, n, k
