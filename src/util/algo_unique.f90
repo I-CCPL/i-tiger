@@ -31,6 +31,11 @@ CONTAINS
     INTEGER :: n, i
 
     n = SIZE(v, 2)
+    IF (n == 0) THEN
+      nu = 0
+      ALLOCATE (v_unique(3, 0))
+      RETURN
+    END IF
 
     ALLOCATE (tmp(3, n))
     tmp = v
@@ -111,6 +116,11 @@ CONTAINS
     INTEGER :: n, i
 
     n = SIZE(v, 2)
+    IF (n == 0) THEN
+      nu = 0
+      ALLOCATE (u(3, 0))
+      RETURN
+    END IF
 
     ALLOCATE (perm(n))
     DO i = 1, n
@@ -183,7 +193,7 @@ CONTAINS
     INTEGER::i, n
     n = SIZE(arr)
     IF (SIZE(perm) /= n) THEN
-      CALL errore(1, 'Error: size of perm must match size of arr')
+      CALL errore(1, 'qsort_perm: size of perm must match size of arr')
     END IF
 
     DO i = 1, n
@@ -195,7 +205,7 @@ CONTAINS
     RECURSIVE SUBROUTINE qsort_perm_body(arr, left, right, perm)
       REAL(DP), INTENT(IN) :: arr(:)
       INTEGER, INTENT(IN) :: left, right
-      INTEGER, INTENT(OUT) :: perm(:)
+      INTEGER, INTENT(INOUT) :: perm(:)
       INTEGER::i, j, piv_idx, tmp
       REAL(DP):: pivot
 

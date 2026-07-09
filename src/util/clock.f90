@@ -5,7 +5,7 @@ MODULE clocks
   INTEGER::nclock = 0
   !
   CHARACTER(LEN=16)::clock_name(max_clocks)
-  INTEGER::ncalled(max_clocks)
+  INTEGER::ncalled(max_clocks) = 0
   LOGICAL::is_on(max_clocks) = .FALSE.
   REAL(DP)::s_cpu(max_clocks), s_wall(max_clocks)
   !< start time for CPU and wall clock
@@ -60,6 +60,7 @@ SUBROUTINE start_clock(label)
     i = nclock + 1
     nclock = i
     clock_name(i) = name
+    ncalled(i) = 0
     t_cpu(i) = 0.0_DP
     t_wall(i) = 0.0_DP
   END IF
