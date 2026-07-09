@@ -1,7 +1,7 @@
 MODULE env
   USE io_global, ONLY: stdout
   IMPLICIT NONE
-  CHARACTER(LEN=12)::itg_version = 'v0.0.11.2'
+  CHARACTER(LEN=12)::itg_version = 'v0.0.11.3'
 CONTAINS
   SUBROUTINE env_start(date, time)
     USE mp_global, ONLY: mp_start, mp_rank, mp_root, mp_size, mp_barrier
@@ -69,6 +69,7 @@ CONTAINS
     USE char_mod, ONLY: add_comma
     USE mp_global
     INTEGER::io_unit, ios
+    LOGICAL::have_hwm
     INTEGER(INT64)::hwm_kb, hwm_max_kb
     CHARACTER(LEN=30)::msg
     CHARACTER(LEN=256)::line
@@ -76,28 +77,30 @@ CONTAINS
     io_unit = get_free_unit()
     OPEN (unit=io_unit, file='/proc/self/status', &
           status='old', action='read', iostat=ios)
-    IF (ios /= 0) THEN
-      CALL errore(ios, 'memory_report', 'Failed to open /proc/self/status')
-    END IF
+    IF (ios /= 0) RETURN
 
+    have_hwm = .FALSE.
     DO
       READ (io_unit, '(A)', iostat=ios) line
       IF (ios /= 0) EXIT
       IF (INDEX(line, 'VmHWM:') == 1) THEN
         READ (line(7:), *) hwm_kb
+        have_hwm = .TRUE.
       END IF
     END DO
     CLOSE (io_unit)
 
+    IF (have_hwm) THEN
 #ifdef __MPI
-    CALL MPI_REDUCE(hwm_kb, hwm_max_kb, 1, MPI_INTEGER8, MPI_MAX, mp_root, mp_comm, ierr)
+      CALL MPI_REDUCE(hwm_kb, hwm_max_kb, 1, MPI_INTEGER8, MPI_MAX, mp_root, mp_comm, ierr)
 #else
-    hwm_max_kb = hwm_kb
+      hwm_max_kb = hwm_kb
 #endif
-    WRITE (msg, '(I0)') hwm_max_kb
-    IF (ionode) CALL add_comma(msg)
-    WRITE (stdout, '(2X,A)') 'Peak memory usage (VmHWM): '//TRIM(msg)//' KB'
-    WRITE (stdout, *)
+      WRITE (msg, '(I0)') hwm_max_kb
+      IF (ionode) CALL add_comma(msg)
+      WRITE (stdout, '(2X,A)') 'Peak memory usage (VmHWM): '//TRIM(msg)//' KB'
+      WRITE (stdout, *)
+    END IF
   END SUBROUTINE memory_report
   !
   SUBROUTINE print_all_clocks()
