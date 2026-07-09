@@ -271,7 +271,7 @@ CONTAINS
           ie_nm = MIN(INT((dE_nm + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
           IF (is_nm <= ie_nm) THEN
             delta_E(is_nm:ie_nm, n, m) = &
-              w1gauss(ie_nm - is_nm, (dE_nm - NLO_hw(is_nm:ie_nm)), NLO_eta, -99)
+              w1gauss(ie_nm - is_nm + 1, (dE_nm - NLO_hw(is_nm:ie_nm)), NLO_eta, -99)
           END IF
         END IF
 
@@ -400,7 +400,6 @@ CONTAINS
     !
     delta_Enm_E = w1gauss((eig_n - eig_m - shift_hw), NLO_eta, -99)
     delta_Emn_E = w1gauss((eig_m - eig_n - shift_hw), NLO_eta, -99)
-
     pref = 0.5_DP*ABS(fmn)*fac_dielec*(delta_Enm_E + delta_Emn_E)
 
     DO bc = 1, 6
@@ -413,7 +412,7 @@ CONTAINS
     ie_E = MIN(INT((eig_n + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
 
     IF (is_E <= ie_E) THEN
-      smear_E(is_E:ie_E) = w1gauss(ie_E - is_E, &
+      smear_E(is_E:ie_E) = w1gauss(ie_E - is_E + 1, &
                                    eig_n - NLO_hw(is_E:ie_E), NLO_eta, 0)
 
       DO iom = is_E, ie_E
@@ -486,7 +485,7 @@ CONTAINS
     is_E = MAX(INT((eig_n - NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), 1)
     ie_E = MIN(INT((eig_n + NLO_w_thr*NLO_eta - NLO_Emin)/NLO_dE + 1), NLO_nE)
     IF (is_E <= ie_E) THEN
-      smear_E(is_E:ie_E) = w1gauss(ie_E - is_E, eig_n - NLO_hw(is_E:ie_E), NLO_eta, 0)
+      smear_E(is_E:ie_E) = w1gauss(ie_E - is_E + 1, eig_n - NLO_hw(is_E:ie_E), NLO_eta, 0)
 
       DO iom = is_E, ie_E
         shift_w_E(:, :, iom) = shift_w_E(:, :, iom) &
