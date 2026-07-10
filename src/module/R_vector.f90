@@ -57,6 +57,9 @@ CONTAINS
     IF (ALLOCATED(self%R0_cart)) DEALLOCATE (self%R0_cart)
     IF (ALLOCATED(self%R_red)) DEALLOCATE (self%R_red)
     IF (ALLOCATED(self%R_cart)) DEALLOCATE (self%R_cart)
+    IF (ALLOCATED(self%w_R)) DEALLOCATE (self%w_R)
+    IF (ALLOCATED(self%map_r02r)) DEALLOCATE (self%map_r02r)
+    IF (ALLOCATED(self%map_r2r0)) DEALLOCATE (self%map_r2r0)
   END SUBROUTINE clear_Rvec
   !
   SUBROUTINE build_shift_vecs(self, wannier_center_cart)

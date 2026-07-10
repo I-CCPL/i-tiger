@@ -48,14 +48,14 @@ SUBROUTINE OAM_g_mod_diag(eigval, v_k, L_k)
   !
   factor = m_e
   DO iw = 1, Nw
-    L_k(:, iw) = 0.0_DP
+    L_k(iw, :) = 0.0_DP
     DO kw = 1, Nw
       dE_mk = eigval(iw) - eigval(kw)
       IF (ABS(dE_mk) < dE_thr) CYCLE
       DO kpol = 1, 3
         ipol = MOD(kpol, 3) + 1
         jpol = MOD(kpol + 1, 3) + 1
-        L_k(kpol, iw) = L_k(kpol, iw) &
+        L_k(iw, kpol) = L_k(iw, kpol) &
                         + factor*AIMAG(v_k(iw, kw, ipol)*v_k(kw, iw, jpol) - &
                                        v_k(iw, kw, jpol)*v_k(kw, iw, ipol)) &
                         /dE_mk

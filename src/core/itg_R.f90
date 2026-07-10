@@ -84,6 +84,7 @@ CONTAINS
     INTEGER::iw, jw, irpt, jrpt
     REAL(DP)::tmp_vec(3)
     !
+    mat_out = cmplx_0
     DO jrpt = 1, R_vec%nRpt
       tmp_vec = -R_vec%R_red(:, jrpt)
       DO irpt = 1, R_vec%nRpt

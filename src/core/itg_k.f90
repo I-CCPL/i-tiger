@@ -70,11 +70,13 @@ CONTAINS
 
     IF (k_data%bA_bar) k_data%bA_k_W = .TRUE.
     IF (k_data%bdA_bar) k_data%bdA_k_W = .TRUE.
+    IF (k_data%bd2A_bar) k_data%bd2A_k_W = .TRUE.
     IF (k_data%bO_bar) k_data%bO_k_W = .TRUE.
     IF (k_data%bdO_bar) k_data%bdO_k_W = .TRUE.
     !
     IF (k_data%bA_k_W) R_data%bA_R = .TRUE.
     IF (k_data%bdA_k_W) R_data%bA_R = .TRUE.
+    IF (k_data%bd2A_k_W) R_data%bA_R = .TRUE.
     IF (k_data%bO_k_W) R_data%bA_R = .TRUE.
     IF (k_data%bdO_k_W) R_data%bA_R = .TRUE.
   END SUBROUTINE set_k_flag
@@ -95,6 +97,8 @@ CONTAINS
     IF (k_data%bA_bar) ALLOCATE (k_data%mA_bar(Nw, Nw, 3))
     IF (k_data%bdA_k_W) ALLOCATE (k_data%mdA_k_W(Nw, Nw, 3, 3))
     IF (k_data%bdA_bar) ALLOCATE (k_data%mdA_bar(Nw, Nw, 3, 3))
+    IF (k_data%bd2A_k_W) ALLOCATE (k_data%md2A_k_W(Nw, Nw, 3, 3, 3))
+    IF (k_data%bd2A_bar) ALLOCATE (k_data%md2A_bar(Nw, Nw, 3, 3, 3))
     IF (k_data%bO_k_W) ALLOCATE (k_data%mO_k_W(Nw, Nw, 3))
     IF (k_data%bO_bar) ALLOCATE (k_data%mO_bar(Nw, Nw, 3))
     IF (k_data%bdO_k_W) ALLOCATE (k_data%mdO_k_W(Nw, Nw, 3, 3))
@@ -116,6 +120,8 @@ CONTAINS
     IF (ALLOCATED(k_data%mA_bar)) DEALLOCATE (k_data%mA_bar)
     IF (ALLOCATED(k_data%mdA_k_W)) DEALLOCATE (k_data%mdA_k_W)
     IF (ALLOCATED(k_data%mdA_bar)) DEALLOCATE (k_data%mdA_bar)
+    IF (ALLOCATED(k_data%md2A_k_W)) DEALLOCATE (k_data%md2A_k_W)
+    IF (ALLOCATED(k_data%md2A_bar)) DEALLOCATE (k_data%md2A_bar)
     IF (ALLOCATED(k_data%mO_k_W)) DEALLOCATE (k_data%mO_k_W)
     IF (ALLOCATED(k_data%mO_bar)) DEALLOCATE (k_data%mO_bar)
     IF (ALLOCATED(k_data%mdO_k_W)) DEALLOCATE (k_data%mdO_k_W)

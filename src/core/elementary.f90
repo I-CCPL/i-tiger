@@ -81,7 +81,6 @@ END SUBROUTINE compute_occ_mat
 SUBROUTINE compute_JJ_list(occ, JJm, JJp)
   USE kinds, ONLY: DP
   USE constants, ONLY: cmplx_0, cmplx_i
-  USE f_params, ONLY: E_fermi
   USE system, ONLY: Nw
   USE itg_k, ONLY: k_data, rotate_H2W
   IMPLICIT NONE
