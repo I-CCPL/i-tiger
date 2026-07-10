@@ -50,10 +50,10 @@ CONTAINS
 
     m = SIZE(C, 1)
     n = SIZE(C, 2)
-    IF (Ac /= 'Z') THEN
-      k = SIZE(A, 1)
-    ELSE
+    IF (Ac == 'N' .OR. Ac == 'n') THEN
       k = SIZE(A, 2)
+    ELSE
+      k = SIZE(A, 1)
     END IF
 
     CALL ZGEMM(Ac, Bc, m, n, k, cmplx_1, A, SIZE(A, 1), B, SIZE(B, 1), cmplx_0, C, m)
