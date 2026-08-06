@@ -2,12 +2,15 @@ MODULE itg_k
   USE kinds, ONLY: DP
   USE system, ONLY: Nw
   USE itg_R, ONLY: R_vec
-  USE kpoints, ONLY: t_kpt
+  USE kpoints, ONLY: t_iks, t_kpt
   IMPLICIT NONE
   !> intermediate data in k space
   !> X_bar = U^+ X U
   !> X_k_H = X_bar only for Gauge-covariant X
   TYPE::k_data_type
+    LOGICAL::binit_eigval = .FALSE.
+    !< compute eigenvalues in initialization
+
     !... Hamiltonian and its derivatives
     COMPLEX(DP), ALLOCATABLE::mH_k_W(:, :)
     !< Hamiltonian (Nw, Nw)
@@ -82,6 +85,8 @@ CONTAINS
   END SUBROUTINE set_k_flag
   !
   SUBROUTINE allocate_k()
+    USE fft_base, ONLY: fft_R2k
+    USE itg_R, ONLY: R_data
     ALLOCATE (t_kpt%H_k(Nw, Nw))
     ALLOCATE (t_kpt%eigval(Nw, t_kpt%nkpt))
     ALLOCATE (t_kpt%eigvec(Nw, Nw))
@@ -103,6 +108,13 @@ CONTAINS
     IF (k_data%bO_bar) ALLOCATE (k_data%mO_bar(Nw, Nw, 3))
     IF (k_data%bdO_k_W) ALLOCATE (k_data%mdO_k_W(Nw, Nw, 3, 3))
     IF (k_data%bdO_bar) ALLOCATE (k_data%mdO_bar(Nw, Nw, 3, 3))
+
+    IF (k_data%binit_eigval) THEN
+      DO t_iks = 1, t_kpt%nkpt
+        CALL fft_R2k(R_vec, R_data%mH_R, X_k=t_kpt%H_k)
+        CALL make_eigval()
+      END DO
+    END IF
   END SUBROUTINE allocate_k
   !
   SUBROUTINE clear_k()
@@ -128,12 +140,18 @@ CONTAINS
     IF (ALLOCATED(k_data%mdO_bar)) DEALLOCATE (k_data%mdO_bar)
   END SUBROUTINE clear_k
   !
+  SUBROUTINE make_eigval()
+    USE lin_eig_H, ONLY: eig_H
+    INTEGER::iw
+    DO iw = 1, Nw
+      t_kpt%H_k(iw, iw) = REAL(t_kpt%H_k(iw, iw), DP)
+    END DO
+    CALL eig_H(Nw, t_kpt%H_k, t_kpt%eigval(:, t_iks), t_kpt%eigvec(:, :))
+  END SUBROUTINE make_eigval
+  !
   SUBROUTINE make_k()
     USE fft_base, ONLY: fft_R2k, fft_R2k_vec
     USE itg_R, ONLY: R_data
-    USE lin_eig_H, ONLY: eig_H
-    USE kpoints, ONLY: t_iks, t_kpt
-    INTEGER::iw
     CALL start_clock('make_k')
 
     !... Important: nonallocatable dummy is not present
@@ -145,10 +163,9 @@ CONTAINS
                  X_k=t_kpt%H_k, &
                  dX_k=k_data%mdH_k_W, &
                  d2X_k=k_data%md2H_k_W)
-    DO iw = 1, Nw
-      t_kpt%H_k(iw, iw) = REAL(t_kpt%H_k(iw, iw), DP)
-    END DO
-    CALL eig_H(Nw, t_kpt%H_k, t_kpt%eigval(:, t_iks), t_kpt%eigvec(:, :))
+    IF (.NOT. k_data%binit_eigval) THEN
+      CALL make_eigval()
+    END IF
 
     IF (k_data%bdH_bar) CALL t_kpt%rotate(k_data%mdH_k_W, k_data%mdH_bar)
     IF (k_data%bd2H_bar) CALL t_kpt%rotate(k_data%md2H_k_W, k_data%md2H_bar)

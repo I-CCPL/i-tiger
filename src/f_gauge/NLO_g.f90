@@ -29,7 +29,7 @@ MODULE NLO_g
   !> size: (6, nbnd, nkpt)
   COMPLEX(DP), ALLOCATABLE::epsilon_w_k(:, :, :)
   !> contiguous band window
-  INTEGER::k_band_min = 1, k_band_max = 0, k_nband = 0
+  INTEGER::k_band_min = 9999, k_band_max = 0, k_nband = 0
 
   !> Transition-resolved shift vector for a fixed polarization b
   !> size: (3, Nw, Nw, nkpt)
@@ -51,6 +51,7 @@ CONTAINS
     USE constants, ONLY: cmplx_0, pi, cmplx_i, hbar_eVfs, &
                          e_chg_au, e_chg_si, FS2SEC, epsilon_0
     USE mp_base, ONLY: mp_min, mp_max
+    USE io_global, ONLY: stdout
     USE f_params, ONLY: NLO_Emin, NLO_dE, shift_hw, NLO_eta, NLO_w_thr, E_fermi
     USE system, ONLY: V_cell_3D, Nw
     USE kpoints, ONLY: kpoint_type
@@ -109,16 +110,19 @@ CONTAINS
       END DO
 
       IF (ANY(band_needed)) THEN
-        k_band_min = MINLOC(MERGE(1, Nw + 1, band_needed), DIM=1)
-        k_band_max = MAXLOC(MERGE((/(i, i=1, Nw)/), 0, band_needed), DIM=1)
+        k_band_min = FINDLOC(band_needed, .TRUE., DIM=1)
+        k_band_max = FINDLOC(band_needed, .TRUE., DIM=1, BACK=.TRUE.)
       ELSE
-        k_band_min = 1
+        k_band_min = Nw + 1
         k_band_max = 0
       END IF
       DEALLOCATE (band_needed)
       CALL mp_min(k_band_min)
       CALL mp_max(k_band_max)
       k_nband = k_band_max - k_band_min + 1
+      WRITE (stdout, '(2X, A)') 'NLO bands'
+      WRITE (stdout, '(2X, A,I0)') '- band min: ', k_band_min
+      WRITE (stdout, '(2X, A,I0)') '- band max: ', k_band_max
 
       IF (ldielec_k_g) THEN
         ALLOCATE (epsilon_w_k(6, k_nband, nkpt))

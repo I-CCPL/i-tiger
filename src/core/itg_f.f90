@@ -56,6 +56,9 @@ CONTAINS
       k_data%bA_bar = .TRUE.
       k_data%bdA_bar = .TRUE.
       k_data%bD_bar = .TRUE.
+      IF (lshift_k_g .OR. ldielec_k_g .OR. lshift_vec_g) THEN
+        k_data%binit_eigval = .TRUE.
+      END IF
     END IF
   END SUBROUTINE set_f_flag
   !

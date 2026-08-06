@@ -118,6 +118,7 @@ CONTAINS
     CALL mp_bcast(ldielec_E_g)
     CALL mp_bcast(lshift_k_g)
     CALL mp_bcast(ldielec_k_g)
+    CALL mp_bcast(lshift_vec_g)
     CALL set_flags()
     !
     WRITE (stdout, '(2X, A, ES11.4)') '- dE threshold: ', dE_thr
@@ -239,7 +240,7 @@ CONTAINS
               status='replace', action='write')
         WRITE (iun_kpts, '(A)') '# k_idx, k_red'
         DO i = 1, t_kpt%nktot
-          WRITE (iun_kpts, '(3(1X, ES11.4))') i, t_kpt%k_red(:, i)
+          WRITE (iun_kpts, '(I8, 3(1X, ES11.4))') i, t_kpt%k_red(:, i)
         END DO
         CLOSE (iun_kpts)
       END IF
