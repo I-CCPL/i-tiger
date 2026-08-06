@@ -3,7 +3,8 @@ MODULE NLO_g
   ! Ref. PRB 61, 5337 (2000)
   USE kinds, ONLY: DP
   USE f_params, ONLY: NLO_nE, lNLO_g, lshift_g, &
-                      lshift_E_g, ldielec_E_g
+                      lshift_E_g, ldielec_E_g, &
+                      lshift_k_g, ldielec_k_g, lshift_vec_g
   IMPLICIT NONE
   REAL(DP), ALLOCATABLE::NLO_hw(:)
   !> dielectric function (epsilon_r)
@@ -21,6 +22,16 @@ MODULE NLO_g
   !> dielectric function for given omega & band energy window
   !> size: (6, NLO_nE)
   COMPLEX(DP), ALLOCATABLE::epsilon_w_E(:, :)
+
+  !> size: (3, 6, nbnd, nkpt)
+  REAL(DP), ALLOCATABLE::shift_w_k(:, :, :, :)
+  !> size: (6, nbnd, nkpt)
+  COMPLEX(DP), ALLOCATABLE::epsilon_w_k(:, :, :)
+  !> size: (3, nbnd, nkpt)
+  REAL(DP), ALLOCATABLE::shift_vec_k(:, :, :)
+  !> contiguous band window
+  INTEGER::k_band_min = 1, k_band_max = 0, k_nband = 0
+
   !... factors
   COMPLEX(DP)::fac_dielec
   REAL(DP)::fac_JDOS
@@ -35,11 +46,14 @@ CONTAINS
   SUBROUTINE NLO_g_init(t_kpt)
     USE constants, ONLY: cmplx_0, pi, cmplx_i, hbar_eVfs, &
                          e_chg_au, e_chg_si, FS2SEC, epsilon_0
-    USE f_params, ONLY: NLO_Emin, NLO_dE
-    USE system, ONLY: V_cell_3D
+    USE mp_base, ONLY: mp_min, mp_max
+    USE f_params, ONLY: NLO_Emin, NLO_dE, shift_hw, NLO_eta, NLO_w_thr, E_fermi
+    USE system, ONLY: V_cell_3D, Nw
     USE kpoints, ONLY: kpoint_type
     TYPE(kpoint_type), INTENT(IN) :: t_kpt
-    INTEGER::i
+    INTEGER::i, ik, m, n, nkpt
+    REAL(DP)::E_mk, E_nk, fmn_k, hw_window
+    LOGICAL, ALLOCATABLE::band_needed(:)
 
     IF (lNLO_g) THEN
       ALLOCATE (epsilon_w(6, NLO_nE))
@@ -62,6 +76,54 @@ CONTAINS
     IF (ldielec_E_g) THEN
       ALLOCATE (epsilon_w_E(6, NLO_nE))
       epsilon_w_E = cmplx_0
+    END IF
+
+    ! Determine the smallest contiguous band window that can contribute at shift_hw.
+    ! Both transition directions are retained because the main kernels use ordered
+    ! (m,n) pairs and the shift-current kernel contains delta(E_nm +/- hw).
+    IF (lshift_k_g .OR. ldielec_k_g) THEN
+      nkpt = t_kpt%nkpt
+      ALLOCATE (band_needed(Nw))
+      band_needed = .FALSE.
+      hw_window = NLO_w_thr*NLO_eta
+      DO ik = 1, nkpt
+        DO m = 1, Nw
+          E_mk = t_kpt%eigval(m, ik)
+          DO n = 1, Nw
+            IF (m == n) CYCLE
+            E_nk = t_kpt%eigval(n, ik)
+            fmn_k = MERGE(1.0_DP, 0.0_DP, E_mk <= E_fermi) &
+                    - MERGE(1.0_DP, 0.0_DP, E_nk <= E_fermi)
+            IF (ABS(fmn_k) <= 1.0D-14) CYCLE
+            IF (ABS((E_nk - E_mk) - shift_hw) <= hw_window .OR. &
+                ABS((E_nk - E_mk) + shift_hw) <= hw_window) THEN
+              band_needed(m) = .TRUE.
+              band_needed(n) = .TRUE.
+            END IF
+          END DO
+        END DO
+      END DO
+
+      IF (ANY(band_needed)) THEN
+        k_band_min = MINLOC(MERGE(1, Nw + 1, band_needed), DIM=1)
+        k_band_max = MAXLOC(MERGE((/(i, i=1, Nw)/), 0, band_needed), DIM=1)
+      ELSE
+        k_band_min = 1
+        k_band_max = 0
+      END IF
+      DEALLOCATE (band_needed)
+      CALL mp_min(k_band_min)
+      CALL mp_max(k_band_max)
+      k_nband = k_band_max - k_band_min + 1
+
+      IF (ldielec_k_g) THEN
+        ALLOCATE (epsilon_w_k(6, k_nband, nkpt))
+        epsilon_w_k = cmplx_0
+      END IF
+      IF (lshift_k_g) THEN
+        ALLOCATE (shift_w_k(3, 6, k_nband, nkpt))
+        shift_w_k = 0.0_DP
+      END IF
     END IF
 
     ALLOCATE (NLO_hw(NLO_nE))
@@ -116,16 +178,30 @@ CONTAINS
     IF (ALLOCATED(shift_w_E)) DEALLOCATE (shift_w_E)
     IF (ALLOCATED(epsilon_w_E)) DEALLOCATE (epsilon_w_E)
     IF (ALLOCATED(injection_w)) DEALLOCATE (injection_w)
+    IF (ALLOCATED(shift_w_k)) DEALLOCATE (shift_w_k)
+    IF (ALLOCATED(epsilon_w_k)) DEALLOCATE (epsilon_w_k)
+    IF (ALLOCATED(shift_vec_k)) DEALLOCATE (shift_vec_k)
+    k_band_min = 1
+    k_band_max = 0
+    k_nband = 0
   END SUBROUTINE NLO_g_clear
   SUBROUTINE NLO_g_write(t_kpt)
     USE mp_base, ONLY: mp_sum
     USE io_global, ONLY: ionode, get_free_unit
     USE io_output, ONLY: writing_info
     USE kpoints, ONLY: kpoint_type
-    TYPE(kpoint_type), INTENT(IN) :: t_kpt
-    INTEGER :: io_unit, iom, ia, ibc
+    TYPE(kpoint_type), INTENT(INOUT) :: t_kpt
+    INTEGER :: io_unit, iom, ia, ibc, ik, ibnd, iw
     CHARACTER(LEN=256) :: fname_a
     CHARACTER(LEN=1), PARAMETER :: a_lab(3) = (/'x', 'y', 'z'/)
+    INTEGER::length
+    COMPLEX(DP), ALLOCATABLE :: epsilon_k_local(:, :)
+    COMPLEX(DP), ALLOCATABLE :: epsilon_k_global(:, :)
+    COMPLEX(DP), ALLOCATABLE :: epsilon_w_k_g(:, :, :)
+    REAL(DP), ALLOCATABLE :: shift_k_local(:, :)
+    REAL(DP), ALLOCATABLE :: shift_k_global(:, :)
+    REAL(DP), ALLOCATABLE :: shift_w_k_g(:, :, :, :)
+
     IF (lNLO_g) THEN
       CALL mp_sum(epsilon_w)
       CALL mp_sum(JDOS_w)
@@ -134,6 +210,55 @@ CONTAINS
     END IF
     IF (lshift_E_g) CALL mp_sum(shift_w_E)
     IF (ldielec_E_g) CALL mp_sum(epsilon_w_E)
+    IF (ldielec_k_g) THEN
+      length = 6*k_nband
+      ALLOCATE (epsilon_k_local(length, t_kpt%nkpt))
+      IF (ionode) THEN
+        ALLOCATE (epsilon_k_global(length, t_kpt%nktot))
+      ELSE
+        ALLOCATE (epsilon_k_global(0, 0))
+      END IF
+      epsilon_k_local = RESHAPE( &
+                        epsilon_w_k, &
+                        SHAPE(epsilon_k_local) &
+                        )
+      CALL t_kpt%gather_c(length, epsilon_k_local, epsilon_k_global)
+      DEALLOCATE (epsilon_k_local)
+
+      IF (ionode) THEN
+        ALLOCATE (epsilon_w_k_g(6, k_nband, t_kpt%nktot))
+        epsilon_w_k_g = RESHAPE( &
+                        epsilon_k_global, &
+                        SHAPE(epsilon_w_k_g) &
+                        )
+      END IF
+      DEALLOCATE (epsilon_k_global)
+    END IF
+
+    IF (lshift_k_g) THEN
+      length = 3*6*k_nband
+      ALLOCATE (shift_k_local(length, t_kpt%nkpt))
+      IF (ionode) THEN
+        ALLOCATE (shift_k_global(length, t_kpt%nktot))
+      ELSE
+        ALLOCATE (shift_k_global(0, 0))
+      END IF
+      shift_k_local = RESHAPE( &
+                      shift_w_k, &
+                      SHAPE(shift_k_local) &
+                      )
+      CALL t_kpt%gather_r(length, shift_k_local, shift_k_global)
+      DEALLOCATE (shift_k_local)
+
+      IF (ionode) THEN
+        ALLOCATE (shift_w_k_g(3, 6, k_nband, t_kpt%nktot))
+        shift_w_k_g = RESHAPE( &
+                      shift_k_global, &
+                      SHAPE(shift_w_k_g) &
+                      )
+      END IF
+      DEALLOCATE (shift_k_global)
+    END IF
 
     IF (.NOT. ionode) RETURN
     io_unit = get_free_unit()
@@ -227,15 +352,50 @@ CONTAINS
         CLOSE (io_unit)
       END DO
     END IF
+
+    ! nk-resolved output at the single photon energy shift_hw.
+    IF (ldielec_k_g) THEN
+      OPEN (unit=io_unit, file='itg.epsilon_k_i.dat')
+      CALL writing_info('nk-resolved dielectric function', 'itg.epsilon_k_i.dat')
+      WRITE (io_unit, 0947) 'dielectric function units: [1]'
+      WRITE (io_unit, 0951) "xx", "xy", "yy", "yz", "zz", "zx"
+      DO ik = 1, t_kpt%nktot
+        DO ibnd = 1, k_nband
+          iw = k_band_min + ibnd - 1
+          WRITE (io_unit, 0952) ik, iw, AIMAG(epsilon_w_k_g(:, ibnd, ik))
+        END DO
+      END DO
+      CLOSE (io_unit)
+    END IF
+
+    IF (lshift_k_g) THEN
+      DO ia = 1, 3
+        fname_a = 'itg.shift_k_'//a_lab(ia)//'.dat'
+        OPEN (unit=io_unit, file=fname_a)
+        CALL writing_info('nk-resolved shift current', fname_a)
+        WRITE (io_unit, 0947) 'shift current units: [microA/V^2]'
+        WRITE (io_unit, 0951) "xx", "xy", "yy", "yz", "zz", "zx"
+        DO ik = 1, t_kpt%nktot
+          DO ibnd = 1, k_nband
+            iw = k_band_min + ibnd - 1
+            WRITE (io_unit, 0952) ik, iw, &
+              (shift_w_k_g(ia, ibc, ibnd, ik), ibc=1, 6)
+          END DO
+        END DO
+        CLOSE (io_unit)
+      END DO
+    END IF
 0947 FORMAT("# ", A)
 0948 FORMAT("# hw (eV)", 6(",", A16))
 0949 FORMAT(F13.6, 6(1X, ES16.8E3))
 0950 FORMAT("# E (eV)", 6(",", A16))
+0951 FORMAT("# ik, ibnd", 6(",", A16))
+0952 FORMAT(I8, 1X, I8, 6(1X, ES16.8E3))
   END SUBROUTINE NLO_g_write
   !
   SUBROUTINE NLO_g_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H, D_bar)
     USE constants, ONLY: hbar_eVfs, cmplx_0, cmplx_i
-    USE f_params, ONLY: dE_thr, dE_eta, &
+    USE f_params, ONLY: dE_thr, dE_eta, shift_hw, &
                         NLO_Emin, NLO_Emax, NLO_dE, NLO_nE, NLO_eta, NLO_w_thr
     USE system, ONLY: Nw
     USE delta_func, ONLY: dE_inv, w1gauss
@@ -247,8 +407,8 @@ CONTAINS
     COMPLEX(DP), INTENT(IN) :: dA_bar(Nw, Nw, 3, 3)
     COMPLEX(DP), INTENT(IN) :: v_k_H(Nw, Nw, 3)
     COMPLEX(DP), INTENT(IN):: D_bar(Nw, Nw, 3)
-    INTEGER::n, m, p, a, b, iom
-    REAL(DP)::inv_hbar, eig_n, eig_m, dE_nm, delta_res_nm
+    INTEGER::n, m, p, a, b, iom, ibnd
+    REAL(DP)::inv_hbar, eig_n, eig_m, dE_nm, delta_res_nm, delta_nm_k, delta_mn_k
     REAL(DP)::w_inv(Nw, Nw), occ(Nw), fmn, E_inv(Nw, Nw)
     COMPLEX(DP)::v_bar(Nw, Nw, 3), del_v_nm(3), del_bar_mn(3), dv_bar
     COMPLEX(DP)::psum, dr_mn, da_mn
@@ -302,7 +462,7 @@ CONTAINS
         ! IF (ABS(dE_nm) <= dE_thr) CYCLE
 
         del_v_nm = v_k_H(n, n, :) - v_k_H(m, m, :)
-        IF (lshift_g .OR. lshift_E_g) THEN
+        IF (lshift_g .OR. lshift_E_g .OR. lshift_k_g) THEN
           del_bar_mn = (dH_bar(m, m, :) - dH_bar(n, n, :))*inv_hbar
           ! del_H_nm = v_bar(n, n, :) - v_bar(m, m, :)
           DO a = 1, 3
@@ -363,6 +523,22 @@ CONTAINS
         IF (lshift_E_g) THEN
           CALL shift_current_E(shift_w_E, eig_n, eig_m, fmn, gen_r(n, m, :), gen_dr_mn)
         END IF
+
+        ! nk-resolved response at shift_hw.
+        IF ((ldielec_k_g .OR. lshift_k_g) .AND. &
+            n >= k_band_min .AND. n <= k_band_max) THEN
+          ibnd = n - k_band_min + 1
+          delta_nm_k = w1gauss(dE_nm - shift_hw, NLO_eta, -99)
+          delta_mn_k = w1gauss(-dE_nm - shift_hw, NLO_eta, -99)
+          IF (ldielec_k_g) THEN
+            CALL dielectric_k(epsilon_w_k(:, ibnd, t_iks), delta_nm_k, fmn, &
+                              gen_r(n, m, :), gen_r(m, n, :))
+          END IF
+          IF (lshift_k_g) THEN
+            CALL shift_current_k(shift_w_k(:, :, ibnd, t_iks), delta_nm_k, delta_mn_k, &
+                                 fmn, gen_r(n, m, :), gen_dr_mn)
+          END IF
+        END IF
       END DO
     END DO
     DEALLOCATE (delta_E)
@@ -387,6 +563,39 @@ CONTAINS
                           + delta_Enm(iom)*kernel_mn
     END DO
   END SUBROUTINE dielectric
+  !
+  SUBROUTINE dielectric_k(epsilon_k, delta_Enm, fmn, r_nm, r_mn)
+    COMPLEX(DP), INTENT(INOUT) :: epsilon_k(6)
+    REAL(DP), INTENT(IN) :: delta_Enm, fmn
+    COMPLEX(DP), INTENT(IN) :: r_nm(3), r_mn(3)
+    INTEGER :: b, c, bc
+    COMPLEX(DP) :: pref
+    pref = fmn*fac_dielec*delta_Enm
+    DO bc = 1, 6
+      b = bc2b(bc)
+      c = bc2c(bc)
+      epsilon_k(bc) = epsilon_k(bc) + pref*r_mn(b)*r_nm(c)
+    END DO
+  END SUBROUTINE dielectric_k
+  !
+  SUBROUTINE shift_current_k(shift_k, delta_Enm, delta_Emn, fmn, r_nm, dr_mn)
+    REAL(DP), INTENT(INOUT) :: shift_k(3, 6)
+    REAL(DP), INTENT(IN) :: delta_Enm, delta_Emn, fmn
+    COMPLEX(DP), INTENT(IN) :: r_nm(3), dr_mn(3, 3)
+    INTEGER :: a, b, c, bc
+    COMPLEX(DP) :: pref
+    REAL(DP) :: kernel_mn(3, 6)
+    pref = fmn*fac_shift
+    DO a = 1, 3
+      DO bc = 1, 6
+        b = bc2b(bc)
+        c = bc2c(bc)
+        kernel_mn(a, bc) = DBLE(pref*(r_nm(b)*dr_mn(a, c) + &
+                                      r_nm(c)*dr_mn(a, b)))
+      END DO
+    END DO
+    shift_k(:, :) = shift_k(:, :) + (delta_Enm + delta_Emn)*kernel_mn(:, :)
+  END SUBROUTINE shift_current_k
   !
   SUBROUTINE dielectric_E(epsilon_w_E, eig_n, eig_m, fmn, r_nm, r_mn)
     USE f_params, ONLY: shift_hw, NLO_eta, NLO_w_thr, NLO_Emin, NLO_dE, NLO_nE

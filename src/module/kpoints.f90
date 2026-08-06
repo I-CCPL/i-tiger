@@ -22,7 +22,8 @@ MODULE kpoints
   CONTAINS
     PROCEDURE::divide_k => divide_k_idx
     PROCEDURE::global_k => global_k_idx
-    PROCEDURE::gather => gather_r_data
+    PROCEDURE::gather_r => gather_r_data
+    PROCEDURE::gather_c => gather_c_data
     PROCEDURE::receive => rec_r_data
     PROCEDURE::build_path => build_kpath
     PROCEDURE::build_mesh => build_kmesh
@@ -48,6 +49,12 @@ MODULE kpoints
       REAL(DP), INTENT(IN) :: f_in(length, self%nkpt)
       REAL(DP), INTENT(OUT) :: f_out(length, self%nktot)
     END SUBROUTINE gather_r_data
+    MODULE SUBROUTINE gather_c_data(self, length, f_in, f_out)
+      CLASS(kpoint_type), INTENT(INOUT) :: self
+      INTEGER, INTENT(IN) :: length
+      COMPLEX(DP), INTENT(IN) :: f_in(length, self%nkpt)
+      COMPLEX(DP), INTENT(OUT) :: f_out(length, self%nktot)
+    END SUBROUTINE gather_c_data
     MODULE SUBROUTINE rec_r_data(self, length, vec)
       CLASS(kpoint_type), INTENT(INOUT) :: self
       INTEGER, INTENT(IN) :: length

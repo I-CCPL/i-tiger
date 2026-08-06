@@ -18,7 +18,7 @@
 ./build/warning.o : ./build/io_global.o 
 ./build/write_matrix.o : ./build/kpoints.o ./build/system.o ./build/kinds.o 
 ./build/Berry_g.o : ./build/f_params.o ./build/system.o ./build/constants.o ./build/kinds.o 
-./build/NLO_g.o : ./build/delta_funct.o ./build/io_output.o ./build/io_global.o ./build/mp_base.o ./build/kpoints.o ./build/system.o ./build/constants.o ./build/f_params.o ./build/kinds.o 
+./build/NLO_g.o : ./build/delta_funct.o ./build/io_output.o ./build/io_global.o ./build/kpoints.o ./build/system.o ./build/mp_base.o ./build/constants.o ./build/f_params.o ./build/kinds.o 
 ./build/OAM_g.o : ./build/system.o ./build/f_params.o ./build/constants.o ./build/kinds.o 
 ./build/BCD_p.o : ./build/delta_funct.o ./build/system.o ./build/kpoints.o ./build/f_params.o ./build/kinds.o 
 ./build/Berry_p.o : ./build/itg_k.o ./build/kpoints.o ./build/system.o ./build/f_params.o ./build/constants.o ./build/kinds.o 

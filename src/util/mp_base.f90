@@ -10,7 +10,7 @@ MODULE mp_base
   USE mp_global
   IMPLICIT NONE
   PRIVATE
-  PUBLIC :: mp_bcast, mp_sum
+  PUBLIC :: mp_bcast, mp_sum, mp_min, mp_max
 
   INTERFACE mp_bcast
     MODULE PROCEDURE mp_bcast_logical, mp_bcast_int, &
@@ -22,6 +22,13 @@ MODULE mp_base
     MODULE PROCEDURE mp_sum_int, mp_sum_real, mp_sum_cmplx
   END INTERFACE mp_sum
 
+  INTERFACE mp_min
+    MODULE PROCEDURE mp_min_int
+  END INTERFACE mp_min
+
+  INTERFACE mp_max
+    MODULE PROCEDURE mp_max_int
+  END INTERFACE mp_max
 CONTAINS
 
   SUBROUTINE mp_bcast_logical(msg)
@@ -91,7 +98,7 @@ CONTAINS
     CALL mp_abort(ierr, 'MPI bcast character failed.')
 #endif
   END SUBROUTINE mp_bcast_char
-
+  ! ==================================================
   SUBROUTINE mp_sum_int(msg)
     INTEGER, INTENT(INOUT), CONTIGUOUS :: msg(..)
     INTEGER :: msg_size
@@ -132,5 +139,32 @@ CONTAINS
     CALL mp_abort(ierr, 'MPI sum complex failed.')
 #endif
   END SUBROUTINE mp_sum_cmplx
+  ! ==================================================
+  SUBROUTINE mp_min_int(msg)
+    INTEGER, INTENT(INOUT), CONTIGUOUS :: msg(..)
+    INTEGER :: msg_size
+#ifdef __MPI
+    msg_size = SIZE(msg)
+    IF (msg_size <= 0) THEN
+      CALL mp_abort(1, 'Invalid message size for mp_min.')
+    END IF
 
+    CALL MPI_ALLREDUCE(MPI_IN_PLACE, msg, msg_size, MPI_INTEGER, MPI_MIN, mp_comm, ierr)
+    CALL mp_abort(ierr, 'MPI min integer failed.')
+#endif
+  END SUBROUTINE mp_min_int
+  ! ==================================================
+  SUBROUTINE mp_max_int(msg)
+    INTEGER, INTENT(INOUT), CONTIGUOUS :: msg(..)
+    INTEGER :: msg_size
+#ifdef __MPI
+    msg_size = SIZE(msg)
+    IF (msg_size <= 0) THEN
+      CALL mp_abort(1, 'Invalid message size for mp_max.')
+    END IF
+
+    CALL MPI_ALLREDUCE(MPI_IN_PLACE, msg, msg_size, MPI_INTEGER, MPI_MAX, mp_comm, ierr)
+    CALL mp_abort(ierr, 'MPI max integer failed.')
+#endif
+  END SUBROUTINE mp_max_int
 END MODULE mp_base

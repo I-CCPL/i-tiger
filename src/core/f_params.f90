@@ -60,4 +60,8 @@ MODULE f_params
   REAL(DP)::shift_hw = -1.0_DP
   LOGICAL::ldielec_E_g = .FALSE.
 
+  LOGICAL::lshift_k_g = .FALSE.
+  LOGICAL::ldielec_k_g = .FALSE.
+  LOGICAL::lshift_vec_g = .FALSE.
+
 END MODULE f_params
