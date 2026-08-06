@@ -4,7 +4,8 @@ MODULE NLO_g
   USE kinds, ONLY: DP
   USE f_params, ONLY: NLO_nE, lNLO_g, lshift_g, &
                       lshift_E_g, ldielec_E_g, &
-                      lshift_k_g, ldielec_k_g, lshift_vec_g
+                      lshift_k_g, ldielec_k_g, &
+                      lshift_vec_g, shift_vec_b
   IMPLICIT NONE
   REAL(DP), ALLOCATABLE::NLO_hw(:)
   !> dielectric function (epsilon_r)
@@ -27,10 +28,13 @@ MODULE NLO_g
   REAL(DP), ALLOCATABLE::shift_w_k(:, :, :, :)
   !> size: (6, nbnd, nkpt)
   COMPLEX(DP), ALLOCATABLE::epsilon_w_k(:, :, :)
-  !> size: (3, nbnd, nkpt)
-  REAL(DP), ALLOCATABLE::shift_vec_k(:, :, :)
   !> contiguous band window
   INTEGER::k_band_min = 1, k_band_max = 0, k_nband = 0
+
+  !> Transition-resolved shift vector for a fixed polarization b
+  !> size: (3, Nw, Nw, nkpt)
+  !> indices: (a, n, m, ik)
+  REAL(DP), ALLOCATABLE::shift_vec_k(:, :, :, :)
 
   !... factors
   COMPLEX(DP)::fac_dielec
@@ -126,6 +130,11 @@ CONTAINS
       END IF
     END IF
 
+    IF (lshift_vec_g) THEN
+      ALLOCATE (shift_vec_k(3, Nw, Nw, nkpt))
+      shift_vec_k = 0.0_DP
+    END IF
+
     ALLOCATE (NLO_hw(NLO_nE))
     IF (NLO_nE == 1) THEN
       NLO_hw(1) = NLO_Emin
@@ -189,9 +198,10 @@ CONTAINS
     USE mp_base, ONLY: mp_sum
     USE io_global, ONLY: ionode, get_free_unit
     USE io_output, ONLY: writing_info
+    USE system, ONLY: Nw
     USE kpoints, ONLY: kpoint_type
     TYPE(kpoint_type), INTENT(INOUT) :: t_kpt
-    INTEGER :: io_unit, iom, ia, ibc, ik, ibnd, iw
+    INTEGER :: io_unit, iom, ia, ibc, ik, ibnd, iw, m, n
     CHARACTER(LEN=256) :: fname_a
     CHARACTER(LEN=1), PARAMETER :: a_lab(3) = (/'x', 'y', 'z'/)
     INTEGER::length
@@ -201,7 +211,9 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: shift_k_local(:, :)
     REAL(DP), ALLOCATABLE :: shift_k_global(:, :)
     REAL(DP), ALLOCATABLE :: shift_w_k_g(:, :, :, :)
-
+    REAL(DP), ALLOCATABLE :: shift_vec_local(:, :)
+    REAL(DP), ALLOCATABLE :: shift_vec_global(:, :)
+    REAL(DP), ALLOCATABLE :: shift_vec_k_g(:, :, :, :)
     IF (lNLO_g) THEN
       CALL mp_sum(epsilon_w)
       CALL mp_sum(JDOS_w)
@@ -258,6 +270,34 @@ CONTAINS
                       )
       END IF
       DEALLOCATE (shift_k_global)
+    END IF
+
+    IF (lshift_vec_g) THEN
+      length = 3*Nw*Nw
+      ALLOCATE (shift_vec_local(length, t_kpt%nkpt))
+      IF (ionode) THEN
+        ALLOCATE (shift_vec_global(length, t_kpt%nktot))
+      ELSE
+        ALLOCATE (shift_vec_global(0, 0))
+      END IF
+
+      shift_vec_local = RESHAPE( &
+                        shift_vec_k, &
+                        SHAPE(shift_vec_local) &
+                        )
+      CALL t_kpt%gather_r( &
+        length, &
+        shift_vec_local, &
+        shift_vec_global)
+      DEALLOCATE (shift_vec_local)
+      IF (ionode) THEN
+        ALLOCATE (shift_vec_k_g(3, Nw, Nw, t_kpt%nktot))
+        shift_vec_k_g = RESHAPE( &
+                        shift_vec_global, &
+                        SHAPE(shift_vec_k_g) &
+                        )
+      END IF
+      DEALLOCATE (shift_vec_global)
     END IF
 
     IF (.NOT. ionode) RETURN
@@ -385,12 +425,37 @@ CONTAINS
         CLOSE (io_unit)
       END DO
     END IF
+
+    IF (lshift_vec_g) THEN
+      OPEN (unit=io_unit, file='itg.shift_vector_k.dat')
+      CALL writing_info( &
+        'transition-resolved shift vector', &
+        'itg.shift_vector_k.dat')
+
+      WRITE (io_unit, 0947) 'shift vector units: [Ang]'
+      WRITE (io_unit, 0953) 'Rx', 'Ry', 'Rz'
+      DO ik = 1, t_kpt%nktot
+        DO m = 1, Nw
+          DO n = 1, Nw
+            IF (m == n) CYCLE
+            WRITE (io_unit, 0954) &
+              ik, n, m, &
+              shift_vec_k_g(:, n, m, ik)
+          END DO
+        END DO
+      END DO
+      CLOSE (io_unit)
+      DEALLOCATE (shift_vec_k_g)
+    END IF
+
 0947 FORMAT("# ", A)
 0948 FORMAT("# hw (eV)", 6(",", A16))
 0949 FORMAT(F13.6, 6(1X, ES16.8E3))
 0950 FORMAT("# E (eV)", 6(",", A16))
 0951 FORMAT("# ik, ibnd", 6(",", A16))
 0952 FORMAT(I8, 1X, I8, 6(1X, ES16.8E3))
+0953 FORMAT("# ik, n, m", 3(",", A16))
+0954 FORMAT(3(I8, 1X), 3(1X, ES16.8E3))
   END SUBROUTINE NLO_g_write
   !
   SUBROUTINE NLO_g_main(t_kpt, dH_bar, d2H_bar, A_bar, dA_bar, v_k_H, D_bar)
@@ -462,7 +527,7 @@ CONTAINS
         ! IF (ABS(dE_nm) <= dE_thr) CYCLE
 
         del_v_nm = v_k_H(n, n, :) - v_k_H(m, m, :)
-        IF (lshift_g .OR. lshift_E_g .OR. lshift_k_g) THEN
+        IF (lshift_g .OR. lshift_E_g .OR. lshift_k_g .OR. lshift_vec_g) THEN
           del_bar_mn = (dH_bar(m, m, :) - dH_bar(n, n, :))*inv_hbar
           ! del_H_nm = v_bar(n, n, :) - v_bar(m, m, :)
           DO a = 1, 3
@@ -539,6 +604,14 @@ CONTAINS
                                  fmn, gen_r(n, m, :), gen_dr_mn)
           END IF
         END IF
+        IF (lshift_vec_g) THEN
+          CALL shift_vector_transition( &
+            shift_vec_k(:, n, m, t_iks), &
+            shift_vec_b, &
+            gen_r(n, m, :), &
+            gen_dr_mn &
+            )
+        END IF
       END DO
     END DO
     DEALLOCATE (delta_E)
@@ -596,6 +669,26 @@ CONTAINS
     END DO
     shift_k(:, :) = shift_k(:, :) + (delta_Enm + delta_Emn)*kernel_mn(:, :)
   END SUBROUTINE shift_current_k
+  !
+  SUBROUTINE shift_vector_transition(shift_vec, bpol, r_nm, dr_mn)
+    REAL(DP), INTENT(OUT) :: shift_vec(3)
+    INTEGER, INTENT(IN) :: bpol
+    COMPLEX(DP), INTENT(IN) :: r_nm(3)
+    COMPLEX(DP), INTENT(IN) :: dr_mn(3, 3)
+
+    INTEGER :: a
+    REAL(DP) :: r2
+    REAL(DP), PARAMETER :: r2_thr = 1.0D-20
+
+    shift_vec = 0.0_DP
+
+    r2 = REAL(CONJG(r_nm(bpol))*r_nm(bpol), DP)
+    IF (r2 <= r2_thr) RETURN
+
+    DO a = 1, 3
+      shift_vec(a) = AIMAG(r_nm(bpol)*dr_mn(a, bpol))/r2
+    END DO
+  END SUBROUTINE shift_vector_transition
   !
   SUBROUTINE dielectric_E(epsilon_w_E, eig_n, eig_m, fmn, r_nm, r_mn)
     USE f_params, ONLY: shift_hw, NLO_eta, NLO_w_thr, NLO_Emin, NLO_dE, NLO_nE
