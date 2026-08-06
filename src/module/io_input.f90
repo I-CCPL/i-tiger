@@ -192,6 +192,7 @@ CONTAINS
   END SUBROUTINE read_line
   !
   SUBROUTINE read_kpts(line)
+    USE io_global, ONLY: ionode, get_free_unit
     USE char_mod, ONLY: match
     USE kpoints, ONLY: t_kpt
     USE system, ONLY: red2cart_recip
@@ -199,6 +200,8 @@ CONTAINS
     CHARACTER(LEN=256), INTENT(INOUT)::line
     LOGICAL::tend
     INTEGER::i
+    INTEGER::iun_kpts
+    CHARACTER(LEN=*), PARAMETER::fn_kpts = 'itg.kpts.dat'
     !> mesh
     INTEGER::nk1, nk2, nk3, sk1, sk2, sk3
     !> path
@@ -223,6 +226,17 @@ CONTAINS
       WRITE (stdout, '(2X, A, 3(1X, I0))') '- K-Mesh: ', nk1, nk2, nk3
       WRITE (stdout, '(2X, A, 3(1X, I0))') '- Shift:  ', sk1, sk2, sk3
       WRITE (stdout, '(2X,A, 1X, I0)') '- Total k-points: ', t_kpt%nktot
+      !
+      IF (ionode) THEN
+        iun_kpts = get_free_unit()
+        OPEN (unit=iun_kpts, file=fn_kpts, &
+              status='replace', action='write')
+        WRITE (iun_kpts, '(A)') '# k_idx, k_red'
+        DO i = 1, t_kpt%nktot
+          WRITE (iun_kpts, '(3(1X, ES11.4))') i, t_kpt%k_red(:, i)
+        END DO
+        CLOSE (iun_kpts)
+      END IF
       !
     ELSE IF (match('CRYSTAL_B', line)) THEN
       IF (lNLO .OR. lshift_E_g) THEN
@@ -259,6 +273,20 @@ CONTAINS
         WRITE (stdout, 5413) i, k_pos
       END DO
 5413  FORMAT(2X, '- high sym. k pos(', I0, '): ', F10.4)
+      !
+      IF (ionode) THEN
+        iun_kpts = get_free_unit()
+        OPEN (unit=iun_kpts, file=fn_kpts, &
+              status='replace', action='write')
+        WRITE (iun_kpts, '(A)') '# k_idx, k_red, kpos'
+        k_pos = 0.0_DP
+        DO i = 1, t_kpt%nktot
+          WRITE (iun_kpts, '(3(1X, ES11.4))') i, t_kpt%k_red(:, i), k_pos
+          IF (i < t_kpt%nktot) &
+            k_pos = k_pos + NORM2(t_kpt%k_cart(:, i + 1) - t_kpt%k_cart(:, i))
+        END DO
+        CLOSE (iun_kpts)
+      END IF
       !
     END IF
 

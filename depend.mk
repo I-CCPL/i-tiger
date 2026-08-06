@@ -42,7 +42,7 @@
 ./build/errore.o : ./build/io_global.o ./build/mp_global.o 
 ./build/io_global.o : ./build/mp_base.o ./build/io_param.o 
 ./build/kinds.o : ./build/io_param.o 
-./build/lin_eig_H.o : ./build/constants.o ./build/mp_base.o ./build/io_global.o ./build/kinds.o 
+./build/lin_eig_H.o : ./build/constants.o ./build/kinds.o 
 ./build/lin_mat.o : ./build/constants.o ./build/kinds.o 
 ./build/lin_vec.o : ./build/kinds.o 
 ./build/mp_base.o : ./build/kinds.o ./build/mp_global.o 
