@@ -86,8 +86,8 @@ CONTAINS
     ! Determine the smallest contiguous band window that can contribute at shift_hw.
     ! Both transition directions are retained because the main kernels use ordered
     ! (m,n) pairs and the shift-current kernel contains delta(E_nm +/- hw).
+    nkpt = t_kpt%nkpt
     IF (lshift_k_g .OR. ldielec_k_g) THEN
-      nkpt = t_kpt%nkpt
       ALLOCATE (band_needed(Nw))
       band_needed = .FALSE.
       hw_window = NLO_w_thr*NLO_eta
