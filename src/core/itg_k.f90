@@ -163,9 +163,8 @@ CONTAINS
                  X_k=t_kpt%H_k, &
                  dX_k=k_data%mdH_k_W, &
                  d2X_k=k_data%md2H_k_W)
-    IF (.NOT. k_data%binit_eigval) THEN
-      CALL make_eigval()
-    END IF
+    !> this is always required to use eigvec.
+    CALL make_eigval()
 
     IF (k_data%bdH_bar) CALL t_kpt%rotate(k_data%mdH_k_W, k_data%mdH_bar)
     IF (k_data%bd2H_bar) CALL t_kpt%rotate(k_data%md2H_k_W, k_data%md2H_bar)
