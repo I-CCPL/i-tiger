@@ -42,6 +42,47 @@ CONTAINS
     k_global = mp_rank*q + MIN(mp_rank, r) + k_local
   END FUNCTION global_k_idx
 
+  MODULE SUBROUTINE gather_l_data(self, length, f_in, f_out)
+    USE kinds, ONLY: DP
+    USE mp_global
+    USE kpoints, ONLY: kpoint_type, &
+                       recvcounts, displs
+    IMPLICIT NONE
+    CLASS(kpoint_type), INTENT(INOUT) :: self
+    INTEGER, INTENT(IN)::length
+    LOGICAL, INTENT(IN) :: f_in(length, self%nkpt)
+    LOGICAL, INTENT(OUT) :: f_out(length, self%nktot)
+#if defined (__MPI)
+    INTEGER, ALLOCATABLE::f_recvcounts(:)
+    INTEGER, ALLOCATABLE::f_displs(:)
+    INTEGER::ikpt, info
+    IF (mp_size == 1) THEN
+      f_out(:, 1:self%nktot) = f_in(:, 1:self%nkpt)
+      RETURN
+    END IF
+
+    IF (mp_rank == mp_root) THEN
+      ALLOCATE (f_recvcounts(mp_size))
+      ALLOCATE (f_displs(mp_size))
+      f_recvcounts = recvcounts*length
+      f_displs = displs*length
+    ELSE
+      ALLOCATE (f_recvcounts(0))
+      ALLOCATE (f_displs(0))
+    END IF
+
+    CALL MPI_GATHERV(f_in, length*self%nkpt, MPI_LOGICAL, &
+                     f_out, f_recvcounts, f_displs, MPI_LOGICAL, &
+                     mp_root, mp_comm, info)
+    IF (info /= 0) THEN
+      CALL errore(info, 'gather_l_data', 'info<>0 in MPI_GATHERV')
+    END IF
+
+    IF (ALLOCATED(f_recvcounts)) DEALLOCATE (f_recvcounts)
+    IF (ALLOCATED(f_displs)) DEALLOCATE (f_displs)
+#endif
+    RETURN
+  END SUBROUTINE gather_l_data
   MODULE SUBROUTINE gather_r_data(self, length, f_in, f_out)
     USE kinds, ONLY: DP
     USE mp_global

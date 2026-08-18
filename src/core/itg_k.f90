@@ -87,10 +87,12 @@ CONTAINS
   SUBROUTINE allocate_k()
     USE fft_base, ONLY: fft_R2k
     USE itg_R, ONLY: R_data
+    USE degen_mod, ONLY: degen_init
     ALLOCATE (t_kpt%H_k(Nw, Nw))
     ALLOCATE (t_kpt%eigval(Nw, t_kpt%nkpt))
     ALLOCATE (t_kpt%eigvec(Nw, Nw))
     t_kpt%eigval = 0.0_DP
+    CALL degen_init()
 
     IF (k_data%bdH_k_W) ALLOCATE (k_data%mdH_k_W(Nw, Nw, 3))
     IF (k_data%bdH_bar) ALLOCATE (k_data%mdH_bar(Nw, Nw, 3))
@@ -152,6 +154,7 @@ CONTAINS
   SUBROUTINE make_k()
     USE fft_base, ONLY: fft_R2k, fft_R2k_vec
     USE itg_R, ONLY: R_data
+    USE degen_mod, ONLY: degen_compute
     CALL start_clock('make_k')
 
     !... Important: nonallocatable dummy is not present
@@ -165,6 +168,7 @@ CONTAINS
                  d2X_k=k_data%md2H_k_W)
     !> this is always required to use eigvec.
     CALL make_eigval()
+    CALL degen_compute(t_iks, 1.0E-5_DP, t_kpt%eigval(:, t_iks))
 
     IF (k_data%bdH_bar) CALL t_kpt%rotate(k_data%mdH_k_W, k_data%mdH_bar)
     IF (k_data%bd2H_bar) CALL t_kpt%rotate(k_data%md2H_k_W, k_data%md2H_bar)

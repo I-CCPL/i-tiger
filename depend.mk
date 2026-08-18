@@ -1,10 +1,11 @@
+./build/degen_mod.o : ./build/io_global.o ./build/kpoints.o ./build/system.o ./build/kinds.o 
 ./build/elementary.o : ./build/itg_k.o ./build/kpoints.o ./build/constants.o ./build/system.o ./build/f_params.o ./build/kinds.o 
 ./build/f_base.o : ./build/itg_f.o ./build/itg_k.o ./build/f_params.o 
 ./build/f_params.o : ./build/kinds.o 
 ./build/io_output.o : ./build/f_params.o ./build/kpoints.o ./build/system.o ./build/io_global.o ./build/kinds.o 
 ./build/itg_R.o : ./build/mp_base.o ./build/f_params.o ./build/io_global.o ./build/fft.o ./build/constants.o ./build/R_vector.o ./build/wannier90.o ./build/system.o ./build/kinds.o 
-./build/itg_f.o : ./build/io_output.o ./build/mp_base.o ./build/io_global.o ./build/NLO_g.o ./build/system.o ./build/kpoints.o ./build/itg_R.o ./build/itg_k.o ./build/f_params.o ./build/kinds.o 
-./build/itg_k.o : ./build/lin_mat.o ./build/lin_eig_H.o ./build/fft.o ./build/kpoints.o ./build/itg_R.o ./build/system.o ./build/kinds.o 
+./build/itg_f.o : ./build/degen_mod.o ./build/io_output.o ./build/mp_base.o ./build/io_global.o ./build/NLO_g.o ./build/system.o ./build/kpoints.o ./build/itg_R.o ./build/itg_k.o ./build/f_params.o ./build/kinds.o 
+./build/itg_k.o : ./build/lin_mat.o ./build/lin_eig_H.o ./build/degen_mod.o ./build/fft.o ./build/kpoints.o ./build/itg_R.o ./build/system.o ./build/kinds.o 
 ./build/itg_q.o : ./build/itg_R.o ./build/write_matrix.o ./build/io_global.o ./build/wannier90.o 
 ./build/main.o : ./build/itg_f.o ./build/itg_k.o ./build/itg_R.o ./build/itg_q.o ./build/fft.o ./build/kpoints.o ./build/io_input.o ./build/io_global.o ./build/env.o 
 ./build/check_Hermicity.o : ./build/system.o ./build/io_global.o ./build/kinds.o 
@@ -18,7 +19,7 @@
 ./build/warning.o : ./build/io_global.o 
 ./build/write_matrix.o : ./build/kpoints.o ./build/system.o ./build/kinds.o 
 ./build/Berry_g.o : ./build/f_params.o ./build/system.o ./build/constants.o ./build/kinds.o 
-./build/NLO_g.o : ./build/delta_funct.o ./build/io_output.o ./build/kpoints.o ./build/system.o ./build/io_global.o ./build/mp_base.o ./build/constants.o ./build/f_params.o ./build/kinds.o 
+./build/NLO_g.o : ./build/delta_funct.o ./build/io_output.o ./build/kpoints.o ./build/system.o ./build/mp_base.o ./build/constants.o ./build/f_params.o ./build/io_global.o ./build/kinds.o 
 ./build/OAM_g.o : ./build/system.o ./build/f_params.o ./build/constants.o ./build/kinds.o 
 ./build/BCD_p.o : ./build/delta_funct.o ./build/system.o ./build/kpoints.o ./build/f_params.o ./build/kinds.o 
 ./build/Berry_p.o : ./build/itg_k.o ./build/kpoints.o ./build/system.o ./build/f_params.o ./build/constants.o ./build/kinds.o 

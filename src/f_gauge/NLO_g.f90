@@ -2,6 +2,7 @@ MODULE NLO_g
   ! Nonlinear optics
   ! Ref. PRB 61, 5337 (2000)
   USE kinds, ONLY: DP
+  USE io_global, ONLY: stdout
   USE f_params, ONLY: NLO_nE, lNLO_g, lshift_g, &
                       lshift_E_g, ldielec_E_g, &
                       lshift_k_g, ldielec_k_g, &
@@ -442,8 +443,9 @@ CONTAINS
         DO m = 1, Nw
           DO n = 1, Nw
             IF (m == n) CYCLE
+            ! IF (ALL(shift_vec_k_g(:, n, m, ik) == 0.0_DP)) CYCLE
             WRITE (io_unit, 0954) &
-              ik, n, m, &
+              ik, m, n, &
               shift_vec_k_g(:, n, m, ik)
           END DO
         END DO
@@ -476,7 +478,7 @@ CONTAINS
     COMPLEX(DP), INTENT(IN) :: dA_bar(Nw, Nw, 3, 3)
     COMPLEX(DP), INTENT(IN) :: v_k_H(Nw, Nw, 3)
     COMPLEX(DP), INTENT(IN):: D_bar(Nw, Nw, 3)
-    INTEGER::n, m, p, a, b, iom, ibnd
+    INTEGER::n, m, p, a, b, iom, ibnd_n, ibnd_m
     REAL(DP)::inv_hbar, eig_n, eig_m, dE_nm, delta_res_nm, delta_nm_k, delta_mn_k
     REAL(DP)::w_inv(Nw, Nw), occ(Nw), fmn, E_inv(Nw, Nw)
     COMPLEX(DP)::v_bar(Nw, Nw, 3), del_v_nm(3), del_bar_mn(3), dv_bar
@@ -596,15 +598,16 @@ CONTAINS
         ! nk-resolved response at shift_hw.
         IF ((ldielec_k_g .OR. lshift_k_g) .AND. &
             n >= k_band_min .AND. n <= k_band_max) THEN
-          ibnd = n - k_band_min + 1
+          ibnd_n = n - k_band_min + 1
           delta_nm_k = w1gauss(dE_nm - shift_hw, NLO_eta, -99)
           delta_mn_k = w1gauss(-dE_nm - shift_hw, NLO_eta, -99)
           IF (ldielec_k_g) THEN
-            CALL dielectric_k(epsilon_w_k(:, ibnd, t_iks), delta_nm_k, fmn, &
+            CALL dielectric_k(epsilon_w_k(:, ibnd_n, t_iks), delta_nm_k, fmn, &
                               gen_r(n, m, :), gen_r(m, n, :))
           END IF
-          IF (lshift_k_g) THEN
-            CALL shift_current_k(shift_w_k(:, :, ibnd, t_iks), delta_nm_k, delta_mn_k, &
+          IF (lshift_k_g .AND. &
+              m >= k_band_min .AND. m <= k_band_max) THEN
+            CALL shift_current_k(shift_w_k(:, :, ibnd_n, t_iks), delta_nm_k, delta_mn_k, &
                                  fmn, gen_r(n, m, :), gen_dr_mn)
           END IF
         END IF

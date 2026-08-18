@@ -99,7 +99,7 @@ CONTAINS
       lBCD, lBCD_p, &
       dE_thr, dE_eta, E_fermi, Ef_min, Ef_max, Ef_step, & ! dim &
       lNLO, lNLO_g, lshift_g, lshift_E_g, shift_hw, ldielec_E_g, &
-      lshift_k_g, ldielec_k_g, lshift_vec_g, &
+      lshift_k_g, ldielec_k_g, lshift_vec_g, shift_vec_b, &
       NLO_Emin, NLO_Emax, NLO_dE, NLO_eta, NLO_w_thr
     WRITE (stdout, '(2X, A)') 'Reading &ITG Namelist...'
     IF (ionode) READ (stdin, nml=itg)
@@ -119,6 +119,7 @@ CONTAINS
     CALL mp_bcast(lshift_k_g)
     CALL mp_bcast(ldielec_k_g)
     CALL mp_bcast(lshift_vec_g)
+    CALL mp_bcast(shift_vec_b)
     CALL set_flags()
     !
     WRITE (stdout, '(2X, A, ES11.4)') '- dE threshold: ', dE_thr
@@ -173,11 +174,16 @@ CONTAINS
         CALL errore(1, 'read_itg', 'NLO_w_thr must be positive')
     END IF
     IF (lshift_E_g .OR. ldielec_E_g .OR. &
-        lshift_k_g .OR. ldielec_k_g .OR. lshift_vec_g) THEN
+        lshift_k_g .OR. ldielec_k_g) THEN
       CALL mp_bcast(shift_hw)
       IF (shift_hw <= 0.0_DP) THEN
         CALL errore(1, 'read_itg', 'shift_hw must be positive')
       END IF
+    END IF
+    IF (lshift_vec_g) THEN
+      IF (shift_vec_b < 1 .OR. shift_vec_b > 3) &
+        CALL errore(1, 'read_itg', 'shift_vec_b must be 1, 2, or 3')
+      WRITE (stdout, '(2X, A, 1X, I0)') '- Shift-vector polarization: ', shift_vec_b
     END IF
   END SUBROUTINE read_itg
   !

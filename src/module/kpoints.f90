@@ -22,6 +22,7 @@ MODULE kpoints
   CONTAINS
     PROCEDURE::divide_k => divide_k_idx
     PROCEDURE::global_k => global_k_idx
+    PROCEDURE::gather_l => gather_l_data
     PROCEDURE::gather_r => gather_r_data
     PROCEDURE::gather_c => gather_c_data
     PROCEDURE::receive => rec_r_data
@@ -43,6 +44,12 @@ MODULE kpoints
       INTEGER, INTENT(IN)::k_local
       INTEGER :: k_global
     END FUNCTION global_k_idx
+    MODULE SUBROUTINE gather_l_data(self, length, f_in, f_out)
+      CLASS(kpoint_type), INTENT(inout) :: self
+      INTEGER, INTENT(in) :: length
+      LOGICAL, INTENT(in) :: f_in(length, self%nkpt)
+      LOGICAL, INTENT(out) :: f_out(length, self%nktot)
+    END SUBROUTINE gather_l_data
     MODULE SUBROUTINE gather_r_data(self, length, f_in, f_out)
       CLASS(kpoint_type), INTENT(INOUT) :: self
       INTEGER, INTENT(IN) :: length

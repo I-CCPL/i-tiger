@@ -156,9 +156,11 @@ CONTAINS
     USE io_global, ONLY: stdout, ionode
     USE mp_base, ONLY: mp_sum
     USE f_params, ONLY: Ef_nE
+    USE io_output, ONLY: writing_info
     USE io_output, ONLY: io_output_init, write_band, write_OAM, &
                          write_Berry, write_Berry_k, write_BCD
     USE NLO_g, ONLY: NLO_g_write
+    USE degen_mod, ONLY: degen_write
     USE system, ONLY: Nw
     USE kpoints, ONLY: t_kpt
     REAL(DP), ALLOCATABLE::eigval(:, :)
@@ -169,6 +171,9 @@ CONTAINS
     CALL start_clock('write_f')
     WRITE (stdout, '(2X, A)') 'Write k data...'
     CALL io_output_init()
+    !
+    CALL writing_info('degen. states', 'itg.degen.dat')
+    CALL degen_write()
     !
     IF (lBand) THEN
       IF (ionode) THEN
