@@ -30,6 +30,11 @@ CONTAINS
     IF (lBCD) lBCD_p = .TRUE.
     IF (lNLO) lNLO_g = .TRUE.
 
+    IF (lOAM_g) THEN
+      k_data%bA_bar = .TRUE.
+      k_data%bdH_bar = .TRUE.
+    END IF
+
     IF (lBerry_p) THEN
       k_data%bO_bar = .TRUE.
       k_data%bdH_bar = .TRUE.
