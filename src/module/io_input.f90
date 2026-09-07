@@ -294,7 +294,7 @@ CONTAINS
         WRITE (iun_kpts, '(A)') '# k_idx, k_red, kpos'
         k_pos = 0.0_DP
         DO i = 1, t_kpt%nktot
-          WRITE (iun_kpts, '(3(1X, ES11.4))') i, t_kpt%k_red(:, i), k_pos
+          WRITE (iun_kpts, '(I8, 4(1X, ES11.4))') i, t_kpt%k_red(:, i), k_pos
           IF (i < t_kpt%nktot) &
             k_pos = k_pos + NORM2(t_kpt%k_cart(:, i + 1) - t_kpt%k_cart(:, i))
         END DO
