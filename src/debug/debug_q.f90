@@ -63,10 +63,9 @@ SUBROUTINE debug_q()
   DO ikpt = 1, w90data%kpts%nkpt
     DO inb = 1, w90data%nnb
       jnb = w90data%bvec_index(inb, ikpt)
-      DO a = 1, w90data%nnb
-        WRITE (io_unit, '(3F12.6)') w90data%bvec_red(:, jnb)
-      END DO
+      WRITE (io_unit, '(3F12.6)') w90data%bvec_red(:, jnb)
     END DO
+    WRITE (io_unit, *)
   END DO
   CLOSE (io_unit)
 
@@ -75,10 +74,9 @@ SUBROUTINE debug_q()
     DO inb = 1, w90data%nnb
       jnb = w90data%bvec_index(inb, ikpt)
       CALL red2cart_recip(w90data%bvec_red(:, jnb), vec)
-      DO a = 1, 3
-        WRITE (io_unit, *) vec(a)
-      END DO
+      WRITE (io_unit, '(3F12.6)') vec
     END DO
+    WRITE (io_unit, *)
   END DO
   CLOSE (io_unit)
 
