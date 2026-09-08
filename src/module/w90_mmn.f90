@@ -144,7 +144,7 @@ CONTAINS
     !... Build weight factor w_b
     ldim = MIN(nshell, 9)
     ALLOCATE (A(nshell, 9))
-    ALLOCATE (U(ldim, nshell))
+    ALLOCATE (U(nshell, ldim))
     ALLOCATE (S(ldim))
     ALLOCATE (VT(ldim, 9))
     ALLOCATE (work(1))
@@ -166,12 +166,12 @@ CONTAINS
       inb = inb + inb_shell
     END DO
 
-    CALL DGESVD('S', 'S', nshell, 9, A, nshell, S, U, ldim, VT, ldim, work, -1, info)
+    CALL DGESVD('S', 'S', nshell, 9, A, nshell, S, U, nshell, VT, ldim, work, -1, info)
     IF (info /= 0) CALL errore(info, 'build_w90_bvec: dgesvd query failed')
     lwork = INT(work(1))
     DEALLOCATE (work)
     ALLOCATE (work(lwork))
-    CALL DGESVD('S', 'S', nshell, 9, A, nshell, S, U, ldim, VT, ldim, work, lwork, info)
+    CALL DGESVD('S', 'S', nshell, 9, A, nshell, S, U, nshell, VT, ldim, work, lwork, info)
     IF (info /= 0) CALL errore(info, 'build_w90_bvec: dgesvd failed')
 
     ALLOCATE (w_shell(nshell))
@@ -180,7 +180,7 @@ CONTAINS
     w_shell(:) = 0.0_DP
     DO idx = 1, 9
       DO jdx = 1, ldim
-        w_shell(:) = w_shell(:) + I(idx)*U(jdx, :)/S(jdx)*VT(jdx, idx)
+        w_shell(:) = w_shell(:) + I(idx)*U(:, jdx)/S(jdx)*VT(jdx, idx)
       END DO
     END DO
     WRITE (stdout, '(2X, A)') '- Weight factors for bvec shells:'
