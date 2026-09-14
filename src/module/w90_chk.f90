@@ -4,7 +4,7 @@ CONTAINS
   MODULE SUBROUTINE read_w90_chk(self, chk_dum)
     !< Ref. wannier90/src/wannier90_readwrite.F90
     USE kinds, ONLY: DP
-    USE constants, ONLY: cmplx_0
+    USE constants, ONLY: cmplx_0, cmplx_i, tpi
     USE io_global, ONLY: check_file
     USE mp_base, ONLY: mp_bcast
     USE system, ONLY: Nw, cell_setup, real_lattice, recip_lattice, &
@@ -15,6 +15,8 @@ CONTAINS
     !
     INTEGER::io_unit, ios, ikpt, i, j, m
     INTEGER::ndw
+    INTEGER::iw, ia, nshift(3)
+    REAL(DP)::frac(3), phase
     !
     WRITE (stdout, '(2X, A)') 'Reading .chk file...'
     CALL check_file(TRIM(self%prefix)//'.chk')
@@ -121,6 +123,44 @@ CONTAINS
       ALLOCATE (self%wannier_spread(Nw))
       READ (io_unit) self%wannier_center_cart
       READ (io_unit) self%wannier_spread
+
+      ! TEST: rehome Wannier centres and their gauge to fractional [0,1)^3.
+      ! This test is restricted to an axis-aligned orthorhombic cell.
+      DO i = 1, 3
+        DO j = 1, 3
+          IF (i == j) CYCLE
+          IF (ABS(real_lattice(i, j)) > 1.0D-10) THEN
+            CALL errore(1, 'read_w90_chk', 'Rehome test requires an axis-aligned orthorhombic cell')
+          END IF
+        END DO
+        IF (ABS(real_lattice(i, i)) < 1.0D-10) THEN
+          CALL errore(1, 'read_w90_chk', 'Rehome test found a zero lattice length')
+        END IF
+      END DO
+
+      WRITE (stdout, '(2X,A)') '- TEST: rehoming Wannier centres to fractional [0,1)^3'
+      DO iw = 1, Nw
+        DO ia = 1, 3
+          frac(ia) = self%wannier_center_cart(ia, iw)/real_lattice(ia, ia)
+        END DO
+        nshift = FLOOR(frac)
+
+        ! r'_n = r_n - sum_a nshift(a)*a_a
+        DO ia = 1, 3
+          self%wannier_center_cart(ia, iw) = self%wannier_center_cart(ia, iw) &
+                                             - REAL(nshift(ia), DP)*real_lattice(ia, ia)
+        END DO
+
+        ! V'_n(q) = V_n(q)*exp(+i*2*pi*q_red.nshift).
+        ! H(q) and A(q) will subsequently be built using this updated gauge.
+        DO ikpt = 1, self%kpts%nkpt
+          phase = tpi*DOT_PRODUCT(self%kpts%k_red(:, ikpt), REAL(nshift, DP))
+          self%v_matrix(:, iw, ikpt) = self%v_matrix(:, iw, ikpt)*EXP(cmplx_i*phase)
+        END DO
+        WRITE (stdout, '(4X,A,I4,A,3I4,A,3F14.8)') &
+          'WF ', iw, ' removed lattice shift:', nshift, &
+          ' centre:', self%wannier_center_cart(:, iw)
+      END DO
 
       CLOSE (io_unit)
     END IF
