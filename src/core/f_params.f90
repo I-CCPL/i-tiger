@@ -62,6 +62,7 @@ MODULE f_params
 
   LOGICAL::lshift_k_g = .FALSE.
   LOGICAL::ldielec_k_g = .FALSE.
+  LOGICAL::linjection_k_g = .FALSE.
   LOGICAL::lshift_vec_g = .FALSE.
   INTEGER :: shift_vec_b = 1
 
