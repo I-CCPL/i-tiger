@@ -5,7 +5,7 @@ MODULE NLO_g
   USE io_global, ONLY: stdout
   USE f_params, ONLY: NLO_nE, lNLO_g, lshift_g, &
                       lshift_E_g, ldielec_E_g, &
-                      lshift_k_g, ldielec_k_g, &
+                      lshift_k_g, ldielec_k_g, linjection_k_g, &
                       lshift_vec_g, shift_vec_b
   IMPLICIT NONE
   REAL(DP), ALLOCATABLE::NLO_hw(:)
@@ -29,6 +29,8 @@ MODULE NLO_g
   REAL(DP), ALLOCATABLE::shift_w_k(:, :, :, :)
   !> size: (6, nbnd, nkpt)
   COMPLEX(DP), ALLOCATABLE::epsilon_w_k(:, :, :)
+  !> size: (3, 3, nbnd, nkpt)
+  COMPLEX(DP), ALLOCATABLE::injection_w_k(:, :, :, :)
   !> contiguous band window
   INTEGER::k_band_min = 9999, k_band_max = 0, k_nband = 0
 
@@ -88,7 +90,7 @@ CONTAINS
     ! Both transition directions are retained because the main kernels use ordered
     ! (m,n) pairs and the shift-current kernel contains delta(E_nm +/- hw).
     nkpt = t_kpt%nkpt
-    IF (lshift_k_g .OR. ldielec_k_g) THEN
+    IF (lshift_k_g .OR. ldielec_k_g .OR. linjection_k_g) THEN
       ALLOCATE (band_needed(Nw))
       band_needed = .FALSE.
       hw_window = NLO_w_thr*NLO_eta
@@ -132,6 +134,10 @@ CONTAINS
       IF (lshift_k_g) THEN
         ALLOCATE (shift_w_k(3, 6, k_nband, nkpt))
         shift_w_k = 0.0_DP
+      END IF
+      IF (linjection_k_g) THEN
+        ALLOCATE (injection_w_k(3, 3, k_nband, nkpt))
+        injection_w_k = cmplx_0
       END IF
     END IF
 
@@ -194,6 +200,7 @@ CONTAINS
     IF (ALLOCATED(injection_w)) DEALLOCATE (injection_w)
     IF (ALLOCATED(shift_w_k)) DEALLOCATE (shift_w_k)
     IF (ALLOCATED(epsilon_w_k)) DEALLOCATE (epsilon_w_k)
+    IF (ALLOCATED(injection_w_k)) DEALLOCATE (injection_w_k)
     IF (ALLOCATED(shift_vec_k)) DEALLOCATE (shift_vec_k)
     k_band_min = 1
     k_band_max = 0
@@ -216,6 +223,9 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: shift_k_local(:, :)
     REAL(DP), ALLOCATABLE :: shift_k_global(:, :)
     REAL(DP), ALLOCATABLE :: shift_w_k_g(:, :, :, :)
+    COMPLEX(DP), ALLOCATABLE :: injection_k_local(:, :)
+    COMPLEX(DP), ALLOCATABLE :: injection_k_global(:, :)
+    COMPLEX(DP), ALLOCATABLE :: injection_w_k_g(:, :, :, :)
     REAL(DP), ALLOCATABLE :: shift_vec_local(:, :)
     REAL(DP), ALLOCATABLE :: shift_vec_global(:, :)
     REAL(DP), ALLOCATABLE :: shift_vec_k_g(:, :, :, :)
@@ -275,6 +285,25 @@ CONTAINS
                       )
       END IF
       DEALLOCATE (shift_k_global)
+    END IF
+
+    IF (linjection_k_g) THEN
+      length = 3*3*k_nband
+      ALLOCATE (injection_k_local(length, t_kpt%nkpt))
+      IF (ionode) THEN
+        ALLOCATE (injection_k_global(length, t_kpt%nktot))
+      ELSE
+        ALLOCATE (injection_k_global(0, 0))
+      END IF
+      injection_k_local = RESHAPE(injection_w_k, SHAPE(injection_k_local))
+      CALL t_kpt%gather_c(length, injection_k_local, injection_k_global)
+      DEALLOCATE (injection_k_local)
+
+      IF (ionode) THEN
+        ALLOCATE (injection_w_k_g(3, 3, k_nband, t_kpt%nktot))
+        injection_w_k_g = RESHAPE(injection_k_global, SHAPE(injection_w_k_g))
+      END IF
+      DEALLOCATE (injection_k_global)
     END IF
 
     IF (lshift_vec_g) THEN
@@ -429,6 +458,25 @@ CONTAINS
         END DO
         CLOSE (io_unit)
       END DO
+    END IF
+
+    IF (linjection_k_g) THEN
+      DO ia = 1, 3
+        fname_a = 'itg.injection_k_'//a_lab(ia)//'.dat'
+        OPEN (unit=io_unit, file=fname_a)
+        CALL writing_info('nk-resolved injection current', fname_a)
+        WRITE (io_unit, 0947) 'injection current units: [microA/V^2/fs]'
+        WRITE (io_unit, 0951) 'xy_re', 'xy_im', 'yz_re', 'yz_im', 'zx_re', 'zx_im'
+        DO ik = 1, t_kpt%nktot
+          DO ibnd = 1, k_nband
+            iw = k_band_min + ibnd - 1
+            WRITE (io_unit, 0952) ik, iw, &
+              (injection_w_k_g(ia, ibc, ibnd, ik), ibc=1, 3)
+          END DO
+        END DO
+        CLOSE (io_unit)
+      END DO
+      DEALLOCATE (injection_w_k_g)
     END IF
 
     IF (lshift_vec_g) THEN
@@ -596,7 +644,7 @@ CONTAINS
         END IF
 
         ! nk-resolved response at shift_hw.
-        IF ((ldielec_k_g .OR. lshift_k_g) .AND. &
+        IF ((ldielec_k_g .OR. lshift_k_g .OR. linjection_k_g) .AND. &
             n >= k_band_min .AND. n <= k_band_max) THEN
           ibnd_n = n - k_band_min + 1
           delta_nm_k = w1gauss(dE_nm - shift_hw, NLO_eta, -99)
@@ -609,6 +657,10 @@ CONTAINS
               m >= k_band_min .AND. m <= k_band_max) THEN
             CALL shift_current_k(shift_w_k(:, :, ibnd_n, t_iks), delta_nm_k, delta_mn_k, &
                                  fmn, gen_r(n, m, :), gen_dr_mn)
+          END IF
+          IF (linjection_k_g) THEN
+            CALL injection_current_k(injection_w_k(:, :, ibnd_n, t_iks), delta_nm_k, &
+                                     fmn, del_v_nm, gen_r(n, m, :), gen_r(m, n, :))
           END IF
         END IF
         IF (lshift_vec_g) THEN
@@ -826,6 +878,24 @@ CONTAINS
                                + delta_Enm(iom)*kernel_mn(:, :)
     END DO
   END SUBROUTINE injection_current
+  !
+  SUBROUTINE injection_current_k(injection_k, delta_Enm, fmn, del_v_nm, r_nm, r_mn)
+    COMPLEX(DP), INTENT(INOUT) :: injection_k(3, 3)
+    REAL(DP), INTENT(IN) :: delta_Enm, fmn
+    COMPLEX(DP), INTENT(IN) :: del_v_nm(3), r_nm(3), r_mn(3)
+    INTEGER :: a, b, c, bc
+    COMPLEX(DP) :: pref
+
+    pref = fmn*fac_injection*delta_Enm
+    DO a = 1, 3
+      DO bc = 1, 3
+        b = bc2b(bc*2)
+        c = bc2c(bc*2)
+        injection_k(a, bc) = injection_k(a, bc) + pref*del_v_nm(a) &
+                              *(r_nm(c)*r_mn(b) - r_nm(b)*r_mn(c))
+      END DO
+    END DO
+  END SUBROUTINE injection_current_k
   !
   PURE REAL(DP) FUNCTION occ_T0(en)
     USE f_params, ONLY: E_fermi

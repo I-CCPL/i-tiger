@@ -55,13 +55,13 @@ CONTAINS
     END IF
 
     IF (lNLO_g .OR. lshift_E_g .OR. ldielec_E_g .OR. &
-        lshift_k_g .OR. ldielec_k_g .OR. lshift_vec_g) THEN
+        lshift_k_g .OR. ldielec_k_g .OR. linjection_k_g .OR. lshift_vec_g) THEN
       k_data%bdH_bar = .TRUE.
       k_data%bd2H_bar = .TRUE.
       k_data%bA_bar = .TRUE.
       k_data%bdA_bar = .TRUE.
       k_data%bD_bar = .TRUE.
-      IF (lshift_k_g .OR. ldielec_k_g .OR. lshift_vec_g) THEN
+      IF (lshift_k_g .OR. ldielec_k_g .OR. linjection_k_g .OR. lshift_vec_g) THEN
         k_data%binit_eigval = .TRUE.
       END IF
     END IF
@@ -86,7 +86,7 @@ CONTAINS
     END IF
     IF (lBCD_p) ALLOCATE (BCD_sea(3, 3, Ef_nE))
     IF (lNLO_g .OR. lshift_E_g .OR. ldielec_E_g .OR. &
-        lshift_k_g .OR. ldielec_k_g .OR. lshift_vec_g) CALL NLO_g_init(t_kpt)
+        lshift_k_g .OR. ldielec_k_g .OR. linjection_k_g .OR. lshift_vec_g) CALL NLO_g_init(t_kpt)
   END SUBROUTINE allocate_f
   !
   SUBROUTINE clear_f()
@@ -149,7 +149,7 @@ CONTAINS
     END IF
 
     IF (lNLO_g .OR. lshift_E_g .OR. ldielec_E_g .OR. &
-        lshift_k_g .OR. ldielec_k_g .OR. lshift_vec_g) THEN
+        lshift_k_g .OR. ldielec_k_g .OR. linjection_k_g .OR. lshift_vec_g) THEN
       CALL NLO_g_main(t_kpt, k_data%mdH_bar, k_data%md2H_bar, &
                       k_data%mA_bar, k_data%mdA_bar, v_k_H, k_data%mD_bar)
     END IF
@@ -242,7 +242,7 @@ CONTAINS
     END IF
 
     IF (lNLO_g .OR. lshift_E_g .OR. ldielec_E_g .OR. &
-        lshift_k_g .OR. ldielec_k_g .OR. lshift_vec_g) THEN
+        lshift_k_g .OR. ldielec_k_g .OR. linjection_k_g .OR. lshift_vec_g) THEN
       CALL NLO_g_write(t_kpt)
     END IF
 
