@@ -659,7 +659,7 @@ CONTAINS
                                  fmn, gen_r(n, m, :), gen_dr_mn)
           END IF
           IF (linjection_k_g) THEN
-            CALL injection_current_k(injection_w_k(:, :, ibnd_n, t_iks), delta_nm_k, &
+            CALL injection_current_k(injection_w_k(:, :, ibnd_n, t_iks), delta_nm_k, delta_mn_k, &
                                      fmn, del_v_nm, gen_r(n, m, :), gen_r(m, n, :))
           END IF
         END IF
@@ -879,20 +879,20 @@ CONTAINS
     END DO
   END SUBROUTINE injection_current
   !
-  SUBROUTINE injection_current_k(injection_k, delta_Enm, fmn, del_v_nm, r_nm, r_mn)
+  SUBROUTINE injection_current_k(injection_k, delta_Enm, delta_Emn, fmn, del_v_nm, r_nm, r_mn)
     COMPLEX(DP), INTENT(INOUT) :: injection_k(3, 3)
-    REAL(DP), INTENT(IN) :: delta_Enm, fmn
+    REAL(DP), INTENT(IN) :: delta_Enm, delta_Emn, fmn
     COMPLEX(DP), INTENT(IN) :: del_v_nm(3), r_nm(3), r_mn(3)
     INTEGER :: a, b, c, bc
     COMPLEX(DP) :: pref
 
-    pref = fmn*fac_injection*delta_Enm
+    pref = fmn*fac_injection*(delta_Enm)
     DO a = 1, 3
       DO bc = 1, 3
         b = bc2b(bc*2)
         c = bc2c(bc*2)
         injection_k(a, bc) = injection_k(a, bc) + pref*del_v_nm(a) &
-                              *(r_nm(c)*r_mn(b) - r_nm(b)*r_mn(c))
+                             *(r_nm(c)*r_mn(b) - r_nm(b)*r_mn(c))
       END DO
     END DO
   END SUBROUTINE injection_current_k
